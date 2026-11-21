@@ -35,10 +35,34 @@ final class Theme {
 
     static boolean isCustom(String platform, String kind) { return file(platform, kind).isFile(); }
 
+    /** A bundled picture by path inside assets (e.g. "logo.png", "consoles/search.png"), cached. */
+    static Bitmap asset(String path) {
+        String key = "asset/" + path;
+        Bitmap b = cache.get(key);
+        if (b != null || absent.containsKey(key)) return b;
+        try (InputStream in = assets.open(path)) {
+            b = BitmapFactory.decodeStream(in);
+        } catch (IOException ignored) {
+        }
+        if (b != null) cache.put(key, b); else absent.put(key, true);
+        return b;
+    }
+
+    /** Icon and backdrop of a home-page tool such as "search", "settings" or "recent". */
+    static Bitmap toolIcon(String name) { return asset("consoles/" + name + ".png"); }
+
+    static Bitmap toolBackground(String name) { return asset("backgrounds/" + name + ".jpg"); }
+
     static Bitmap console(Library.Platform p) { return get(p, CONSOLE, "consoles/" + p.type() + ".png"); }
 
     static Bitmap background(Library.Platform p) {
-        return get(p, BACKGROUND, "backgrounds/" + p.type() + ".jpg", "backgrounds/" + p.type() + ".png");
+        return get(p, BACKGROUND, "backgrounds/" + p.backdropType() + ".jpg", "backgrounds/" + p.backdropType() + ".png");
+    }
+
+    /** Drops cached pictures of a platform, after its chosen artwork changed. */
+    static void forgetPlatform(String platform) {
+        forget(platform, CONSOLE);
+        forget(platform, BACKGROUND);
     }
 
     private static Bitmap get(Library.Platform p, String kind, String... assetNames) {

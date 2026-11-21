@@ -13,6 +13,7 @@ import android.content.pm.PackageInfo;
 import android.content.res.Configuration;
 import android.hardware.display.DisplayManager;
 import android.net.Uri;
+import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
@@ -172,6 +173,7 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
                 lib = l;
                 shelfState.message = null;
                 shelfState.current = null;
+                applyCustomFolders();
                 if (shelf != null) shelf.setLibrary(l, recentGames());
                 else shelfState.lib = l;
                 int n = 0;
@@ -410,7 +412,12 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         final Library.Platform fp = p;
         final ShelfView.Menu parent = shelfState.menu != null ? shelfState.menu.parent : null;
         // the shelf is recreated in onResume; rebuild the menu once it is back
-        if (fp != null) main.post(() -> showPlatformLookMenu(parent, fp));
+        if (fp != null && fp.isCustom()) {
+            Theme.forgetPlatform(fp.name);
+            main.post(() -> { foldersChanged(); Library.Platform f = folder(idOf(fp)); if (f != null) onEditFolder(f); });
+        } else if (fp != null) {
+            main.post(() -> showPlatformLookMenu(parent, fp));
+        }
     }
 
     private String versionName() {
@@ -464,6 +471,234 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
             for (Library.Game g : p.games)
                 if (g.title.toLowerCase(Locale.ROOT).contains(needle) || g.file.toLowerCase(Locale.ROOT).contains(needle)) hits.add(g);
         shelf.showResults(q.trim(), hits);
+    }
+
+    // ---- custom folders: stored as cf.ids = "id,id" and cf.<id>.name|color|art|bg|items ----
+
+    private static final int[] FOLDER_COLORS = {0xFF6C5CE7, 0xFFE8463E, 0xFFF2A93B, 0xFF2E9E5B, 0xFF1FA99B,
+            0xFF2F8BFF, 0xFF3A4FA3, 0xFFD6458F, 0xFF6D8299, 0xFF37474F};
+    private static final String[] ART = {"custom", "recent", "android", "apps", "search", "settings",
+            "3ds", "nds", "gba", "gbc", "gb", "nes", "snes", "n64", "md", "ps1", "ps2", "ps3", "ps4", "ps5",
+            "psp", "psv", "switch", "xbox360", "xboxsx"};
+
+    private List<String> folderIds() {
+        List<String> out = new ArrayList<>();
+        for (String s : prefs.getString("cf.ids", "").split(",")) if (!s.isEmpty()) out.add(s);
+        return out;
+    }
+
+    private static String fk(String id, String k) { return "cf." + id + "." + k; }
+
+    private static String idOf(Library.Platform p) { return p.name.substring("custom-".length()); }
+
+    private List<String> folderItems(String id) {
+        List<String> out = new ArrayList<>();
+        for (String s : prefs.getString(fk(id, "items"), "").split("\n")) if (!s.isEmpty()) out.add(s);
+        return out;
+    }
+
+    /** Puts the user's folders (from prefs) at the front of the platform list. */
+    private void applyCustomFolders() {
+        if (lib == null) return;
+        lib.platforms.removeIf(Library.Platform::isCustom);
+        int at = 0;
+        for (String id : folderIds()) {
+            Library.Platform p = new Library.Platform();
+            p.name = "custom-" + id;
+            p.system = "CUSTOM";
+            p.label = prefs.getString(fk(id, "name"), t(S.MY_FOLDER));
+            p.color = prefs.getInt(fk(id, "color"), FOLDER_COLORS[0]);
+            p.art = prefs.getString(fk(id, "art"), "custom");
+            p.bgArt = prefs.getString(fk(id, "bg"), "custom");
+            for (String k : folderItems(id)) {
+                Library.Game g = lib.byKey.get(k);
+                if (g != null) p.games.add(g);
+            }
+            lib.platforms.add(at++, p);
+        }
+    }
+
+    private Library.Platform folder(String id) {
+        if (lib != null) for (Library.Platform p : lib.platforms) if (p.name.equals("custom-" + id)) return p;
+        return null;
+    }
+
+    private void foldersChanged() {
+        applyCustomFolders();
+        if (shelf != null) shelf.refresh();
+    }
+
+    /** Text input on the upper screen. */
+    private void askText(String title, String initial, java.util.function.Consumer<String> done) {
+        EditText field = new EditText(this);
+        field.setSingleLine(true);
+        field.setImeOptions(EditorInfo.IME_FLAG_NO_EXTRACT_UI | EditorInfo.IME_FLAG_NO_FULLSCREEN | EditorInfo.IME_ACTION_DONE);
+        field.setText(initial);
+        field.selectAll();
+        int theme = Palette.dark ? android.R.style.Theme_DeviceDefault_Dialog_Alert : android.R.style.Theme_DeviceDefault_Light_Dialog_Alert;
+        AlertDialog d = new AlertDialog.Builder(this, theme).setTitle(title).setView(field)
+                .setPositiveButton(t(S.DONE), (x, w) -> {
+                    String s = field.getText().toString().trim();
+                    if (!s.isEmpty()) done.accept(s);
+                }).create();
+        d.setOnShowListener(x -> {
+            field.requestFocus();
+            d.getWindow().setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+        });
+        field.setOnEditorActionListener((v, a, e) -> {
+            d.getButton(AlertDialog.BUTTON_POSITIVE).performClick();
+            return true;
+        });
+        d.show();
+    }
+
+    private String createFolder(String name) {
+        String id = Long.toString(System.currentTimeMillis(), 36);
+        List<String> ids = folderIds();
+        ids.add(id);
+        prefs.edit().putString("cf.ids", String.join(",", ids)).putString(fk(id, "name"), name)
+                .putInt(fk(id, "color"), FOLDER_COLORS[(ids.size() - 1) % FOLDER_COLORS.length]).apply();
+        return id;
+    }
+
+    @Override public void onAddFolder() {
+        askText(t(S.NEW_FOLDER), t(S.MY_FOLDER), name -> {
+            String id = createFolder(name);
+            foldersChanged();
+            Library.Platform p = folder(id);
+            if (p != null) {
+                shelf.select(p);
+                onEditFolder(p);
+            }
+        });
+    }
+
+    @Override public void onEditFolder(Library.Platform pl) {
+        if (shelf == null) return;
+        String id = idOf(pl);
+        ShelfView.Menu m = new ShelfView.Menu(t(S.EDIT_FOLDER), pl.title());
+        m.add(t(S.RENAME), false, () -> askText(t(S.FOLDER_NAME), pl.title(), name -> {
+            prefs.edit().putString(fk(id, "name"), name).apply();
+            foldersChanged();
+            Library.Platform p = folder(id);
+            if (p != null) onEditFolder(p);
+        }));
+        m.add(t(S.COLOR), false, pl.color, null, () -> showFolderColors(m, id));
+        m.add(t(S.ICON), false, null, Theme.console(pl), () -> showFolderArt(m, id, true, 0));
+        m.add(t(S.BACKGROUND_IMAGE), false, null, Theme.background(pl), () -> showFolderArt(m, id, false, 0));
+        m.add(t(S.DELETE_FOLDER), false, () -> {
+            ShelfView.Menu sure = new ShelfView.Menu(t(S.DELETE_FOLDER), pl.title());
+            sure.parent = m;
+            sure.add("✕  " + t(S.DELETE_FOLDER), false, () -> {
+                List<String> ids = folderIds();
+                ids.remove(id);
+                SharedPreferences.Editor e = prefs.edit().putString("cf.ids", String.join(",", ids));
+                for (String k : new String[]{"name", "color", "art", "bg", "items"}) e.remove(fk(id, k));
+                e.apply();
+                Theme.reset(pl.name, Theme.CONSOLE);
+                Theme.reset(pl.name, Theme.BACKGROUND);
+                shelf.closeMenu();
+                foldersChanged();
+            });
+            sure.add(t(S.BACK), false, () -> onEditFolder(pl));
+            shelf.showMenu(sure);
+        });
+        shelf.showMenu(m);
+    }
+
+    private void showFolderColors(ShelfView.Menu parent, String id) {
+        int cur = prefs.getInt(fk(id, "color"), FOLDER_COLORS[0]);
+        ShelfView.Menu m = new ShelfView.Menu(t(S.COLOR), null);
+        m.parent = parent;
+        for (int col : FOLDER_COLORS) {
+            m.add(String.format(Locale.ROOT, "#%06X", col & 0xFFFFFF), col == cur, col, null, () -> {
+                prefs.edit().putInt(fk(id, "color"), col).apply();
+                foldersChanged();
+                Library.Platform p = folder(id);
+                if (p != null) onEditFolder(p);
+            });
+        }
+        shelf.showMenu(m);
+    }
+
+    private static String artLabel(String art) {
+        switch (art) {
+            case "custom": return t(S.MY_FOLDER);
+            case "recent": return t(S.RECENT);
+            case "android": return t(S.ANDROID_GAMES);
+            case "apps": return t(S.APPS);
+            case "search": return t(S.SEARCH);
+            case "settings": return t(S.SETTINGS);
+            case "xboxsx": return "Xbox Series X";
+            default: return Library.platformTitle(art.toUpperCase(Locale.ROOT));
+        }
+    }
+
+    /** Pick the folder's icon ({@code icon}) or backdrop from the bundled art, or an own picture. */
+    private void showFolderArt(ShelfView.Menu parent, String id, boolean icon, int sel) {
+        Library.Platform pl = folder(id);
+        if (pl == null) return;
+        String key = icon ? "art" : "bg", cur = prefs.getString(fk(id, key), "custom");
+        String kind = icon ? Theme.CONSOLE : Theme.BACKGROUND;
+        boolean own = Theme.isCustom(pl.name, kind);
+        ShelfView.Menu m = new ShelfView.Menu(icon ? t(S.ICON) : t(S.BACKGROUND_IMAGE), pl.title());
+        m.parent = parent;
+        m.add(t(S.PICK_IMAGE), own, () -> pickImage(pl, kind));
+        if (own) m.add(t(S.RESET_DEFAULT), false, () -> {
+            Theme.reset(pl.name, kind);
+            foldersChanged();
+            showFolderArt(parent, id, icon, 1);
+        });
+        int base = m.labels.size();
+        for (int i = 0; i < ART.length; i++) {
+            String art = ART[i];
+            Bitmap pic = icon ? Theme.toolIcon(art) : Theme.toolBackground(art);
+            int idx = base + i;
+            m.add(artLabel(art), !own && art.equals(cur), null, pic, () -> {
+                prefs.edit().putString(fk(id, key), art).apply();
+                Theme.forgetPlatform(pl.name);
+                foldersChanged();
+                showFolderArt(parent, id, icon, idx);
+            });
+        }
+        if (sel > 0) m.sel = Math.min(sel, m.labels.size() - 1);
+        shelf.showMenu(m);
+    }
+
+    @Override public void onAddToFolder(Library.Game g, ShelfView.Menu parent) {
+        if (shelf == null) return;
+        ShelfView.Menu m = new ShelfView.Menu(t(S.ADD_TO_FOLDER), g.title);
+        m.parent = parent;
+        for (String id : folderIds()) {
+            List<String> items = folderItems(id);
+            boolean in = items.contains(g.key());
+            m.add(prefs.getString(fk(id, "name"), t(S.MY_FOLDER)), in, prefs.getInt(fk(id, "color"), FOLDER_COLORS[0]), null, () -> {
+                List<String> now = folderItems(id);
+                if (!now.remove(g.key())) {
+                    now.add(g.key());
+                    Toast.makeText(this, I18n.f(S.ADDED_TO, prefs.getString(fk(id, "name"), "")), Toast.LENGTH_SHORT).show();
+                }
+                prefs.edit().putString(fk(id, "items"), String.join("\n", now)).apply();
+                foldersChanged();
+                onAddToFolder(g, parent);
+            });
+        }
+        m.add("＋ " + t(S.NEW_FOLDER), false, () -> askText(t(S.NEW_FOLDER), t(S.MY_FOLDER), name -> {
+            String id = createFolder(name);
+            prefs.edit().putString(fk(id, "items"), g.key()).apply();
+            Toast.makeText(this, I18n.f(S.ADDED_TO, name), Toast.LENGTH_SHORT).show();
+            foldersChanged();
+            onAddToFolder(g, parent);
+        }));
+        shelf.showMenu(m);
+    }
+
+    @Override public void onRemoveFromFolder(Library.Platform folder, Library.Game g) {
+        String id = idOf(folder);
+        List<String> items = folderItems(id);
+        items.remove(g.key());
+        prefs.edit().putString(fk(id, "items"), String.join("\n", items)).apply();
+        foldersChanged();
     }
 
     // ---- shelf callbacks ----

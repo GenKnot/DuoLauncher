@@ -193,7 +193,9 @@ final class TopView extends ViewGroup {
     void showMessage(String m) {
         shown = null;
         setDark(false);
-        hero.clear();
+        Bitmap logo = Theme.asset("logo.png");
+        if (logo != null) hero.setBitmap(HeroView.LOGO, logo); else hero.clear();
+        dots.set(0xFF6C5CE7, "", Theme.toolBackground("custom"));
         title.setText("");
         chips.set(false);
         desc.setText("");
@@ -209,18 +211,19 @@ final class TopView extends ViewGroup {
         enter(p);
         if (recent) {
             refreshFan(p);
-            dots.set(0xFFF2A93B, t(S.RECENT), null);
+            dots.set(0xFFF2A93B, t(S.RECENT), Theme.toolBackground("recent"));
         } else {
             hero.setDrawable(ConsoleDrawable.of(p, true));
-            dots.set(Library.platformColor(p.type()), p.name, Theme.background(p));
+            dots.set(p.accent(), p.isCustom() ? p.title() : p.name, Theme.background(p));
         }
-        boolean native_ = p.system.equals("ANDROID") || p.system.equals("APPS");
+        boolean native_ = p.system.equals("ANDROID") || p.system.equals("APPS") || p.isCustom();
         title.setText(recent ? t(S.RECENT) : p.title());
         if (recent || native_ || emu == null) chips.set(Palette.dark, I18n.f(S.GAMES_COUNT, p.games.size()));
         else chips.set(Palette.dark, I18n.f(S.GAMES_COUNT, p.games.size()), "▶ " + emu);
         desc.setText("");
         desc.setVisibility(GONE);
-        if (recent || native_) hints.set(Palette.dark, "A|" + t(S.OPEN));
+        if (p.isCustom()) hints.set(Palette.dark, "A|" + t(S.OPEN), "Y|" + t(S.EDIT_FOLDER));
+        else if (recent || native_) hints.set(Palette.dark, "A|" + t(S.OPEN));
         else hints.set(Palette.dark, "A|" + t(S.OPEN), "Y|" + t(S.PLATFORM_EMULATOR));
         requestLayout();
     }
@@ -231,8 +234,11 @@ final class TopView extends ViewGroup {
         message.setVisibility(GONE);
         setDark(false);
         enter(which);
-        hero.setDrawable(new ConsoleDrawable(settings ? "gear" : "search", null, true));
-        dots.set(settings ? 0xFF6D8299 : 0xFF2F8BFF, settings ? t(S.SETTINGS) : t(S.SEARCH), null);
+        String name = settings ? "settings" : "search";
+        Bitmap icon = Theme.toolIcon(name);
+        if (icon != null) hero.setDrawable(new ConsoleDrawable(name, icon, true));
+        else hero.setDrawable(new ConsoleDrawable(settings ? "gear" : "search", null, true));
+        dots.set(settings ? 0xFF6D8299 : 0xFF2F8BFF, settings ? t(S.SETTINGS) : t(S.SEARCH), Theme.toolBackground(name));
         title.setText(settings ? t(S.SETTINGS) : t(S.SEARCH));
         if (settings) chips.set(Palette.dark, t(S.SETTINGS_HINT), I18n.name());
         else chips.set(Palette.dark, t(S.SEARCH_HINT));

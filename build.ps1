@@ -13,8 +13,10 @@ $out = "$root\build"
 if (Test-Path $out) { Remove-Item $out -Recurse -Force }
 New-Item -ItemType Directory -Force "$out\classes", "$out\dex" | Out-Null
 
-& "$bt\aapt2.exe" link -o "$out\base.apk" -I $jar --manifest "$root\AndroidManifest.xml" `
-    --min-sdk-version 30 --target-sdk-version 35 --version-code 3 --version-name 0.3
+& "$bt\aapt2.exe" compile --dir "$root\res" -o "$out\res.zip"
+if ($LASTEXITCODE) { throw 'aapt2 compile failed' }
+& "$bt\aapt2.exe" link -o "$out\base.apk" -I $jar --manifest "$root\AndroidManifest.xml" -R "$out\res.zip" --auto-add-overlay `
+    --min-sdk-version 30 --target-sdk-version 35 --version-code 4 --version-name 0.4
 if ($LASTEXITCODE) { throw 'aapt2 link failed' }
 
 $srcs = Get-ChildItem "$root\src" -Recurse -Filter *.java | ForEach-Object FullName

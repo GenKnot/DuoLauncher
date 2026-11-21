@@ -42,9 +42,15 @@ final class Library {
         String name = "", sortBy = "", launch = "", system = "";
         boolean scanned;             // built by scanning folders rather than from Pegasus metadata
         final List<Game> games = new ArrayList<>();
+        // user-made folders: own name, colour, icon art and backdrop art
+        String label, art, bgArt;
+        int color;
 
-        String title() { return platformTitle(name); }
-        String type() { return consoleType(system.isEmpty() ? name : system); }
+        String title() { return label != null ? label : platformTitle(name); }
+        String type() { return art != null ? art : consoleType(system.isEmpty() ? name : system); }
+        String backdropType() { return bgArt != null ? bgArt : type(); }
+        int accent() { return color != 0 ? color : platformColor(type()); }
+        boolean isCustom() { return system.equals("CUSTOM"); }
     }
 
     static final class Game {

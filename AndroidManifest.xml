@@ -23,6 +23,7 @@
 
     <application
         android:label="Duo Launcher"
+        android:icon="@mipmap/ic_launcher"
         android:hardwareAccelerated="true"
         android:requestLegacyExternalStorage="true"
         android:theme="@android:style/Theme.DeviceDefault.NoActionBar.Fullscreen">

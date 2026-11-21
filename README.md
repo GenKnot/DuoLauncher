@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/logo.png" alt="Duo Launcher" width="520"></p>
+
 # Duo Launcher
 
 A dual-screen, 3DS-style game launcher for the **Retroid Pocket Duo** and other Android handhelds with a second display.
@@ -9,6 +11,7 @@ Point it at your ROM folders and it finds the games, shows them on the lower scr
 
 - **Finds your games by itself** – add folders in Settings → Game folders, or let it pick up any `Roms` folder on internal storage and SD cards. Platforms are recognised from folder names (`gba`, `Nintendo DS`, `psx`, …) and file extensions.
 - **Platforms** – 3DS, NDS, GBA, GBC, GB, NES, SNES, N64, Mega Drive, PlayStation 1/2/3, PSP, PS Vita, Switch, plus artwork for PS4, PS5, Xbox 360 and Xbox Series.
+- **Your own folders** – the "+" tile makes a folder with its own name, colour, icon and backdrop (from the bundled art or your own pictures); add any game or app to it with Y.
 - **Android games and apps** – installed games get their own page automatically; pick any apps (video, browser, …) to show on the Apps page.
 - **Upper screen (1920×1080)** – each platform's console on its own illustrated backdrop, or the selected game's logo over its blurred cover art, with platform, emulator and play-time tags and a short description.
 - **Lower screen (1280×960)** – platform folders and a zoomable icon grid. Works with the gamepad and with touch.
@@ -31,7 +34,7 @@ Point it at your ROM folders and it finds the games, shows them on the lower scr
 | B | Back |
 | L / R | Previous / next platform |
 | X | Icon size |
-| Y | Choose emulator |
+| Y | Choose emulator, add to a folder, or edit a folder |
 | SELECT | Sort (default / by name) |
 | R3 | Search |
 
