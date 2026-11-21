@@ -36,10 +36,9 @@ final class Launch {
     /** Placeholders are replaced per token, so paths with spaces stay one argument. */
     static String subst(String t, Library.Game g) {
         if (t.indexOf('{') < 0) return t;
-        Library.Platform p = g.platform;
-        String rel = p.relDir + "/" + g.file;
-        String uri = "content://com.android.externalstorage.documents/tree/" + Uri.encode(p.volumeId + ":" + p.relDir)
-                + "/document/" + Uri.encode(p.volumeId + ":" + rel);
+        String rel = g.relDir.isEmpty() ? g.file : g.relDir + "/" + g.file;
+        String uri = "content://com.android.externalstorage.documents/tree/" + Uri.encode(g.volumeId + ":" + g.relDir)
+                + "/document/" + Uri.encode(g.volumeId + ":" + rel);
         return t.replace("{file.path}", g.path.getAbsolutePath())
                 .replace("{file.uri}", uri)
                 .replace("{file.documenturi}", uri)

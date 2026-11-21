@@ -128,7 +128,7 @@ final class ShelfView extends View {
 
     void setLibrary(Library lib, List<Library.Game> recent) {
         st.lib = lib;
-        st.message = lib.platforms.isEmpty() ? t(S.NO_GAMES) : null;
+        st.message = null;
         setRecent(recent);
         if (st.current == null) goHome(); else fireFocus();
     }
@@ -283,7 +283,7 @@ final class ShelfView extends View {
         String cur = listener.chosenCmd(o);
         String def = o instanceof Library.Game ? t(S.FOLLOW_PLATFORM) : I18n.f(S.PEGASUS_DEFAULT, Library.emulatorLabel(pl.launch));
         m.add(def, cur == null, () -> { listener.onChoose(o, null); closeMenu(); });
-        for (String[] opt : Library.options(pl)) {
+        for (String[] opt : Library.options(pl, getContext().getPackageManager())) {
             m.add(opt[0], opt[1].equals(cur), () -> { listener.onChoose(o, opt[1]); closeMenu(); });
         }
         showMenu(m);
@@ -407,6 +407,14 @@ final class ShelfView extends View {
         }
         if (st.sel < st.items.size()) drawItem(c, st.sel, st.menu == null);
         c.restore();
+        if (st.lib.platforms.isEmpty()) {
+            // only the Settings tile is shown; explain where to add games
+            float y = headerH() + cellH() + 90 * u;
+            for (String line : t(S.NO_GAMES).split("\n")) {
+                text(c, line, w / 2, y, 28 * u, 0xFF5C6B7A, false, Paint.Align.CENTER);
+                y += 44 * u;
+            }
+        }
 
         drawHeader(c);
         drawFooter(c);

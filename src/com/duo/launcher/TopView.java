@@ -287,6 +287,7 @@ final class TopView extends ViewGroup {
             }
             Bitmap b = icons.romIcon(g, again);
             if (b != null) hero.setBitmap(HeroView.PIXEL, b);
+            else if (icons.failed("icon:" + g.key())) hero.setDrawable(ConsoleDrawable.of(g.platform, true));
         }
     }
 

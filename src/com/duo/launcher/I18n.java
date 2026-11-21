@@ -13,7 +13,8 @@ final class I18n {
         FOLLOW_PLATFORM, PEGASUS_DEFAULT, PLATFORM_DEFAULT, CURRENT,
         SETTINGS, LANGUAGE, APPEARANCE, CONSOLE_IMAGE, BACKGROUND_IMAGE, PICK_IMAGE, RESET_DEFAULT,
         CUSTOM, DEFAULT, ABOUT, WELCOME, NOT_SET,
-        T_3DS, T_NDS, T_GBA_HACK, T_GBA_VIB, SAVED, SETTINGS_HINT, IMAGE_FAILED
+        T_3DS, T_NDS, T_GBA_HACK, T_GBA_VIB, SAVED, SETTINGS_HINT, IMAGE_FAILED,
+        GAME_FOLDERS, ADD_FOLDER, REMOVE_FOLDER, AUTO_FIND, RESCAN, ON, OFF, SCAN_DONE
     }
 
     static final String[] CODES = {"zh-CN", "zh-TW", "en", "ja", "ko", "fr", "es", "de", "it", "pt", "ru"};
@@ -21,114 +22,125 @@ final class I18n {
 
     private static final String[][] T = {
         { // zh-CN
-            "正在读取游戏…", "没有找到游戏\n需要 Roms/<平台>/metadata.pegasus.txt", "需要「所有文件访问权限」才能读取游戏\n请在弹出的设置里允许后返回", "没有找到第二块屏幕", "启动失败：%s",
+            "正在读取游戏…", "没有找到游戏\n在「设置 → 游戏文件夹」里添加放游戏的文件夹", "需要「所有文件访问权限」才能读取游戏\n请在弹出的设置里允许后返回", "没有找到第二块屏幕", "启动失败：%s",
             "最近玩过", "%d 款游戏", "%d 款", "%d 个平台",
             "主页", "打开", "开始游戏", "返回", "模拟器", "选择模拟器", "平台模拟器",
             "大小", "排序", "默认", "名称", "大", "中", "小", "迷你",
             "跟随平台设置", "天马G 默认（%s）", "%s 平台默认", "当前",
             "设置", "语言", "平台外观", "主机图片", "背景图片", "选择图片…", "恢复默认",
             "自定义", "默认", "关于", "欢迎使用 Duo Launcher", "未设置",
-            "任天堂 3DS", "任天堂 DS", "GBA 改版", "GBA 震动版", "已保存", "语言 · 平台外观", "无法读取这张图片"
+            "任天堂 3DS", "任天堂 DS", "GBA 改版", "GBA 震动版", "已保存", "语言 · 平台外观", "无法读取这张图片",
+            "游戏文件夹", "添加文件夹…", "移除这个文件夹", "自动查找 Roms 文件夹", "重新扫描", "开", "关", "找到 %d 款游戏"
         },
         { // zh-TW
-            "正在讀取遊戲…", "找不到遊戲\n需要 Roms/<平台>/metadata.pegasus.txt", "需要「所有檔案存取權限」才能讀取遊戲\n請在彈出的設定中允許後返回", "找不到第二個螢幕", "啟動失敗：%s",
+            "正在讀取遊戲…", "找不到遊戲\n請在「設定 → 遊戲資料夾」中新增放遊戲的資料夾", "需要「所有檔案存取權限」才能讀取遊戲\n請在彈出的設定中允許後返回", "找不到第二個螢幕", "啟動失敗：%s",
             "最近玩過", "%d 款遊戲", "%d 款", "%d 個平台",
             "主頁", "開啟", "開始遊戲", "返回", "模擬器", "選擇模擬器", "平台模擬器",
             "大小", "排序", "預設", "名稱", "大", "中", "小", "迷你",
             "跟隨平台設定", "天馬G 預設（%s）", "%s 平台預設", "目前",
             "設定", "語言", "平台外觀", "主機圖片", "背景圖片", "選擇圖片…", "恢復預設",
             "自訂", "預設", "關於", "歡迎使用 Duo Launcher", "未設定",
-            "任天堂 3DS", "任天堂 DS", "GBA 改版", "GBA 震動版", "已儲存", "語言 · 平台外觀", "無法讀取這張圖片"
+            "任天堂 3DS", "任天堂 DS", "GBA 改版", "GBA 震動版", "已儲存", "語言 · 平台外觀", "無法讀取這張圖片",
+            "遊戲資料夾", "新增資料夾…", "移除這個資料夾", "自動尋找 Roms 資料夾", "重新掃描", "開", "關", "找到 %d 款遊戲"
         },
         { // en
-            "Loading games…", "No games found\nExpected Roms/<platform>/metadata.pegasus.txt", "All-files access is needed to read your games\nAllow it in the settings screen, then come back", "Second screen not found", "Couldn't start: %s",
+            "Loading games…", "No games found\nAdd the folders with your games in Settings → Game folders", "All-files access is needed to read your games\nAllow it in the settings screen, then come back", "Second screen not found", "Couldn't start: %s",
             "Recently played", "%d games", "%d", "%d platforms",
             "Home", "Open", "Play", "Back", "Emulator", "Choose emulator", "Platform emulator",
             "Size", "Sort", "Default", "Name", "L", "M", "S", "XS",
             "Use platform setting", "Pegasus default (%s)", "%s default", "Current",
             "Settings", "Language", "Platform look", "Console image", "Background image", "Choose image…", "Reset to default",
             "Custom", "Default", "About", "Welcome to Duo Launcher", "Not set",
-            "Nintendo 3DS", "Nintendo DS", "GBA Hacks", "GBA Rumble", "Saved", "Language · Platform look", "Couldn't read this image"
+            "Nintendo 3DS", "Nintendo DS", "GBA Hacks", "GBA Rumble", "Saved", "Language · Platform look", "Couldn't read this image",
+            "Game folders", "Add folder…", "Remove this folder", "Find Roms folders automatically", "Rescan", "On", "Off", "Found %d games"
         },
         { // ja
-            "ゲームを読み込み中…", "ゲームが見つかりません\nRoms/<機種>/metadata.pegasus.txt が必要です", "ゲームを読み込むには「すべてのファイルへのアクセス」が必要です\n設定画面で許可してから戻ってください", "2つ目の画面が見つかりません", "起動できませんでした：%s",
+            "ゲームを読み込み中…", "ゲームが見つかりません\n「設定 → ゲームフォルダー」でゲームのフォルダーを追加してください", "ゲームを読み込むには「すべてのファイルへのアクセス」が必要です\n設定画面で許可してから戻ってください", "2つ目の画面が見つかりません", "起動できませんでした：%s",
             "最近遊んだゲーム", "%d 本のゲーム", "%d 本", "%d 機種",
             "ホーム", "開く", "プレイ", "戻る", "エミュレーター", "エミュレーターを選択", "機種のエミュレーター",
             "サイズ", "並び替え", "標準", "名前", "大", "中", "小", "極小",
             "機種の設定に従う", "Pegasus 標準（%s）", "%s の標準", "現在",
             "設定", "言語", "機種の外観", "本体画像", "背景画像", "画像を選択…", "標準に戻す",
             "カスタム", "標準", "情報", "Duo Launcher へようこそ", "未設定",
-            "ニンテンドー3DS", "ニンテンドーDS", "GBA 改造版", "GBA 振動版", "保存しました", "言語 · 機種の外観", "この画像を読み込めません"
+            "ニンテンドー3DS", "ニンテンドーDS", "GBA 改造版", "GBA 振動版", "保存しました", "言語 · 機種の外観", "この画像を読み込めません",
+            "ゲームフォルダー", "フォルダーを追加…", "このフォルダーを外す", "Roms フォルダーを自動で探す", "再スキャン", "オン", "オフ", "%d 本のゲームが見つかりました"
         },
         { // ko
-            "게임 불러오는 중…", "게임을 찾을 수 없습니다\nRoms/<플랫폼>/metadata.pegasus.txt 가 필요합니다", "게임을 읽으려면 '모든 파일 접근' 권한이 필요합니다\n설정 화면에서 허용한 뒤 돌아오세요", "두 번째 화면을 찾을 수 없습니다", "실행 실패: %s",
+            "게임 불러오는 중…", "게임을 찾을 수 없습니다\n설정 → 게임 폴더에서 게임이 있는 폴더를 추가하세요", "게임을 읽으려면 '모든 파일 접근' 권한이 필요합니다\n설정 화면에서 허용한 뒤 돌아오세요", "두 번째 화면을 찾을 수 없습니다", "실행 실패: %s",
             "최근 플레이", "게임 %d개", "%d개", "플랫폼 %d개",
             "홈", "열기", "플레이", "뒤로", "에뮬레이터", "에뮬레이터 선택", "플랫폼 에뮬레이터",
             "크기", "정렬", "기본", "이름", "대", "중", "소", "최소",
             "플랫폼 설정 따르기", "Pegasus 기본 (%s)", "%s 기본값", "현재",
             "설정", "언어", "플랫폼 외관", "본체 이미지", "배경 이미지", "이미지 선택…", "기본값으로 복원",
             "사용자 지정", "기본", "정보", "Duo Launcher에 오신 것을 환영합니다", "설정 안 됨",
-            "닌텐도 3DS", "닌텐도 DS", "GBA 개조판", "GBA 진동판", "저장됨", "언어 · 플랫폼 외관", "이 이미지를 읽을 수 없습니다"
+            "닌텐도 3DS", "닌텐도 DS", "GBA 개조판", "GBA 진동판", "저장됨", "언어 · 플랫폼 외관", "이 이미지를 읽을 수 없습니다",
+            "게임 폴더", "폴더 추가…", "이 폴더 제거", "Roms 폴더 자동 찾기", "다시 검색", "켜짐", "꺼짐", "게임 %d개를 찾았습니다"
         },
         { // fr
-            "Chargement des jeux…", "Aucun jeu trouvé\nFichier attendu : Roms/<plateforme>/metadata.pegasus.txt", "L'accès à tous les fichiers est nécessaire pour lire vos jeux\nAutorisez-le dans les paramètres puis revenez", "Second écran introuvable", "Échec du lancement : %s",
+            "Chargement des jeux…", "Aucun jeu trouvé\nAjoutez vos dossiers de jeux dans Paramètres → Dossiers de jeux", "L'accès à tous les fichiers est nécessaire pour lire vos jeux\nAutorisez-le dans les paramètres puis revenez", "Second écran introuvable", "Échec du lancement : %s",
             "Joués récemment", "%d jeux", "%d", "%d plateformes",
             "Accueil", "Ouvrir", "Jouer", "Retour", "Émulateur", "Choisir l'émulateur", "Émulateur de la plateforme",
             "Taille", "Tri", "Par défaut", "Nom", "G", "M", "P", "TP",
             "Suivre la plateforme", "Pegasus par défaut (%s)", "%s par défaut", "Actuel",
             "Paramètres", "Langue", "Apparence des plateformes", "Image de la console", "Image de fond", "Choisir une image…", "Rétablir par défaut",
             "Personnalisé", "Par défaut", "À propos", "Bienvenue dans Duo Launcher", "Non défini",
-            "Nintendo 3DS", "Nintendo DS", "GBA modifiés", "GBA vibration", "Enregistré", "Langue · Apparence", "Impossible de lire cette image"
+            "Nintendo 3DS", "Nintendo DS", "GBA modifiés", "GBA vibration", "Enregistré", "Langue · Apparence", "Impossible de lire cette image",
+            "Dossiers de jeux", "Ajouter un dossier…", "Retirer ce dossier", "Trouver les dossiers Roms automatiquement", "Analyser à nouveau", "Activé", "Désactivé", "%d jeux trouvés"
         },
         { // es
-            "Cargando juegos…", "No se encontraron juegos\nSe necesita Roms/<plataforma>/metadata.pegasus.txt", "Se necesita acceso a todos los archivos para leer tus juegos\nPermítelo en los ajustes y vuelve", "No se encontró la segunda pantalla", "No se pudo iniciar: %s",
+            "Cargando juegos…", "No se encontraron juegos\nAñade las carpetas con tus juegos en Ajustes → Carpetas de juegos", "Se necesita acceso a todos los archivos para leer tus juegos\nPermítelo en los ajustes y vuelve", "No se encontró la segunda pantalla", "No se pudo iniciar: %s",
             "Jugados recientemente", "%d juegos", "%d", "%d plataformas",
             "Inicio", "Abrir", "Jugar", "Atrás", "Emulador", "Elegir emulador", "Emulador de la plataforma",
             "Tamaño", "Orden", "Predeterminado", "Nombre", "G", "M", "P", "MP",
             "Usar ajuste de la plataforma", "Predeterminado de Pegasus (%s)", "Predeterminado de %s", "Actual",
             "Ajustes", "Idioma", "Aspecto de plataformas", "Imagen de la consola", "Imagen de fondo", "Elegir imagen…", "Restablecer",
             "Personalizado", "Predeterminado", "Acerca de", "Bienvenido a Duo Launcher", "Sin definir",
-            "Nintendo 3DS", "Nintendo DS", "GBA modificados", "GBA vibración", "Guardado", "Idioma · Aspecto", "No se pudo leer esta imagen"
+            "Nintendo 3DS", "Nintendo DS", "GBA modificados", "GBA vibración", "Guardado", "Idioma · Aspecto", "No se pudo leer esta imagen",
+            "Carpetas de juegos", "Añadir carpeta…", "Quitar esta carpeta", "Buscar carpetas Roms automáticamente", "Volver a buscar", "Sí", "No", "%d juegos encontrados"
         },
         { // de
-            "Spiele werden geladen…", "Keine Spiele gefunden\nErwartet: Roms/<Plattform>/metadata.pegasus.txt", "Zum Lesen der Spiele wird Zugriff auf alle Dateien benötigt\nBitte in den Einstellungen erlauben und zurückkehren", "Zweiter Bildschirm nicht gefunden", "Start fehlgeschlagen: %s",
+            "Spiele werden geladen…", "Keine Spiele gefunden\nFüge deine Spielordner unter Einstellungen → Spielordner hinzu", "Zum Lesen der Spiele wird Zugriff auf alle Dateien benötigt\nBitte in den Einstellungen erlauben und zurückkehren", "Zweiter Bildschirm nicht gefunden", "Start fehlgeschlagen: %s",
             "Zuletzt gespielt", "%d Spiele", "%d", "%d Plattformen",
             "Start", "Öffnen", "Spielen", "Zurück", "Emulator", "Emulator wählen", "Plattform-Emulator",
             "Größe", "Sortierung", "Standard", "Name", "L", "M", "S", "XS",
             "Plattform-Einstellung", "Pegasus-Standard (%s)", "Standard für %s", "Aktuell",
             "Einstellungen", "Sprache", "Plattform-Aussehen", "Konsolenbild", "Hintergrundbild", "Bild wählen…", "Zurücksetzen",
             "Eigenes", "Standard", "Info", "Willkommen bei Duo Launcher", "Nicht festgelegt",
-            "Nintendo 3DS", "Nintendo DS", "GBA-Hacks", "GBA mit Rumble", "Gespeichert", "Sprache · Aussehen", "Bild konnte nicht gelesen werden"
+            "Nintendo 3DS", "Nintendo DS", "GBA-Hacks", "GBA mit Rumble", "Gespeichert", "Sprache · Aussehen", "Bild konnte nicht gelesen werden",
+            "Spielordner", "Ordner hinzufügen…", "Diesen Ordner entfernen", "Roms-Ordner automatisch finden", "Neu scannen", "An", "Aus", "%d Spiele gefunden"
         },
         { // it
-            "Caricamento giochi…", "Nessun gioco trovato\nServe Roms/<piattaforma>/metadata.pegasus.txt", "Serve l'accesso a tutti i file per leggere i giochi\nConsentilo nelle impostazioni e torna qui", "Secondo schermo non trovato", "Avvio non riuscito: %s",
+            "Caricamento giochi…", "Nessun gioco trovato\nAggiungi le cartelle dei giochi in Impostazioni → Cartelle dei giochi", "Serve l'accesso a tutti i file per leggere i giochi\nConsentilo nelle impostazioni e torna qui", "Secondo schermo non trovato", "Avvio non riuscito: %s",
             "Giocati di recente", "%d giochi", "%d", "%d piattaforme",
             "Home", "Apri", "Gioca", "Indietro", "Emulatore", "Scegli emulatore", "Emulatore della piattaforma",
             "Dimensione", "Ordine", "Predefinito", "Nome", "G", "M", "P", "XP",
             "Usa impostazione piattaforma", "Predefinito Pegasus (%s)", "Predefinito %s", "Attuale",
             "Impostazioni", "Lingua", "Aspetto piattaforme", "Immagine console", "Immagine di sfondo", "Scegli immagine…", "Ripristina",
             "Personalizzato", "Predefinito", "Informazioni", "Benvenuto in Duo Launcher", "Non impostato",
-            "Nintendo 3DS", "Nintendo DS", "GBA modificati", "GBA vibrazione", "Salvato", "Lingua · Aspetto", "Impossibile leggere questa immagine"
+            "Nintendo 3DS", "Nintendo DS", "GBA modificati", "GBA vibrazione", "Salvato", "Lingua · Aspetto", "Impossibile leggere questa immagine",
+            "Cartelle dei giochi", "Aggiungi cartella…", "Rimuovi questa cartella", "Trova automaticamente le cartelle Roms", "Ripeti scansione", "Sì", "No", "%d giochi trovati"
         },
         { // pt
-            "Carregando jogos…", "Nenhum jogo encontrado\nÉ necessário Roms/<plataforma>/metadata.pegasus.txt", "É preciso acesso a todos os arquivos para ler seus jogos\nPermita nas configurações e volte", "Segunda tela não encontrada", "Falha ao iniciar: %s",
+            "Carregando jogos…", "Nenhum jogo encontrado\nAdicione as pastas dos seus jogos em Configurações → Pastas de jogos", "É preciso acesso a todos os arquivos para ler seus jogos\nPermita nas configurações e volte", "Segunda tela não encontrada", "Falha ao iniciar: %s",
             "Jogados recentemente", "%d jogos", "%d", "%d plataformas",
             "Início", "Abrir", "Jogar", "Voltar", "Emulador", "Escolher emulador", "Emulador da plataforma",
             "Tamanho", "Ordem", "Padrão", "Nome", "G", "M", "P", "MP",
             "Usar ajuste da plataforma", "Padrão do Pegasus (%s)", "Padrão de %s", "Atual",
             "Configurações", "Idioma", "Aparência das plataformas", "Imagem do console", "Imagem de fundo", "Escolher imagem…", "Restaurar padrão",
             "Personalizado", "Padrão", "Sobre", "Bem-vindo ao Duo Launcher", "Não definido",
-            "Nintendo 3DS", "Nintendo DS", "GBA modificados", "GBA com vibração", "Salvo", "Idioma · Aparência", "Não foi possível ler esta imagem"
+            "Nintendo 3DS", "Nintendo DS", "GBA modificados", "GBA com vibração", "Salvo", "Idioma · Aparência", "Não foi possível ler esta imagem",
+            "Pastas de jogos", "Adicionar pasta…", "Remover esta pasta", "Encontrar pastas Roms automaticamente", "Procurar novamente", "Ligado", "Desligado", "%d jogos encontrados"
         },
         { // ru
-            "Загрузка игр…", "Игры не найдены\nНужен файл Roms/<платформа>/metadata.pegasus.txt", "Для чтения игр нужен доступ ко всем файлам\nРазрешите его в настройках и вернитесь", "Второй экран не найден", "Не удалось запустить: %s",
+            "Загрузка игр…", "Игры не найдены\nДобавьте папки с играми в Настройки → Папки с играми", "Для чтения игр нужен доступ ко всем файлам\nРазрешите его в настройках и вернитесь", "Второй экран не найден", "Не удалось запустить: %s",
             "Недавние", "Игр: %d", "%d", "Платформ: %d",
             "Главная", "Открыть", "Играть", "Назад", "Эмулятор", "Выбор эмулятора", "Эмулятор платформы",
             "Размер", "Сортировка", "По умолчанию", "Имя", "L", "M", "S", "XS",
             "Как у платформы", "По умолчанию Pegasus (%s)", "По умолчанию для %s", "Текущий",
             "Настройки", "Язык", "Оформление платформ", "Изображение консоли", "Фоновое изображение", "Выбрать изображение…", "Сбросить",
             "Своё", "По умолчанию", "О программе", "Добро пожаловать в Duo Launcher", "Не задано",
-            "Nintendo 3DS", "Nintendo DS", "Хаки GBA", "GBA с вибрацией", "Сохранено", "Язык · Оформление", "Не удалось прочитать изображение"
+            "Nintendo 3DS", "Nintendo DS", "Хаки GBA", "GBA с вибрацией", "Сохранено", "Язык · Оформление", "Не удалось прочитать изображение",
+            "Папки с играми", "Добавить папку…", "Убрать эту папку", "Искать папки Roms автоматически", "Пересканировать", "Вкл", "Выкл", "Найдено игр: %d"
         },
     };
 

@@ -1,17 +1,19 @@
 # Duo Launcher
 
-A dual-screen, 3DS-style game launcher for the **Retroid Pocket Duo** (and other Android handhelds with a second display).
-It reads an existing Pegasus library, so nothing needs to be moved or renamed.
+A dual-screen, 3DS-style game launcher for the **Retroid Pocket Duo** and other Android handhelds with a second display.
+Point it at your ROM folders and it finds the games, shows them on the lower screen and the artwork on the upper one, and starts each game in the emulator you pick.
 
-一个给 Retroid Pocket Duo 双屏掌机做的 3DS 风格游戏前端，直接读取天马G（Pegasus）的游戏目录，不改动任何文件。
+一个给 Retroid Pocket Duo 等双屏安卓掌机做的 3DS 风格游戏前端：选好放游戏的文件夹，它会自己扫描、按平台归类，下屏选游戏、上屏展示，每款游戏都能指定用哪个模拟器。
 
 ## Features
 
+- **Finds your games by itself** – add folders in Settings → Game folders, or let it pick up any `Roms` folder on internal storage and SD cards. Platforms are recognised from folder names (`gba`, `Nintendo DS`, `psx`, …) and file extensions.
+- **Platforms** – 3DS, NDS, GBA, GBC, GB, NES, SNES, N64, Mega Drive, PlayStation, PSP.
 - **Upper screen (1920×1080)** – the selected platform's console on top of its own backdrop, or the selected game's logo over its blurred cover art, with platform/emulator tags and a short description. Everything tilts gently in 3D.
 - **Lower screen (1280×960)** – platform folders and a zoomable icon grid. Works with the gamepad and with touch.
-- **Uses your Pegasus library as-is** – reads `Roms/<platform>/metadata.pegasus.txt`, its `launch:` commands and the `media/` artwork.
-- **Icons straight from the ROMs** – NDS banner icons from the cartridge header, 3DS SMDH icons from `.cci/.3ds` ExeFS (decrypted dumps). GB/GBA use the Pegasus box art.
-- **Emulator per game or per platform** (Y button) – e.g. AzaharPlus or Citra MMJ for 3DS, different RetroArch cores for GB/GBA.
+- **Icons straight from the ROMs** – NDS banner icons from the cartridge header, 3DS SMDH icons from `.cci/.3ds` ExeFS (decrypted dumps). Other systems use cover images found next to the games (`media/<name>/`, `covers/`, `images/`).
+- **Emulator per game or per platform** (Y button) – only emulators that are installed are offered: AzaharPlus / Azahar / Citra MMJ for 3DS, DraStic for NDS, RetroArch cores for the rest.
+- **Pegasus compatible** – a folder that already has a `metadata.pegasus.txt` keeps its titles, descriptions, artwork and launch commands.
 - **Custom artwork** – in Settings → Platform look, every platform's console image and background image can be replaced with your own picture.
 - **11 languages** – 简体中文, 繁體中文, English, 日本語, 한국어, Français, Español, Deutsch, Italiano, Português, Русский. Chosen on first start, changeable in Settings.
 
@@ -51,4 +53,6 @@ Optional bundled backgrounds go in `assets/backgrounds/<type>.png`.
 - AzaharPlus only accepts a tree URI under a folder it already has access to:
   `content://com.android.externalstorage.documents/tree/<volume>%3ARoms%2F3DS/document/<volume>%3ARoms%2F3DS%2F<file>`
 - Citra MMJ: `org.citra.emu/org.citra.emu.ui.EmulationActivity` with `-e GamePath <path>`
-- DraStic and RetroArch: the commands from the Pegasus metadata are used unchanged.
+- DraStic as shipped on Retroid handhelds wants `-e GAMEPATH "/sf<path>"`; a "plain path" variant is offered for stock builds.
+- RetroArch: `com.retroarch.aarch64/...RetroActivityFuture` with `-e ROM`, `-e LIBRETRO <core>` and `-e CONFIGFILE`.
+- Launch lines in Pegasus metadata are used unchanged.

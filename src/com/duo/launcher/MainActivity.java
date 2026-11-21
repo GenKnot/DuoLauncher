@@ -13,6 +13,7 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.StrictMode;
+import android.provider.DocumentsContract;
 import android.provider.Settings;
 import android.view.Display;
 import android.view.InputDevice;
@@ -31,7 +32,7 @@ import static com.duo.launcher.I18n.t;
 
 public final class MainActivity extends Activity implements ShelfView.Listener {
     private static final int MAX_RECENT = 20;
-    private static final int PICK_IMAGE = 1;
+    private static final int PICK_IMAGE = 1, PICK_FOLDER = 2;
 
     private final Handler main = new Handler(Looper.getMainLooper());
     private final ShelfView.State shelfState = new ShelfView.State();
@@ -129,21 +130,37 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
     }
 
     private void load() {
+        if (loading) return;
         loading = true;
-        top.showMessage(t(S.LOADING));
+        if (lib == null) top.showMessage(t(S.LOADING));
+        List<String> folders = folders();
+        boolean autoFind = prefs.getBoolean("autoFind", true);
         new Thread(() -> {
-            Library l = Library.load(this);
+            Library l = Library.load(this, folders, autoFind);
             main.post(() -> {
+                boolean rescan = lib != null;
                 loading = false;
                 lib = l;
                 shelfState.message = null;
+                shelfState.current = null;
                 if (shelf != null) shelf.setLibrary(l, recentGames());
                 else shelfState.lib = l;
-                if (l.platforms.isEmpty()) top.showMessage(t(S.NO_GAMES));
+                int n = 0;
+                for (Library.Platform p : l.platforms) n += p.games.size();
+                if (n == 0) Toast.makeText(this, t(S.NO_GAMES), Toast.LENGTH_LONG).show();
+                else if (rescan) Toast.makeText(this, I18n.f(S.SCAN_DONE, n), Toast.LENGTH_SHORT).show();
                 if (!prefs.contains("lang")) showLanguageMenu(null, true);
             });
         }, "library").start();
     }
+
+    private List<String> folders() {
+        List<String> out = new ArrayList<>();
+        for (String s : prefs.getString("folders", "").split("\n")) if (!s.isEmpty()) out.add(s);
+        return out;
+    }
+
+    private void setFolders(List<String> fs) { prefs.edit().putString("folders", String.join("\n", fs)).apply(); }
 
     // ---- emulator choice ----
 
@@ -177,6 +194,7 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
     @Override public void onSettings() {
         if (shelf == null) return;
         ShelfView.Menu m = new ShelfView.Menu(t(S.SETTINGS), null);
+        m.add(t(S.GAME_FOLDERS), false, () -> showFoldersMenu(m));
         m.add(t(S.LANGUAGE) + "  ·  " + I18n.name(), false, () -> showLanguageMenu(m, false));
         m.add(t(S.APPEARANCE), false, () -> showAppearanceMenu(m));
         m.add(t(S.ABOUT) + "  ·  Duo Launcher " + versionName(), false, null);
@@ -197,6 +215,51 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
             });
         }
         shelf.showMenu(m);
+    }
+
+    private void showFoldersMenu(ShelfView.Menu parent) {
+        if (shelf == null) return;
+        boolean auto = prefs.getBoolean("autoFind", true);
+        ShelfView.Menu m = new ShelfView.Menu(t(S.GAME_FOLDERS), null);
+        m.parent = parent;
+        m.add(t(S.AUTO_FIND) + "  ·  " + t(auto ? S.ON : S.OFF), false, () -> {
+            prefs.edit().putBoolean("autoFind", !auto).apply();
+            showFoldersMenu(parent);
+            load();
+        });
+        for (String f : folders()) m.add("▸ " + f, false, () -> showFolderMenu(m, f));
+        m.add(t(S.ADD_FOLDER), false, () -> {
+            Intent it = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+            startActivityForResult(it, PICK_FOLDER);
+        });
+        m.add(t(S.RESCAN), false, () -> {
+            shelf.closeMenu();
+            load();
+        });
+        shelf.showMenu(m);
+    }
+
+    private void showFolderMenu(ShelfView.Menu parent, String folder) {
+        ShelfView.Menu m = new ShelfView.Menu(new java.io.File(folder).getName(), folder);
+        m.parent = parent;
+        m.add(t(S.REMOVE_FOLDER), false, () -> {
+            List<String> fs = folders();
+            fs.remove(folder);
+            setFolders(fs);
+            showFoldersMenu(parent.parent);
+            load();
+        });
+        shelf.showMenu(m);
+    }
+
+    /** Turns a document-tree id such as "4A21-0000:Roms/GBA" or "primary:Games" into a file path. */
+    private static String treeToPath(Uri tree) {
+        String id = DocumentsContract.getTreeDocumentId(tree);
+        int c = id.indexOf(':');
+        if (c < 0) return null;
+        String vol = id.substring(0, c), rel = id.substring(c + 1);
+        String root = vol.equals("primary") ? Environment.getExternalStorageDirectory().getAbsolutePath() : "/storage/" + vol;
+        return rel.isEmpty() ? root : root + "/" + rel;
     }
 
     private void showAppearanceMenu(ShelfView.Menu parent) {
@@ -240,6 +303,18 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
 
     @Override protected void onActivityResult(int req, int res, Intent data) {
         super.onActivityResult(req, res, data);
+        if (req == PICK_FOLDER && res == RESULT_OK && data != null && data.getData() != null) {
+            String path = treeToPath(data.getData());
+            List<String> fs = folders();
+            if (path != null && !fs.contains(path)) {
+                fs.add(path);
+                setFolders(fs);
+            }
+            final ShelfView.Menu parent = shelfState.menu != null ? shelfState.menu.parent : null;
+            main.post(() -> showFoldersMenu(parent));
+            load();
+            return;
+        }
         if (req != PICK_IMAGE || res != RESULT_OK || data == null || data.getData() == null || pickPlatform == null) return;
         boolean ok = false;
         try (InputStream in = getContentResolver().openInputStream(data.getData())) {

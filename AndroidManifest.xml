@@ -5,6 +5,15 @@
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
 
+    <!-- emulators offered in the emulator menu (only listed when installed) -->
+    <queries>
+        <package android:name="io.github.azaharplus.android" />
+        <package android:name="org.azahar_emu.azahar" />
+        <package android:name="org.citra.emu" />
+        <package android:name="com.dsemu.drastic" />
+        <package android:name="com.retroarch.aarch64" />
+    </queries>
+
     <application
         android:label="Duo Launcher"
         android:hardwareAccelerated="true"
