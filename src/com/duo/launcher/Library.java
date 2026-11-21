@@ -1,10 +1,16 @@
 package com.duo.launcher;
 
 import android.content.Context;
+import android.content.Intent;
+import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.os.Environment;
 import android.os.storage.StorageManager;
 import android.os.storage.StorageVolume;
+import android.util.Xml;
+
+import org.xmlpull.v1.XmlPullParser;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -43,6 +49,7 @@ final class Library {
 
     static final class Game {
         String title, file, developer = "", description = "", launch;
+        String pkg;                  // set for installed Android games and apps instead of a ROM file
         File path, dir;              // dir: folder that relative asset and file paths are based on
         String volumeId = "primary", relDir = "";
         Platform platform;
@@ -61,22 +68,28 @@ final class Library {
             return i < 0 ? file : file.substring(0, i);
         }
 
-        /** Explicit assets.* entry first, then media/<basename>/ (Pegasus), then images|covers/<name>.* */
+        /**
+         * Artwork lookup, first hit wins: explicit assets.* / gamelist entry, Pegasus media/<basename>/,
+         * covers|images|boxart/ next to the ROM, ES-DE downloaded_media, RetroArch thumbnails.
+         */
         synchronized File asset(String kind) {
             if (resolved.containsKey(kind)) return resolved.get(kind);
             File f = null;
-            String a = assets.get(kind);
-            if (a != null) {
-                File x = new File(dir, a);
-                if (x.isFile()) f = x;
-            }
-            if (f == null) f = findImage(new File(dir, "media/" + baseName()), aliases(kind));
-            if (f == null && kind.equals("box_front")) {
-                String base = new File(baseName()).getName();
-                for (String sub : new String[]{"covers", "images", "boxart"}) {
-                    f = findImage(new File(dir, sub), new String[]{base, base + "-image", base + "-thumb"});
-                    if (f != null) break;
+            if (dir != null) {
+                String a = assets.get(kind);
+                if (a != null) {
+                    File x = a.startsWith("/") ? new File(a) : new File(dir, a);
+                    if (x.isFile()) f = x;
                 }
+                if (f == null) f = findImage(new File(dir, "media/" + baseName()), aliases(kind));
+                if (f == null && kind.equals("box_front")) {
+                    String base = new File(baseName()).getName();
+                    for (String sub : new String[]{"covers", "images", "boxart"}) {
+                        f = exact(new File(dir, sub), base, base + "-image", base + "-thumb");
+                        if (f != null) break;
+                    }
+                }
+                if (f == null) f = externalArt(this, kind);
             }
             resolved.put(kind, f);
             return f;
@@ -100,7 +113,11 @@ final class Library {
             {"N64", "n64 nintendo64", "n64 z64 v64"},
             {"MD", "md genesis megadrive segagenesis", "md gen smd"},
             {"PS1", "ps1 psx playstation", "pbp"},
+            {"PS2", "ps2 playstation2", ""},
             {"PSP", "psp", "cso"},
+            {"PSV", "psv psvita vita", "vpk"},
+            {"PS3", "ps3 playstation3", ""},
+            {"SWITCH", "switch ns nintendoswitch", "nsp xci"},
     };
     /** Extensions accepted only when the folder name tells the system. */
     private static final Set<String> GENERIC = new HashSet<>(Arrays.asList("zip", "7z", "chd", "cue", "iso", "m3u"));
@@ -124,13 +141,137 @@ final class Library {
     private static String systemForFile(String ext, String hint) {
         if (hint != null && (GENERIC.contains(ext) || matchesExt(hint, ext))) return hint;
         if (hint != null && hint.equals("PS1") && ext.equals("bin")) return null; // cue/bin pairs: list the .cue only
+        if (ext.isEmpty()) return null;
         for (String[] s : SYSTEMS) for (String e : s[2].split(" ")) if (e.equals(ext)) return s[0];
         return null;
     }
 
     private static boolean matchesExt(String system, String ext) {
+        if (ext.isEmpty()) return false;
         for (String[] s : SYSTEMS) if (s[0].equals(system)) for (String e : s[2].split(" ")) if (e.equals(ext)) return true;
         return false;
+    }
+
+    // ---- artwork from other frontends ----
+
+    /** ES-DE folders (with gamelists/ and downloaded_media/) and RetroArch thumbnail folders. */
+    private static final List<File> esdeRoots = new ArrayList<>(), raThumbRoots = new ArrayList<>();
+
+    private static void findFrontendFolders(Context ctx) {
+        esdeRoots.clear();
+        raThumbRoots.clear();
+        List<File> volumes = new ArrayList<>();
+        StorageManager sm = ctx.getSystemService(StorageManager.class);
+        for (StorageVolume v : sm.getStorageVolumes()) if (v.getDirectory() != null) volumes.add(v.getDirectory());
+        for (File vol : volumes) {
+            for (String n : new String[]{"ES-DE", "ES-DE/ES-DE", "EmulationStation"}) {
+                File d = new File(vol, n);
+                if (new File(d, "downloaded_media").isDirectory() || new File(d, "gamelists").isDirectory()) esdeRoots.add(d);
+            }
+            File t = new File(vol, "RetroArch/thumbnails");
+            if (t.isDirectory()) raThumbRoots.add(t);
+        }
+    }
+
+    /** RetroArch playlist (and thumbnail folder) name for a system. */
+    private static String raPlaylist(String system) {
+        switch (system) {
+            case "3DS": return "Nintendo - Nintendo 3DS";
+            case "NDS": return "Nintendo - Nintendo DS";
+            case "GBA": return "Nintendo - Game Boy Advance";
+            case "GBC": return "Nintendo - Game Boy Color";
+            case "GB": return "Nintendo - Game Boy";
+            case "NES": return "Nintendo - Nintendo Entertainment System";
+            case "SNES": return "Nintendo - Super Nintendo Entertainment System";
+            case "N64": return "Nintendo - Nintendo 64";
+            case "MD": return "Sega - Mega Drive - Genesis";
+            case "PS1": return "Sony - PlayStation";
+            case "PS2": return "Sony - PlayStation 2";
+            case "PSP": return "Sony - PlayStation Portable";
+            default: return null;
+        }
+    }
+
+    private static File externalArt(Game g, String kind) {
+        if (esdeRoots.isEmpty() && raThumbRoots.isEmpty()) return null;
+        String base = new File(g.baseName()).getName(), folder = g.dir.getName();
+        String[] es, ra;
+        switch (kind) {
+            case "box_front": es = new String[]{"covers", "3dboxes", "miximages"}; ra = new String[]{"Named_Boxarts"}; break;
+            case "logo": es = new String[]{"marquees"}; ra = new String[0]; break;
+            case "background": es = new String[]{"fanart", "screenshots", "titlescreens"}; ra = new String[]{"Named_Snaps", "Named_Titles"}; break;
+            default: return null;
+        }
+        for (File root : esdeRoots)
+            for (String s : es) {
+                File f = exact(new File(root, "downloaded_media/" + folder + "/" + s), base);
+                if (f != null) return f;
+            }
+        String pl = raPlaylist(g.platform.system);
+        if (pl != null) {
+            String name = base.replaceAll("[&*/:`<>?\\\\|]", "_");
+            for (File root : raThumbRoots)
+                for (String s : ra) {
+                    File f = exact(new File(root, pl + "/" + s), name);
+                    if (f != null) return f;
+                }
+        }
+        return null;
+    }
+
+    /** {@code folder/<name>.png|jpg|jpeg|webp} for the first name that exists. */
+    private static File exact(File folder, String... names) {
+        if (!folder.isDirectory()) return null;
+        for (String n : names)
+            for (String ext : new String[]{".png", ".jpg", ".jpeg", ".webp"}) {
+                File f = new File(folder, n + ext);
+                if (f.isFile()) return f;
+            }
+        return null;
+    }
+
+    /** Titles, descriptions and art from an EmulationStation / ES-DE gamelist.xml for games in {@code dir}. */
+    private static void applyGamelists(File dir, List<Game> games) {
+        if (games.isEmpty()) return;
+        List<File> lists = new ArrayList<>();
+        lists.add(new File(dir, "gamelist.xml"));
+        for (File root : esdeRoots) lists.add(new File(root, "gamelists/" + dir.getName() + "/gamelist.xml"));
+        Map<String, Game> byFile = new HashMap<>();
+        for (Game g : games) byFile.put(g.file, g);
+        for (File gl : lists) {
+            if (!gl.isFile()) continue;
+            try (FileInputStream in = new FileInputStream(gl)) {
+                XmlPullParser x = Xml.newPullParser();
+                x.setInput(in, null);
+                Map<String, String> cur = null;
+                String tag = null;
+                for (int ev = x.getEventType(); ev != XmlPullParser.END_DOCUMENT; ev = x.next()) {
+                    if (ev == XmlPullParser.START_TAG) {
+                        tag = x.getName();
+                        if (tag.equals("game")) cur = new HashMap<>();
+                    } else if (ev == XmlPullParser.TEXT && cur != null && tag != null) {
+                        String t = x.getText().trim();
+                        if (!t.isEmpty()) cur.put(tag, cur.containsKey(tag) ? cur.get(tag) + t : t);
+                    } else if (ev == XmlPullParser.END_TAG) {
+                        if (x.getName().equals("game") && cur != null) {
+                            String path = cur.get("path");
+                            Game g = path == null ? null : byFile.get(path.replaceFirst("^\\./", ""));
+                            if (g != null) {
+                                if (cur.containsKey("name")) g.title = cur.get("name");
+                                if (cur.containsKey("desc")) g.description = cur.get("desc");
+                                File base = gl.getParentFile();
+                                String img = cur.containsKey("image") ? cur.get("image") : cur.get("thumbnail");
+                                if (img != null) g.assets.put("box_front", new File(base, img.replaceFirst("^\\./", "")).getAbsolutePath());
+                                if (cur.containsKey("marquee")) g.assets.put("logo", new File(base, cur.get("marquee").replaceFirst("^\\./", "")).getAbsolutePath());
+                            }
+                            cur = null;
+                        }
+                        tag = null;
+                    }
+                }
+            } catch (Exception ignored) {
+            }
+        }
     }
 
     // ---- loading ----
@@ -139,8 +280,9 @@ final class Library {
      * @param folders  folders chosen by the user
      * @param autoFind also look for a "Roms" folder at the top of every storage volume
      */
-    static Library load(Context ctx, List<String> folders, boolean autoFind) {
+    static Library load(Context ctx, List<String> folders, boolean autoFind, Set<String> shownApps) {
         Library lib = new Library();
+        findFrontendFolders(ctx);
         Map<String, Platform> raw = new LinkedHashMap<>();
         Set<String> seen = new HashSet<>();
         List<File> roots = new ArrayList<>();
@@ -176,8 +318,62 @@ final class Library {
             c = a.sortBy.compareTo(b.sortBy);
             return c != 0 ? c : a.name.compareTo(b.name);
         });
+        addAndroid(ctx, lib, shownApps, col);
         for (Platform p : lib.platforms) for (Game g : p.games) lib.byKey.put(g.key(), g);
         return lib;
+    }
+
+    // ---- installed Android games and apps ----
+
+    /** Emulators and launchers are not listed as games or apps. */
+    private static final Set<String> HIDDEN_APPS = new HashSet<>(Arrays.asList(
+            "io.github.azaharplus.android", "org.azahar_emu.azahar", "org.citra.emu", "com.dsemu.drastic",
+            "com.retroarch.aarch64", "com.retroarch", "org.pegasus_frontend.android", "me.magnum.melonds",
+            "org.ppsspp.ppsspp", "org.ppsspp.ppssppgold", "xyz.aethersx2.android", "com.github.stenzek.duckstation",
+            "org.vita3k.emulator", "com.retroidpocket.gamelauncher", "com.android.launcher3", "com.teslacoilsw.launcher"));
+
+    private static boolean isGame(ApplicationInfo ai) {
+        return ai.category == ApplicationInfo.CATEGORY_GAME || (ai.flags & ApplicationInfo.FLAG_IS_GAME) != 0;
+    }
+
+    /** Launchable apps that are not games, for the "choose apps" setting: {label, package}. */
+    static List<String[]> launchableApps(Context ctx) {
+        PackageManager pm = ctx.getPackageManager();
+        List<String[]> out = new ArrayList<>();
+        Set<String> seen = new HashSet<>();
+        for (ResolveInfo ri : pm.queryIntentActivities(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)) {
+            ApplicationInfo ai = ri.activityInfo.applicationInfo;
+            if (isGame(ai) || HIDDEN_APPS.contains(ai.packageName) || ai.packageName.equals(ctx.getPackageName())) continue;
+            if (seen.add(ai.packageName)) out.add(new String[]{ri.loadLabel(pm).toString(), ai.packageName});
+        }
+        Collator col = Collator.getInstance(Locale.forLanguageTag(I18n.code()));
+        out.sort((a, b) -> col.compare(a[0], b[0]));
+        return out;
+    }
+
+    private static void addAndroid(Context ctx, Library lib, Set<String> shownApps, Collator col) {
+        PackageManager pm = ctx.getPackageManager();
+        Platform games = new Platform(), apps = new Platform();
+        games.name = games.system = "ANDROID";
+        apps.name = apps.system = "APPS";
+        Set<String> seen = new HashSet<>();
+        for (ResolveInfo ri : pm.queryIntentActivities(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)) {
+            ApplicationInfo ai = ri.activityInfo.applicationInfo;
+            String pkg = ai.packageName;
+            if (HIDDEN_APPS.contains(pkg) || pkg.equals(ctx.getPackageName()) || !seen.add(pkg)) continue;
+            Platform target = isGame(ai) ? games : shownApps.contains(pkg) ? apps : null;
+            if (target == null) continue;
+            Game g = new Game();
+            g.pkg = pkg;
+            g.file = pkg;
+            g.title = ri.loadLabel(pm).toString();
+            g.platform = target;
+            target.games.add(g);
+        }
+        for (Platform p : new Platform[]{games, apps}) {
+            p.games.sort((a, b) -> col.compare(a.title, b.title));
+            if (!p.games.isEmpty()) lib.platforms.add(p);
+        }
     }
 
     /** Display order: by system, Pegasus collections next to the system they belong to. */
@@ -207,6 +403,7 @@ final class Library {
             return;
         }
 
+        List<Game> here = new ArrayList<>();
         for (File f : fs) {
             String n = f.getName();
             if (n.startsWith(".")) continue;
@@ -235,7 +432,9 @@ final class Library {
             g.scanned = true;
             place(g, dir);
             p.games.add(g);
+            here.add(g);
         }
+        applyGamelists(dir, here);
     }
 
     /** Ties a game to the folder it lives in (for relative paths and content URIs). */
@@ -393,21 +592,35 @@ final class Library {
             case "MD": return "Mega Drive / Genesis";
             case "PS1": return "PlayStation";
             case "PS2": return "PlayStation 2";
+            case "PS3": return "PlayStation 3";
+            case "PS4": return "PlayStation 4";
+            case "PS5": return "PlayStation 5";
             case "PSP": return "PlayStation Portable";
+            case "PSV": return "PlayStation Vita";
+            case "SWITCH": return "Nintendo Switch";
+            case "XBOX360": return "Xbox 360";
+            case "XBOX": return "Xbox";
+            case "ANDROID": return I18n.t(I18n.S.ANDROID_GAMES);
+            case "APPS": return I18n.t(I18n.S.APPS);
             default: return n;
         }
     }
 
     static String consoleType(String n) {
-        String u = n.toUpperCase(Locale.ROOT);
+        String u = n.toUpperCase(Locale.ROOT).replace(" ", "");
         if (u.startsWith("GBA")) return "gba";
         switch (u) {
             case "3DS": return "3ds";
             case "NDS": return "nds";
             case "GBC": return "gbc";
             case "GB": return "gb";
-            case "PS2": return "ps2";
-            case "NES": case "SNES": case "N64": case "MD": case "PS1": case "PSP": return u.toLowerCase(Locale.ROOT);
+            case "XBOX360": case "X360": return "xbox360";
+            case "XBOX": case "XBOXSERIES": case "XBOXSERIESX": case "XSX": return "xboxsx";
+            case "ANDROID": return "android";
+            case "APPS": return "apps";
+            case "NES": case "SNES": case "N64": case "MD": case "PS1": case "PS2": case "PS3": case "PS4": case "PS5":
+            case "PSP": case "PSV": case "SWITCH":
+                return u.toLowerCase(Locale.ROOT);
             default: return "generic";
         }
     }
@@ -425,7 +638,16 @@ final class Library {
             case "md": return 0xFF263238;
             case "ps1": return 0xFF607D8B;
             case "ps2": return 0xFF2D3C8F;
+            case "ps3": return 0xFF1F2A44;
+            case "ps4": return 0xFF1E4FA3;
+            case "ps5": return 0xFF3A6FD8;
             case "psp": return 0xFF37474F;
+            case "psv": return 0xFF29486B;
+            case "switch": return 0xFFE4002B;
+            case "xbox360": return 0xFF6BB233;
+            case "xboxsx": return 0xFF107C10;
+            case "android": return 0xFF2E9E5B;
+            case "apps": return 0xFF4A6FD9;
             default: return 0xFF4A90D9;
         }
     }

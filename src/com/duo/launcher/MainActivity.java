@@ -2,30 +2,45 @@ package com.duo.launcher;
 
 import android.app.Activity;
 import android.app.ActivityOptions;
+import android.app.AlertDialog;
+import android.app.AppOpsManager;
 import android.app.Presentation;
+import android.app.usage.UsageEvents;
+import android.app.usage.UsageStatsManager;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
+import android.content.res.Configuration;
 import android.hardware.display.DisplayManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.Process;
 import android.os.StrictMode;
 import android.provider.DocumentsContract;
 import android.provider.Settings;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.Display;
 import android.view.InputDevice;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
+import android.view.inputmethod.EditorInfo;
+import android.widget.EditText;
 import android.widget.Toast;
 
 import java.io.InputStream;
+import java.text.DateFormat;
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 
 import static com.duo.launcher.I18n.S;
 import static com.duo.launcher.I18n.t;
@@ -33,6 +48,7 @@ import static com.duo.launcher.I18n.t;
 public final class MainActivity extends Activity implements ShelfView.Listener {
     private static final int MAX_RECENT = 20;
     private static final int PICK_IMAGE = 1, PICK_FOLDER = 2;
+    private static final long MAX_SESSION = 24L * 3600_000;
 
     private final Handler main = new Handler(Looper.getMainLooper());
     private final ShelfView.State shelfState = new ShelfView.State();
@@ -42,7 +58,7 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
     private ShelfView shelf;
     private Presentation pres;
     private Library lib;
-    private boolean loading, askedPermission;
+    private boolean loading, reloadPending, askedPermission;
     private int stickX, stickY;
     private String pickPlatform, pickKind;
 
@@ -52,6 +68,7 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         StrictMode.setVmPolicy(new StrictMode.VmPolicy.Builder().build());
         prefs = getSharedPreferences("duo", MODE_PRIVATE);
         I18n.set(prefs.getString("lang", I18n.systemDefault()));
+        applyDisplayMode();
         Theme.init(this);
         icons = new Icons(this);
         top = new TopView(this, icons);
@@ -61,6 +78,8 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
     @Override protected void onResume() {
         super.onResume();
         hideBars();
+        applyDisplayMode();
+        finishPlaySession();
         showShelf();
         if (lib == null && !loading) {
             if (Environment.isExternalStorageManager()) {
@@ -87,6 +106,15 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         // emulators drive the second screen themselves
         if (pres != null) { pres.dismiss(); pres = null; shelf = null; }
         super.onPause();
+    }
+
+    /** Pressing Home while this is the home app returns to the home page. */
+    @Override protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        if (intent.hasCategory(Intent.CATEGORY_HOME)) {
+            shelfState.menu = null;
+            if (shelf != null && lib != null) shelf.goHome();
+        }
     }
 
     private void hideBars() {
@@ -130,13 +158,14 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
     }
 
     private void load() {
-        if (loading) return;
+        if (loading) { reloadPending = true; return; }
         loading = true;
         if (lib == null) top.showMessage(t(S.LOADING));
         List<String> folders = folders();
         boolean autoFind = prefs.getBoolean("autoFind", true);
+        Set<String> apps = new HashSet<>(prefs.getStringSet("apps", new HashSet<>()));
         new Thread(() -> {
-            Library l = Library.load(this, folders, autoFind);
+            Library l = Library.load(this, folders, autoFind, apps);
             main.post(() -> {
                 boolean rescan = lib != null;
                 loading = false;
@@ -148,8 +177,9 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
                 int n = 0;
                 for (Library.Platform p : l.platforms) n += p.games.size();
                 if (n == 0) Toast.makeText(this, t(S.NO_GAMES), Toast.LENGTH_LONG).show();
-                else if (rescan) Toast.makeText(this, I18n.f(S.SCAN_DONE, n), Toast.LENGTH_SHORT).show();
+                else if (rescan && !reloadPending) Toast.makeText(this, I18n.f(S.SCAN_DONE, n), Toast.LENGTH_SHORT).show();
                 if (!prefs.contains("lang")) showLanguageMenu(null, true);
+                if (reloadPending) { reloadPending = false; load(); }
             });
         }, "library").start();
     }
@@ -161,6 +191,32 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
     }
 
     private void setFolders(List<String> fs) { prefs.edit().putString("folders", String.join("\n", fs)).apply(); }
+
+    // ---- display mode ----
+
+    private void applyDisplayMode() {
+        String mode = prefs.getString("mode", "system");
+        boolean night = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
+        Palette.dark = mode.equals("dark") || (mode.equals("system") && night);
+    }
+
+    private void showDisplayModeMenu(ShelfView.Menu parent) {
+        String mode = prefs.getString("mode", "system");
+        ShelfView.Menu m = new ShelfView.Menu(t(S.DISPLAY_MODE), null);
+        m.parent = parent;
+        String[] keys = {"system", "light", "dark"};
+        S[] labels = {S.MODE_SYSTEM, S.MODE_LIGHT, S.MODE_DARK};
+        for (int i = 0; i < keys.length; i++) {
+            String k = keys[i];
+            m.add(t(labels[i]), k.equals(mode), () -> {
+                prefs.edit().putString("mode", k).apply();
+                applyDisplayMode();
+                onSettings();
+                if (shelf != null) shelf.invalidate();
+            });
+        }
+        shelf.showMenu(m);
+    }
 
     // ---- emulator choice ----
 
@@ -195,8 +251,18 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         if (shelf == null) return;
         ShelfView.Menu m = new ShelfView.Menu(t(S.SETTINGS), null);
         m.add(t(S.GAME_FOLDERS), false, () -> showFoldersMenu(m));
+        m.add(t(S.CHOOSE_APPS), false, () -> showAppsMenu(m, 0));
         m.add(t(S.LANGUAGE) + "  ·  " + I18n.name(), false, () -> showLanguageMenu(m, false));
+        String mode = prefs.getString("mode", "system");
+        m.add(t(S.DISPLAY_MODE) + "  ·  " + t(mode.equals("dark") ? S.MODE_DARK : mode.equals("light") ? S.MODE_LIGHT : S.MODE_SYSTEM),
+                false, () -> showDisplayModeMenu(m));
         m.add(t(S.APPEARANCE), false, () -> showAppearanceMenu(m));
+        m.add(t(S.SET_HOME), false, () -> {
+            try { startActivity(new Intent(Settings.ACTION_HOME_SETTINGS)); } catch (Exception ignored) { }
+        });
+        if (!hasUsageAccess()) m.add(t(S.USAGE_ACCESS), false, () -> {
+            try { startActivity(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)); } catch (Exception ignored) { }
+        });
         m.add(t(S.ABOUT) + "  ·  Duo Launcher " + versionName(), false, null);
         shelf.showMenu(m);
     }
@@ -217,6 +283,26 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         shelf.showMenu(m);
     }
 
+    private void showAppsMenu(ShelfView.Menu parent, int sel) {
+        if (shelf == null) return;
+        Set<String> chosen = new HashSet<>(prefs.getStringSet("apps", new HashSet<>()));
+        ShelfView.Menu m = new ShelfView.Menu(t(S.CHOOSE_APPS), t(S.APPS));
+        m.parent = parent;
+        List<String[]> apps = Library.launchableApps(this);
+        for (int i = 0; i < apps.size(); i++) {
+            String pkg = apps.get(i)[1];
+            int idx = i;
+            m.add(apps.get(i)[0], chosen.contains(pkg), () -> {
+                if (!chosen.remove(pkg)) chosen.add(pkg);
+                prefs.edit().putStringSet("apps", chosen).apply();
+                showAppsMenu(parent, idx);
+                load();
+            });
+        }
+        m.sel = Math.max(0, Math.min(sel, apps.size() - 1));
+        shelf.showMenu(m);
+    }
+
     private void showFoldersMenu(ShelfView.Menu parent) {
         if (shelf == null) return;
         boolean auto = prefs.getBoolean("autoFind", true);
@@ -228,10 +314,7 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
             load();
         });
         for (String f : folders()) m.add("▸ " + f, false, () -> showFolderMenu(m, f));
-        m.add(t(S.ADD_FOLDER), false, () -> {
-            Intent it = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
-            startActivityForResult(it, PICK_FOLDER);
-        });
+        m.add(t(S.ADD_FOLDER), false, () -> startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE), PICK_FOLDER));
         m.add(t(S.RESCAN), false, () -> {
             shelf.closeMenu();
             load();
@@ -339,24 +422,85 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         }
     }
 
+    // ---- search ----
+
+    @Override public void onSearch() {
+        if (lib == null) return;
+        EditText field = new EditText(this);
+        field.setSingleLine(true);
+        // keep the dialog visible above the keyboard instead of the full-screen landscape editor
+        field.setImeOptions(EditorInfo.IME_FLAG_NO_EXTRACT_UI | EditorInfo.IME_FLAG_NO_FULLSCREEN | EditorInfo.IME_ACTION_DONE);
+        field.setHint(t(S.SEARCH_HINT));
+        field.setText(shelfState.query);
+        field.setSelection(field.getText().length());
+        field.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int a, int b, int c) { }
+            @Override public void onTextChanged(CharSequence s, int a, int b, int c) { }
+            @Override public void afterTextChanged(Editable s) { search(s.toString()); }
+        });
+        int theme = Palette.dark ? android.R.style.Theme_DeviceDefault_Dialog_Alert : android.R.style.Theme_DeviceDefault_Light_Dialog_Alert;
+        AlertDialog d = new AlertDialog.Builder(this, theme)
+                .setTitle(t(S.SEARCH))
+                .setView(field)
+                .setPositiveButton(t(S.DONE), null)
+                .create();
+        d.setOnShowListener(x -> {
+            field.requestFocus();
+            d.getWindow().setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+        });
+        field.setOnEditorActionListener((v, action, ev) -> {
+            d.dismiss();
+            return true;
+        });
+        d.show();
+    }
+
+    private void search(String q) {
+        if (shelf == null || lib == null) return;
+        String needle = q.trim().toLowerCase(Locale.ROOT);
+        if (needle.isEmpty()) return;
+        List<Library.Game> hits = new ArrayList<>();
+        for (Library.Platform p : lib.platforms)
+            for (Library.Game g : p.games)
+                if (g.title.toLowerCase(Locale.ROOT).contains(needle) || g.file.toLowerCase(Locale.ROOT).contains(needle)) hits.add(g);
+        shelf.showResults(q.trim(), hits);
+    }
+
     // ---- shelf callbacks ----
 
     @Override public void onFocus(Object item) {
-        if (item == ShelfView.SETTINGS) {
-            top.showSettings();
+        if (item == ShelfView.SETTINGS || item == ShelfView.SEARCH) {
+            top.showTool(item);
         } else if (item instanceof Library.Game) {
             Library.Game g = (Library.Game) item;
-            top.showGame(g, Library.emulatorLabel(effectiveCmd(g)));
+            String emu = g.pkg != null ? null : Library.emulatorLabel(effectiveCmd(g));
+            top.showGame(g, emu, playedTags(g));
         } else if (item instanceof Library.Platform) {
             Library.Platform p = (Library.Platform) item;
-            top.showPlatform(p, Library.emulatorLabel(platformCmd(p)), p == shelfState.recent);
+            top.showPlatform(p, Library.emulatorLabel(platformCmd(p)), p == shelfState.recent || p == shelfState.results);
         }
     }
 
     @Override public void onActivate(Library.Game g) {
         try {
-            Intent it = Launch.build(effectiveCmd(g), g);
+            Intent it;
+            String pkg;
+            if (g.pkg != null) {
+                it = getPackageManager().getLaunchIntentForPackage(g.pkg);
+                if (it == null) return;
+                it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                pkg = g.pkg;
+            } else {
+                String cmd = effectiveCmd(g);
+                if (cmd == null || cmd.isEmpty()) {
+                    Toast.makeText(this, t(S.NO_EMULATOR), Toast.LENGTH_LONG).show();
+                    return;
+                }
+                it = Launch.build(cmd, g);
+                pkg = it.getComponent() != null ? it.getComponent().getPackageName() : "";
+            }
             addRecent(g);
+            prefs.edit().putString("running", g.key() + "\n" + System.currentTimeMillis() + "\n" + pkg).apply();
             ActivityOptions o = ActivityOptions.makeBasic().setLaunchDisplayId(Display.DEFAULT_DISPLAY);
             startActivity(it, o.toBundle());
         } catch (Exception e) {
@@ -380,6 +524,66 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
             if (g != null) out.add(g);
         }
         return out;
+    }
+
+    // ---- play time ----
+
+    private boolean hasUsageAccess() {
+        AppOpsManager ops = getSystemService(AppOpsManager.class);
+        return ops.unsafeCheckOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), getPackageName()) == AppOpsManager.MODE_ALLOWED;
+    }
+
+    /** Time {@code pkg} spent in the foreground between two moments, from the system's usage events. */
+    private long foregroundTime(String pkg, long from, long to) {
+        UsageStatsManager um = getSystemService(UsageStatsManager.class);
+        UsageEvents events = um.queryEvents(from, to);
+        UsageEvents.Event e = new UsageEvents.Event();
+        long total = 0, since = -1;
+        while (events.hasNextEvent()) {
+            events.getNextEvent(e);
+            if (!pkg.equals(e.getPackageName())) continue;
+            int type = e.getEventType();
+            if (type == UsageEvents.Event.ACTIVITY_RESUMED) {
+                if (since < 0) since = e.getTimeStamp();
+            } else if ((type == UsageEvents.Event.ACTIVITY_PAUSED || type == UsageEvents.Event.ACTIVITY_STOPPED) && since >= 0) {
+                total += e.getTimeStamp() - since;
+                since = -1;
+            }
+        }
+        if (since >= 0) total += to - since;
+        return total;
+    }
+
+    /** Called when we come back to the front: adds the finished session to the game's play time. */
+    private void finishPlaySession() {
+        String running = prefs.getString("running", null);
+        if (running == null) return;
+        prefs.edit().remove("running").apply();
+        String[] parts = running.split("\n");
+        if (parts.length < 3) return;
+        long start, now = System.currentTimeMillis();
+        try { start = Long.parseLong(parts[1]); } catch (NumberFormatException e) { return; }
+        long spent = now - start;
+        if (hasUsageAccess() && !parts[2].isEmpty()) {
+            try { spent = foregroundTime(parts[2], start, now); } catch (Exception ignored) { }
+        }
+        spent = Math.max(0, Math.min(spent, MAX_SESSION));
+        String key = parts[0];
+        prefs.edit().putLong("time:" + key, prefs.getLong("time:" + key, 0) + spent).putLong("last:" + key, now).apply();
+    }
+
+    private String[] playedTags(Library.Game g) {
+        long ms = prefs.getLong("time:" + g.key(), 0), last = prefs.getLong("last:" + g.key(), 0);
+        String played = null, when = null;
+        if (ms >= 60_000) {
+            long min = ms / 60_000;
+            played = "⏱ " + (min >= 60 ? I18n.f(S.PLAYED_HM, min / 60, min % 60) : I18n.f(S.PLAYED_M, min));
+        }
+        if (last > 0) {
+            String d = DateFormat.getDateInstance(DateFormat.MEDIUM, Locale.forLanguageTag(I18n.code())).format(new Date(last));
+            when = I18n.f(S.LAST_PLAYED, d);
+        }
+        return new String[]{played, when};
     }
 
     // ---- input: gamepad keys and the left stick drive the lower-screen shelf, whichever window has focus ----

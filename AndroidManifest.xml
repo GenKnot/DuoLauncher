@@ -4,6 +4,8 @@
 
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <!-- optional: precise play time; granted by the user under Settings > Usage access -->
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" />
 
     <!-- emulators offered in the emulator menu (only listed when installed) -->
     <queries>
@@ -12,6 +14,11 @@
         <package android:name="org.citra.emu" />
         <package android:name="com.dsemu.drastic" />
         <package android:name="com.retroarch.aarch64" />
+        <!-- installed games and apps shown on the Android pages -->
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
     </queries>
 
     <application
@@ -28,6 +35,12 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- can be chosen as the home screen, so it comes up at boot and on the Home button -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
     </application>

@@ -44,7 +44,7 @@ final class ConsoleDrawable extends Drawable {
             case "gba": aspect = 0.58f; break;
             case "gb": case "gbc": aspect = 1.62f; break;
             case "ps2": aspect = 0.62f; break;
-            case "gear": aspect = 1f; break;
+            case "gear": case "search": case "apps": case "android": aspect = 1f; break;
             default: aspect = 0.7f;
         }
         float avail = shadow ? h * 0.9f : h;
@@ -69,9 +69,39 @@ final class ConsoleDrawable extends Drawable {
             case "gb": gb(c, u, 0xFFC8C4BC, 0xFF9BBC0F); break;
             case "ps2": ps2(c, u); break;
             case "gear": gear(c, u); break;
+            case "search": search(c, u); break;
+            case "apps": apps(c, u); break;
+            case "android": pad(c, u); break;
             default: body(c, 0, 0, u, u * 0.7f, u * 0.08f, 0xFF4A90D9);
         }
         c.restore();
+    }
+
+    private void search(Canvas c, float u) {
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeCap(Paint.Cap.ROUND);
+        p.setStrokeWidth(u * 0.11f);
+        p.setShader(new LinearGradient(0, 0, u, u, 0xFF5AA8FF, 0xFF2F6FD6, Shader.TileMode.CLAMP));
+        c.drawCircle(u * 0.42f, u * 0.42f, u * 0.26f, p);
+        c.drawLine(u * 0.62f, u * 0.62f, u * 0.86f, u * 0.86f, p);
+        p.setShader(null);
+        p.setStyle(Paint.Style.FILL);
+    }
+
+    private void apps(Canvas c, float u) {
+        int[] cols = {0xFF4CAF7A, 0xFF5AA8FF, 0xFFF2A93B, 0xFFE8574E};
+        float s = u * 0.38f, g = u * 0.08f;
+        for (int i = 0; i < 4; i++) {
+            float x = (i % 2) * (s + g) + u * 0.08f, y = (i / 2) * (s + g) + u * 0.08f;
+            body(c, x, y, x + s, y + s, s * 0.28f, cols[i]);
+        }
+    }
+
+    private void pad(Canvas c, float u) {
+        body(c, u * 0.04f, u * 0.28f, u * 0.96f, u * 0.78f, u * 0.25f, 0xFF3DDC84);
+        dpad(c, u * 0.3f, u * 0.53f, u * 0.09f, 0xFF1E6B43);
+        dot(c, u * 0.66f, u * 0.47f, u * 0.045f, 0xFF1E6B43);
+        dot(c, u * 0.76f, u * 0.58f, u * 0.045f, 0xFF1E6B43);
     }
 
     private void gear(Canvas c, float u) {

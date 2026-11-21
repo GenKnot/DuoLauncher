@@ -37,15 +37,18 @@ final class Theme {
 
     static Bitmap console(Library.Platform p) { return get(p, CONSOLE, "consoles/" + p.type() + ".png"); }
 
-    static Bitmap background(Library.Platform p) { return get(p, BACKGROUND, "backgrounds/" + p.type() + ".png"); }
+    static Bitmap background(Library.Platform p) {
+        return get(p, BACKGROUND, "backgrounds/" + p.type() + ".jpg", "backgrounds/" + p.type() + ".png");
+    }
 
-    private static Bitmap get(Library.Platform p, String kind, String asset) {
+    private static Bitmap get(Library.Platform p, String kind, String... assetNames) {
         String key = p.name + "/" + kind;
         Bitmap b = cache.get(key);
         if (b != null || absent.containsKey(key)) return b;
         File f = file(p.name, kind);
         if (f.isFile()) b = BitmapFactory.decodeFile(f.getPath());
-        if (b == null) {
+        for (String asset : assetNames) {
+            if (b != null) break;
             try (InputStream in = assets.open(asset)) {
                 b = BitmapFactory.decodeStream(in);
             } catch (IOException ignored) {

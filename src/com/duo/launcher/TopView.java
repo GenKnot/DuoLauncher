@@ -27,7 +27,9 @@ import android.widget.TextView;
 
 import java.io.File;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 
 import static com.duo.launcher.I18n.S;
@@ -160,13 +162,14 @@ final class TopView extends ViewGroup {
         dots.setVisibility(d ? GONE : VISIBLE);
         bg.setVisibility(d ? VISIBLE : GONE);
         scrim.setVisibility(d ? VISIBLE : GONE);
-        setBackgroundColor(d ? 0xFF0E1216 : 0xFFEEF3F7);
-        title.setTextColor(d ? 0xFFFFFFFF : 0xFF1B2632);
-        desc.setTextColor(d ? 0xCCE6ECF2 : 0xFF5C6B7A);
-        message.setTextColor(0xFF5C6B7A);
+        // d: a game's artwork is shown (always dark); otherwise follow the light/dark palette
+        setBackgroundColor(d ? 0xFF0E1216 : Palette.topBg());
+        title.setTextColor(d ? 0xFFFFFFFF : Palette.topTitle());
+        desc.setTextColor(d ? 0xCCE6ECF2 : Palette.topText());
+        message.setTextColor(Palette.topText());
         title.setShadowLayer(d ? 16 : 0, 0, 4, 0xAA000000);
         desc.setShadowLayer(d ? 8 : 0, 0, 2, 0x99000000);
-        status.dark = d;
+        status.dark = d || Palette.dark;
         status.invalidate();
     }
 
@@ -211,40 +214,53 @@ final class TopView extends ViewGroup {
             hero.setDrawable(ConsoleDrawable.of(p, true));
             dots.set(Library.platformColor(p.type()), p.name, Theme.background(p));
         }
+        boolean native_ = p.system.equals("ANDROID") || p.system.equals("APPS");
         title.setText(recent ? t(S.RECENT) : p.title());
-        if (recent) chips.set(false, I18n.f(S.GAMES_COUNT, p.games.size()));
-        else chips.set(false, I18n.f(S.GAMES_COUNT, p.games.size()), "▶ " + emu);
+        if (recent || native_ || emu == null) chips.set(Palette.dark, I18n.f(S.GAMES_COUNT, p.games.size()));
+        else chips.set(Palette.dark, I18n.f(S.GAMES_COUNT, p.games.size()), "▶ " + emu);
         desc.setText("");
         desc.setVisibility(GONE);
-        if (recent) hints.set(false, "A|" + t(S.OPEN));
-        else hints.set(false, "A|" + t(S.OPEN), "Y|" + t(S.PLATFORM_EMULATOR));
+        if (recent || native_) hints.set(Palette.dark, "A|" + t(S.OPEN));
+        else hints.set(Palette.dark, "A|" + t(S.OPEN), "Y|" + t(S.PLATFORM_EMULATOR));
         requestLayout();
     }
 
-    void showSettings() {
+    /** The Settings or Search tile on the home page. */
+    void showTool(Object which) {
+        boolean settings = which == ShelfView.SETTINGS;
         message.setVisibility(GONE);
         setDark(false);
-        enter(ShelfView.SETTINGS);
-        hero.setDrawable(new ConsoleDrawable("gear", null, true));
-        dots.set(0xFF6D8299, t(S.SETTINGS), null);
-        title.setText(t(S.SETTINGS));
-        chips.set(false, t(S.SETTINGS_HINT), I18n.name());
+        enter(which);
+        hero.setDrawable(new ConsoleDrawable(settings ? "gear" : "search", null, true));
+        dots.set(settings ? 0xFF6D8299 : 0xFF2F8BFF, settings ? t(S.SETTINGS) : t(S.SEARCH), null);
+        title.setText(settings ? t(S.SETTINGS) : t(S.SEARCH));
+        if (settings) chips.set(Palette.dark, t(S.SETTINGS_HINT), I18n.name());
+        else chips.set(Palette.dark, t(S.SEARCH_HINT));
         desc.setText("");
         desc.setVisibility(GONE);
-        hints.set(false, "A|" + t(S.OPEN));
+        hints.set(Palette.dark, "A|" + t(S.OPEN));
         requestLayout();
     }
 
-    void showGame(Library.Game g, String emu) {
+    /**
+     * @param emu    emulator label, or null for Android games and apps
+     * @param played play-time and last-played tags, empty when never played from here
+     */
+    void showGame(Library.Game g, String emu, String... played) {
         message.setVisibility(GONE);
         boolean fresh = shown != g;
         setDark(true);
         enter(g);
         title.setText(g.title);
-        chips.set(true, g.platform.title(), "▶ " + emu);
+        List<String> tags = new ArrayList<>();
+        tags.add(g.platform.title());
+        if (emu != null) tags.add("▶ " + emu);
+        for (String s : played) if (s != null) tags.add(s);
+        chips.set(true, tags.toArray(new String[0]));
         desc.setText(g.description.replace('\n', ' '));
         desc.setVisibility(g.description.isEmpty() ? GONE : VISIBLE);
-        hints.set(true, "A|" + t(S.PLAY), "Y|" + t(S.CHOOSE_EMULATOR));
+        if (emu != null) hints.set(true, "A|" + t(S.PLAY), "Y|" + t(S.CHOOSE_EMULATOR));
+        else hints.set(true, "A|" + t(S.OPEN));
         if (fresh) {
             bg.setImageDrawable(null);
             hero.clear();

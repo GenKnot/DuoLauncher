@@ -8,14 +8,19 @@ Point it at your ROM folders and it finds the games, shows them on the lower scr
 ## Features
 
 - **Finds your games by itself** – add folders in Settings → Game folders, or let it pick up any `Roms` folder on internal storage and SD cards. Platforms are recognised from folder names (`gba`, `Nintendo DS`, `psx`, …) and file extensions.
-- **Platforms** – 3DS, NDS, GBA, GBC, GB, NES, SNES, N64, Mega Drive, PlayStation, PSP.
-- **Upper screen (1920×1080)** – the selected platform's console on top of its own backdrop, or the selected game's logo over its blurred cover art, with platform/emulator tags and a short description. Everything tilts gently in 3D.
+- **Platforms** – 3DS, NDS, GBA, GBC, GB, NES, SNES, N64, Mega Drive, PlayStation 1/2/3, PSP, PS Vita, Switch, plus artwork for PS4, PS5, Xbox 360 and Xbox Series.
+- **Android games and apps** – installed games get their own page automatically; pick any apps (video, browser, …) to show on the Apps page.
+- **Upper screen (1920×1080)** – each platform's console on its own illustrated backdrop, or the selected game's logo over its blurred cover art, with platform, emulator and play-time tags and a short description.
 - **Lower screen (1280×960)** – platform folders and a zoomable icon grid. Works with the gamepad and with touch.
-- **Icons straight from the ROMs** – NDS banner icons from the cartridge header, 3DS SMDH icons from `.cci/.3ds` ExeFS (decrypted dumps). Other systems use cover images found next to the games (`media/<name>/`, `covers/`, `images/`).
-- **Emulator per game or per platform** (Y button) – only emulators that are installed are offered: AzaharPlus / Azahar / Citra MMJ for 3DS, DraStic for NDS, RetroArch cores for the rest.
-- **Pegasus compatible** – a folder that already has a `metadata.pegasus.txt` keeps its titles, descriptions, artwork and launch commands.
-- **Custom artwork** – in Settings → Platform look, every platform's console image and background image can be replaced with your own picture.
-- **11 languages** – 简体中文, 繁體中文, English, 日本語, 한국어, Français, Español, Deutsch, Italiano, Português, Русский. Chosen on first start, changeable in Settings.
+- **Play time** – how long and when you last played each game, Switch-style. With Usage access granted it counts only the time the game was really on screen.
+- **Search** – R3 or the search button; results update as you type.
+- **Light and dark mode** – follows the system or set it yourself.
+- **Icons straight from the ROMs** – NDS banner icons and 3DS SMDH icons (decrypted dumps).
+- **Emulator per game or per platform** (Y button) – only installed emulators are offered: AzaharPlus / Azahar / Citra MMJ, DraStic, RetroArch cores.
+- **Custom artwork** – replace any platform's console picture or backdrop in Settings → Platform look.
+- **Works with existing setups** – reads Pegasus `metadata.pegasus.txt`, ES-DE / EmulationStation `gamelist.xml` and `downloaded_media`, RetroArch thumbnails, and `media/`, `covers/`, `images/` folders next to the games.
+- **Home screen** – can be set as the default home app so it starts on boot.
+- **11 languages** – 简体中文, 繁體中文, English, 日本語, 한국어, Français, Español, Deutsch, Italiano, Português, Русский.
 
 ## Controls
 
@@ -28,6 +33,7 @@ Point it at your ROM folders and it finds the games, shows them on the lower scr
 | X | Icon size |
 | Y | Choose emulator |
 | SELECT | Sort (default / by name) |
+| R3 | Search |
 
 ## Building
 
@@ -43,10 +49,8 @@ A debug signing key (`debug.keystore`) is generated on the first build and is no
 
 ## Artwork
 
-`assets/consoles/<type>.png` is bundled into the APK and used for the console pictures; platforms without a picture fall back to a drawn console.
-The current photos are by Evan-Amos on Wikimedia Commons and are in the **public domain**:
-`Nintendo-3DS-AquaOpen.png`, `Nintendo-Game-Boy-Color-FL.png`.
-Optional bundled backgrounds go in `assets/backgrounds/<type>.png`.
+`assets/consoles/<type>.png` (chibi console renders) and `assets/backgrounds/<type>.jpg` (monochrome backdrops, inverted automatically in dark mode) were made for this project.
+Platforms without a picture fall back to a drawn console.
 
 ## Launch notes
 

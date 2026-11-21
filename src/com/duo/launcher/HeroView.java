@@ -141,9 +141,7 @@ final class HeroView extends View {
                 p.clearShadowLayer();
                 r.inset(side * 0.12f, side * 0.12f);
                 src.set(0, 0, bmp.getWidth(), bmp.getHeight());
-                p.setFilterBitmap(false);
-                c.drawBitmap(bmp, src, r, p);
-                p.setFilterBitmap(true);
+                c.drawBitmap(bmp, src, r, p); // NDS pixel icons arrive pre-scaled with nearest-neighbour
                 break;
             }
             case FAN: {

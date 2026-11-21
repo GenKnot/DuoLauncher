@@ -1,8 +1,11 @@
 package com.duo.launcher;
 
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.drawable.Drawable;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.LruCache;
@@ -26,7 +29,10 @@ final class Icons {
     private final ExecutorService pool = Executors.newFixedThreadPool(3);
     private final Handler main = new Handler(Looper.getMainLooper());
 
+    private final PackageManager pm;
+
     Icons(Context c) {
+        pm = c.getPackageManager();
         cacheDir = new File(c.getCacheDir(), "icons");
         cacheDir.mkdirs();
         mem = new LruCache<String, Bitmap>(128 * 1024 * 1024) {
@@ -65,7 +71,21 @@ final class Icons {
         return get("img:" + maxPx + ":" + f.getPath(), () -> decode(f, maxPx), done);
     }
 
+    private Bitmap appIcon(String pkg) {
+        try {
+            Drawable d = pm.getApplicationIcon(pkg);
+            Bitmap b = Bitmap.createBitmap(192, 192, Bitmap.Config.ARGB_8888);
+            Canvas c = new Canvas(b);
+            d.setBounds(0, 0, 192, 192);
+            d.draw(c);
+            return b;
+        } catch (PackageManager.NameNotFoundException e) {
+            return null;
+        }
+    }
+
     private Bitmap loadTile(Library.Game g) {
+        if (g.pkg != null) return appIcon(g.pkg);
         Bitmap b = romIconSync(g);
         if (b != null) return b;
         File f = g.asset("box_front");
@@ -78,6 +98,8 @@ final class Icons {
     }
 
     Bitmap romIconSync(Library.Game g) {
+        if (g.pkg != null) return appIcon(g.pkg);
+        if (g.path == null) return null;
         String id = Integer.toHexString(g.path.getAbsolutePath().hashCode()) + "_" + g.path.length();
         File cf = new File(cacheDir, id + ".png"), none = new File(cacheDir, id + ".none");
         Bitmap raw = null;

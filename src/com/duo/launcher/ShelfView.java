@@ -36,10 +36,11 @@ final class ShelfView extends View {
         void onChoose(Object item, String cmd);
         String chosenCmd(Object item);
         void onSettings();
+        void onSearch();
     }
 
-    /** Marker item for the Settings tile on the home page. */
-    static final Object SETTINGS = new Object();
+    /** Marker items for the Search and Settings tiles on the home page. */
+    static final Object SETTINGS = new Object(), SEARCH = new Object();
 
     /** A list overlay; each entry runs its action when picked. B goes back to the parent menu. */
     static final class Menu {
@@ -77,7 +78,14 @@ final class ShelfView extends View {
         Menu menu;
         String message;
 
-        State() { recent.name = "recent"; }
+        /** Search results are shown as a pseudo-platform. */
+        final Library.Platform results = new Library.Platform();
+        String query = "";
+
+        State() {
+            recent.name = "recent";
+            results.name = "search";
+        }
     }
 
     private static final int[] ZOOM = {4, 5, 6, 8};
@@ -94,7 +102,8 @@ final class ShelfView extends View {
     private final Path path = new Path();
     private final GestureDetector gd;
     private final OverScroller scroller;
-    private final RectF hitHome = new RectF(), hitL = new RectF(), hitR = new RectF(), hitZoom = new RectF(), hitSort = new RectF();
+    private final RectF hitHome = new RectF(), hitL = new RectF(), hitR = new RectF(), hitZoom = new RectF(), hitSort = new RectF(),
+            hitSearch = new RectF();
     private final Runnable redraw = this::invalidate;
 
     ShelfView(Context c, State st, Icons icons, Listener l) {
@@ -148,6 +157,7 @@ final class ShelfView extends View {
         st.items.clear();
         if (!st.recent.games.isEmpty()) st.items.add(st.recent);
         st.items.addAll(st.lib.platforms);
+        st.items.add(SEARCH);
         st.items.add(SETTINGS);
     }
 
@@ -217,6 +227,7 @@ final class ShelfView extends View {
     private void activate() {
         Object o = selected();
         if (o == SETTINGS) listener.onSettings();
+        else if (o == SEARCH) listener.onSearch();
         else if (o instanceof Library.Platform) open((Library.Platform) o);
         else if (o instanceof Library.Game) listener.onActivate((Library.Game) o);
     }
@@ -277,7 +288,7 @@ final class ShelfView extends View {
         Object o = selected();
         if (!(o instanceof Library.Game) && !(o instanceof Library.Platform)) return;
         Library.Platform pl = o instanceof Library.Game ? ((Library.Game) o).platform : (Library.Platform) o;
-        if (pl == st.recent) return;
+        if (pl == st.recent || pl == st.results || isNative(pl)) return;
         String who = o instanceof Library.Game ? ((Library.Game) o).title : I18n.f(S.PLATFORM_DEFAULT, pl.name);
         Menu m = new Menu(t(S.CHOOSE_EMULATOR), who);
         String cur = listener.chosenCmd(o);
@@ -323,6 +334,7 @@ final class ShelfView extends View {
             case KeyEvent.KEYCODE_BUTTON_L1: case KeyEvent.KEYCODE_PAGE_UP: cycle(-1); return true;
             case KeyEvent.KEYCODE_BUTTON_R1: case KeyEvent.KEYCODE_PAGE_DOWN: cycle(1); return true;
             case KeyEvent.KEYCODE_BUTTON_SELECT: sort(); return true;
+            case KeyEvent.KEYCODE_BUTTON_THUMBR: case KeyEvent.KEYCODE_SEARCH: listener.onSearch(); return true;
             default: return false;
         }
     }
@@ -376,7 +388,7 @@ final class ShelfView extends View {
 
     @Override protected void onDraw(Canvas c) {
         float u = u(), w = getWidth(), h = getHeight();
-        p.setShader(new LinearGradient(0, 0, 0, h, 0xFFF3F6F9, 0xFFE3E9EF, Shader.TileMode.CLAMP));
+        p.setShader(new LinearGradient(0, 0, 0, h, Palette.shelfTop(), Palette.shelfBottom(), Shader.TileMode.CLAMP));
         c.drawRect(0, 0, w, h, p);
         p.setShader(null);
 
@@ -384,7 +396,7 @@ final class ShelfView extends View {
             String m = st.message != null ? st.message : t(S.LOADING);
             float y = h / 2;
             for (String line : m.split("\n")) {
-                text(c, line, w / 2, y, 30 * u, 0xFF5C6B7A, false, Paint.Align.CENTER);
+                text(c, line, w / 2, y, 30 * u, Palette.text2(), false, Paint.Align.CENTER);
                 y += 46 * u;
             }
             if (st.menu != null) drawMenu(c);
@@ -407,11 +419,12 @@ final class ShelfView extends View {
         }
         if (st.sel < st.items.size()) drawItem(c, st.sel, st.menu == null);
         c.restore();
-        if (st.lib.platforms.isEmpty()) {
-            // only the Settings tile is shown; explain where to add games
-            float y = headerH() + cellH() + 90 * u;
-            for (String line : t(S.NO_GAMES).split("\n")) {
-                text(c, line, w / 2, y, 28 * u, 0xFF5C6B7A, false, Paint.Align.CENTER);
+        if (st.lib.platforms.isEmpty() || (st.current == st.results && st.items.isEmpty())) {
+            // explain why the page is empty
+            float y = headerH() + (st.items.isEmpty() ? 160 * u : cellH() + 90 * u);
+            String msg = st.current == st.results ? t(S.NO_RESULTS) : t(S.NO_GAMES);
+            for (String line : msg.split("\n")) {
+                text(c, line, w / 2, y, 28 * u, Palette.text2(), false, Paint.Align.CENTER);
                 y += 44 * u;
             }
         }
@@ -430,6 +443,7 @@ final class ShelfView extends View {
         float rad = r.width() * (st.current == null ? 0.07f : 0.16f);
         if (o == st.recent) drawRecent(c, rad);
         else if (o == SETTINGS) drawSettings(c, rad);
+        else if (o == SEARCH) drawSearchTile(c, rad);
         else if (o instanceof Library.Platform) drawFolder(c, (Library.Platform) o, rad);
         else drawGame(c, (Library.Game) o, rad);
         if (selected) {
@@ -450,13 +464,13 @@ final class ShelfView extends View {
 
     private void card(Canvas c, RectF rr, float rad, int color) {
         p.setColor(color);
-        p.setShadowLayer(10 * u(), 0, 4 * u(), 0x30000000);
+        p.setShadowLayer(10 * u(), 0, 4 * u(), Palette.shadow());
         c.drawRoundRect(rr, rad, rad, p);
         p.clearShadowLayer();
     }
 
     private void drawGame(Canvas c, Library.Game g, float rad) {
-        card(c, r, rad, 0xFFFFFFFF);
+        card(c, r, rad, Palette.card());
         Bitmap b = icons.tile(g, redraw);
         path.reset();
         path.addRoundRect(r, rad, rad, Path.Direction.CW);
@@ -483,7 +497,7 @@ final class ShelfView extends View {
         p.setColor(mul(color, 0.72f));
         c.drawRoundRect(r2, rad, rad, p);
         r2.set(r.left, r.top + h * 0.12f, r.right, r.bottom);
-        p.setShadowLayer(10 * u(), 0, 4 * u(), 0x30000000);
+        p.setShadowLayer(10 * u(), 0, 4 * u(), Palette.shadow());
         p.setShader(new LinearGradient(0, r2.top, 0, r2.bottom, lighten(color), color, Shader.TileMode.CLAMP));
         c.drawRoundRect(r2, rad, rad, p);
         p.setShader(null);
@@ -491,19 +505,20 @@ final class ShelfView extends View {
         ConsoleDrawable d = ConsoleDrawable.of(pl, false);
         d.setBounds((int) (r.left + w * 0.4f), (int) (r.top + h * 0.18f), (int) (r.right - w * 0.05f), (int) (r.bottom - h * 0.28f));
         d.draw(c);
-        text(c, pl.name, r.left + w * 0.07f, r.bottom - h * 0.12f, h * 0.16f, 0xFFFFFFFF, true, Paint.Align.LEFT);
+        String label = isNative(pl) ? pl.title() : pl.name;
+        text(c, ellipsize(label, w * 0.7f, h * 0.16f), r.left + w * 0.07f, r.bottom - h * 0.12f, h * 0.16f, 0xFFFFFFFF, true, Paint.Align.LEFT);
         text(c, String.valueOf(pl.games.size()), r.right - w * 0.07f, r.bottom - h * 0.12f, h * 0.12f, 0xDDFFFFFF, true, Paint.Align.RIGHT);
     }
 
     private void drawRecent(Canvas c, float rad) {
-        card(c, r, rad, 0xFFFFFFFF);
+        card(c, r, rad, Palette.card());
         float w = r.width(), h = r.height();
-        text(c, "★ " + t(S.RECENT), r.left + w * 0.07f, r.top + h * 0.2f, h * 0.12f, 0xFF1F2A36, true, Paint.Align.LEFT);
+        text(c, "★ " + t(S.RECENT), r.left + w * 0.07f, r.top + h * 0.2f, h * 0.12f, Palette.text(), true, Paint.Align.LEFT);
         float s = w * 0.27f, gap = w * 0.035f, x = r.left + w * 0.07f, y = r.top + h * 0.32f;
         for (int i = 0; i < Math.min(3, st.recent.games.size()); i++) {
             r2.set(x, y, x + s, y + s);
             Bitmap b = icons.tile(st.recent.games.get(i), redraw);
-            p.setColor(0xFFEEF2F6);
+            p.setColor(Palette.cardSoft());
             c.drawRoundRect(r2, s * 0.16f, s * 0.16f, p);
             if (b != null) {
                 path.reset();
@@ -519,22 +534,52 @@ final class ShelfView extends View {
     }
 
     private void drawSettings(Canvas c, float rad) {
-        card(c, r, rad, 0xFFFFFFFF);
+        card(c, r, rad, Palette.card());
         float w = r.width(), h = r.height();
         ConsoleDrawable gear = new ConsoleDrawable("gear", null, false);
         float gs = h * 0.42f;
         gear.setBounds((int) (r.centerX() - gs / 2), (int) (r.top + h * 0.14f), (int) (r.centerX() + gs / 2), (int) (r.top + h * 0.14f + gs));
         gear.draw(c);
-        text(c, t(S.SETTINGS), r.centerX(), r.bottom - h * 0.2f, h * 0.13f, 0xFF1F2A36, true, Paint.Align.CENTER);
-        text(c, I18n.name(), r.centerX(), r.bottom - h * 0.07f, h * 0.085f, 0xFF7B8896, false, Paint.Align.CENTER);
+        text(c, t(S.SETTINGS), r.centerX(), r.bottom - h * 0.2f, h * 0.13f, Palette.text(), true, Paint.Align.CENTER);
+        text(c, I18n.name(), r.centerX(), r.bottom - h * 0.07f, h * 0.085f, Palette.text3(), false, Paint.Align.CENTER);
+    }
+
+    /** Installed Android games and apps, which run without an emulator. */
+    private static boolean isNative(Library.Platform p) { return p.system.equals("ANDROID") || p.system.equals("APPS"); }
+
+    private void drawSearchTile(Canvas c, float rad) {
+        card(c, r, rad, Palette.card());
+        float h = r.height();
+        ConsoleDrawable glass = new ConsoleDrawable("search", null, false);
+        float gs = h * 0.42f;
+        glass.setBounds((int) (r.centerX() - gs / 2), (int) (r.top + h * 0.14f), (int) (r.centerX() + gs / 2), (int) (r.top + h * 0.14f + gs));
+        glass.draw(c);
+        text(c, t(S.SEARCH), r.centerX(), r.bottom - h * 0.2f, h * 0.13f, Palette.text(), true, Paint.Align.CENTER);
+        text(c, "R3", r.centerX(), r.bottom - h * 0.07f, h * 0.085f, Palette.text3(), false, Paint.Align.CENTER);
+    }
+
+    /** Shows search results as their own page; called again as the query changes. */
+    void showResults(String query, List<Library.Game> games) {
+        st.query = query;
+        st.results.games.clear();
+        st.results.games.addAll(games);
+        if (st.current != st.results) {
+            open(st.results);
+        } else {
+            st.items.clear();
+            st.items.addAll(games);
+            st.sel = clampSel(0);
+            jumpTo();
+            fireFocus();
+        }
     }
 
     private void pill(Canvas c, RectF rr, String s, boolean on) {
-        p.setColor(on ? BLUE : 0xFFFFFFFF);
+        p.setColor(on ? BLUE : Palette.pill());
         p.setShadowLayer(6 * u(), 0, 2 * u(), 0x22000000);
         c.drawRoundRect(rr, rr.height() / 2, rr.height() / 2, p);
         p.clearShadowLayer();
-        text(c, s, rr.centerX(), rr.centerY() + rr.height() * 0.17f, rr.height() * 0.45f, on ? 0xFFFFFFFF : 0xFF34404D, true, Paint.Align.CENTER);
+        text(c, s, rr.centerX(), rr.centerY() + rr.height() * 0.17f, rr.height() * 0.45f, on ? 0xFFFFFFFF : Palette.pillText(), true, Paint.Align.CENTER);
     }
 
     private void drawHeader(Canvas c) {
@@ -547,28 +592,38 @@ final class ShelfView extends View {
         pill(c, hitHome, home, st.current == null);
         x = hitHome.right + 14 * u;
         if (st.current != null) {
-            String s = st.current == st.recent ? t(S.RECENT) : st.current.name;
+            String s = st.current == st.recent ? t(S.RECENT)
+                    : st.current == st.results ? I18n.f(S.SEARCH_RESULTS, st.query) : st.current.title();
+            s = ellipsize(s, 420 * u, hh * 0.45f);
             r2.set(x, y, x + measure(s, hh * 0.45f) + 60 * u, y + hh);
             pill(c, r2, s, true);
             x = r2.right + 14 * u;
         }
         hitR.set(x, y + 6 * u, x + 54 * u, y + hh - 6 * u);
         pill(c, hitR, "R", false);
+        // search button at the right edge, count just left of it
+        float sw = measure("⌕ " + t(S.SEARCH), hh * 0.45f) + 50 * u;
+        hitSearch.set(getWidth() - pad() - sw, y, getWidth() - pad(), y + hh);
+        pill(c, hitSearch, "⌕ " + t(S.SEARCH), false);
         String right = st.current == null ? I18n.f(S.PLATFORMS_COUNT, st.lib.platforms.size()) : I18n.f(S.GAMES_COUNT, st.items.size());
-        text(c, right, getWidth() - pad(), y + hh * 0.68f, hh * 0.42f, 0xFF5C6B7A, true, Paint.Align.RIGHT);
+        float rx = hitSearch.left - 20 * u;
+        if (rx - measure(right, hh * 0.42f) > hitR.right + 10 * u)
+            text(c, right, rx, y + hh * 0.68f, hh * 0.42f, Palette.text2(), true, Paint.Align.RIGHT);
     }
 
     private void drawFooter(Canvas c) {
         float u = u(), top = getHeight() - footerH(), cy = top + footerH() / 2;
-        p.setColor(0xFFFFFFFF);
+        p.setColor(Palette.footer());
         c.drawRect(0, top, getWidth(), getHeight(), p);
-        p.setColor(0xFFD9E0E7);
+        p.setColor(Palette.footerLine());
         c.drawRect(0, top, getWidth(), top + 2 * u, p);
         float x = pad();
         Object sel = selected();
         x = hintItem(c, x, cy, "A", sel instanceof Library.Game ? t(S.PLAY) : t(S.OPEN));
         if (st.current != null) x = hintItem(c, x, cy, "B", t(S.BACK));
-        if (sel instanceof Library.Game || (sel instanceof Library.Platform && sel != st.recent)) x = hintItem(c, x, cy, "Y", t(S.EMULATOR));
+        boolean emulated = sel instanceof Library.Game ? ((Library.Game) sel).pkg == null
+                : sel instanceof Library.Platform && sel != st.recent && !isNative((Library.Platform) sel);
+        if (emulated) x = hintItem(c, x, cy, "Y", t(S.EMULATOR));
         hitZoom.setEmpty();
         hitSort.setEmpty();
         if (st.current != null) {
@@ -587,11 +642,11 @@ final class ShelfView extends View {
     private float hintItem(Canvas c, float x, float cy, String key, String label) {
         float u = u(), rad = 17 * u, kw = key.length() > 1 ? 56 * u : rad * 2;
         r2.set(x, cy - rad, x + kw, cy + rad);
-        p.setColor(0xFF3A4654);
+        p.setColor(Palette.key());
         c.drawRoundRect(r2, rad, rad, p);
-        text(c, key, r2.centerX(), cy + 7 * u, key.length() > 1 ? 16 * u : 20 * u, 0xFFFFFFFF, true, Paint.Align.CENTER);
+        text(c, key, r2.centerX(), cy + 7 * u, key.length() > 1 ? 16 * u : 20 * u, Palette.keyText(), true, Paint.Align.CENTER);
         float tx = r2.right + 10 * u;
-        text(c, label, tx, cy + 9 * u, 25 * u, 0xFF34404D, false, Paint.Align.LEFT);
+        text(c, label, tx, cy + 9 * u, 25 * u, Palette.pillText(), false, Paint.Align.LEFT);
         return tx + measure(label, 25 * u) + 34 * u;
     }
 
@@ -611,10 +666,10 @@ final class ShelfView extends View {
         c.drawRect(0, 0, getWidth(), getHeight(), p);
         RectF cardR = new RectF();
         menuCard(cardR);
-        card(c, cardR, 28 * u, 0xFFFFFFFF);
-        text(c, m.title, cardR.left + 36 * u, cardR.top + 56 * u, 32 * u, 0xFF1F2A36, true, Paint.Align.LEFT);
+        card(c, cardR, 28 * u, Palette.card());
+        text(c, m.title, cardR.left + 36 * u, cardR.top + 56 * u, 32 * u, Palette.text(), true, Paint.Align.LEFT);
         if (m.subtitle != null)
-            text(c, ellipsize(m.subtitle, cardR.width() * 0.45f, 23 * u), cardR.right - 36 * u, cardR.top + 56 * u, 23 * u, 0xFF8090A0, false, Paint.Align.RIGHT);
+            text(c, ellipsize(m.subtitle, cardR.width() * 0.45f, 23 * u), cardR.right - 36 * u, cardR.top + 56 * u, 23 * u, Palette.text3(), false, Paint.Align.RIGHT);
         int rows = Math.min(MENU_ROWS, m.labels.size());
         for (int k = 0; k < rows; k++) {
             int i = m.top + k;
@@ -625,7 +680,7 @@ final class ShelfView extends View {
                 p.setColor(BLUE);
                 c.drawRoundRect(r2, 16 * u, 16 * u, p);
             }
-            int fg = on ? 0xFFFFFFFF : 0xFF1F2A36;
+            int fg = on ? 0xFFFFFFFF : Palette.text();
             text(c, ellipsize(m.labels.get(i), r2.width() - 180 * u, 27 * u), r2.left + 28 * u, r2.centerY() + 10 * u, 27 * u, fg, on, Paint.Align.LEFT);
             if (m.marks.get(i)) text(c, "✓", r2.right - 28 * u, r2.centerY() + 11 * u, 30 * u, on ? 0xFFFFFFFF : BLUE, true, Paint.Align.RIGHT);
         }
@@ -683,6 +738,7 @@ final class ShelfView extends View {
         if (hitR.contains(x, y)) { cycle(1); return; }
         if (hitZoom.contains(x, y)) { zoom(); return; }
         if (hitSort.contains(x, y)) { sort(); return; }
+        if (hitSearch.contains(x, y)) { listener.onSearch(); return; }
         if (y < headerH() || y > getHeight() - footerH()) return;
         for (int i = 0; i < st.items.size(); i++) {
             tileRect(i, r);
