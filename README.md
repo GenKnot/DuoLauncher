@@ -1,45 +1,54 @@
-# Duo 前端
+# Duo Launcher
 
-给 Retroid Pocket Duo（上下双屏安卓掌机）做的 3DS 风格游戏前端。
+A dual-screen, 3DS-style game launcher for the **Retroid Pocket Duo** (and other Android handhelds with a second display).
+It reads an existing Pegasus library, so nothing needs to be moved or renamed.
 
-- **上屏**（1920×1080）：选中平台时显示主机图；选中游戏时显示模糊封面背景、游戏 logo、平台与模拟器标签、简介，带缓慢的 3D 摇摆。
-- **下屏**（1280×960，Android `Presentation`）：平台文件夹和可缩放的游戏图标网格，支持手柄和触屏。
-- **直接复用天马G（Pegasus）的游戏目录**：读取 `Roms/<平台>/metadata.pegasus.txt`，沿用其中的 `launch:` 启动命令和 `media/` 素材，不改动任何文件。
-- **游戏图标从 ROM 里读**：NDS 读文件头的 banner 图标，3DS 读 `.cci/.3ds` 中 ExeFS 的 SMDH 图标（需已解密）；GB/GBA 用天马的封面。
-- **按游戏 / 按平台选模拟器**（Y 键）：3DS 可选 AzaharPlus 或 Citra MMJ，GB/GBA 可选不同的 RetroArch 核心。
+一个给 Retroid Pocket Duo 双屏掌机做的 3DS 风格游戏前端，直接读取天马G（Pegasus）的游戏目录，不改动任何文件。
 
-## 按键
+## Features
 
-| 键 | 作用 |
+- **Upper screen (1920×1080)** – the selected platform's console on top of its own backdrop, or the selected game's logo over its blurred cover art, with platform/emulator tags and a short description. Everything tilts gently in 3D.
+- **Lower screen (1280×960)** – platform folders and a zoomable icon grid. Works with the gamepad and with touch.
+- **Uses your Pegasus library as-is** – reads `Roms/<platform>/metadata.pegasus.txt`, its `launch:` commands and the `media/` artwork.
+- **Icons straight from the ROMs** – NDS banner icons from the cartridge header, 3DS SMDH icons from `.cci/.3ds` ExeFS (decrypted dumps). GB/GBA use the Pegasus box art.
+- **Emulator per game or per platform** (Y button) – e.g. AzaharPlus or Citra MMJ for 3DS, different RetroArch cores for GB/GBA.
+- **Custom artwork** – in Settings → Platform look, every platform's console image and background image can be replaced with your own picture.
+- **11 languages** – 简体中文, 繁體中文, English, 日本語, 한국어, Français, Español, Deutsch, Italiano, Português, Русский. Chosen on first start, changeable in Settings.
+
+## Controls
+
+| Button | Action |
 |---|---|
-| 十字键 / 左摇杆 | 移动 |
-| A | 打开 / 开始游戏 |
-| B | 返回 |
-| L / R | 切换平台 |
-| X | 图标大小 |
-| Y | 选择模拟器 |
-| SELECT | 排序（默认 / 名称） |
+| D-pad / left stick | Move |
+| A | Open / play |
+| B | Back |
+| L / R | Previous / next platform |
+| X | Icon size |
+| Y | Choose emulator |
+| SELECT | Sort (default / by name) |
 
-## 编译
+## Building
 
-不需要 Android Studio 或 Gradle，只用 Android SDK 的命令行工具（build-tools 35、platform android-35、JDK 21）：
+No Android Studio or Gradle needed – only the Android SDK command-line tools (build-tools 35, platform android-35) and JDK 17+:
 
 ```powershell
-powershell -File build.ps1            # 生成 DuoLauncher.apk
-powershell -File build.ps1 -Install   # 并通过 adb 安装到掌机、授予文件访问权限、启动
+powershell -File build.ps1            # builds DuoLauncher.apk
+powershell -File build.ps1 -Install   # also installs over adb, grants file access and starts it
 ```
 
-第一次编译时会自动生成调试签名 `debug.keystore`（不入库）。
+A debug signing key (`debug.keystore`) is generated on the first build and is not committed.
+`shot.ps1` sends key presses over adb and saves screenshots of both screens, which is handy while tweaking the UI.
 
-## 主机图片
+## Artwork
 
-`assets/consoles/<平台>.png` 会被打包进 APK，用于上屏的主机大图和下屏文件夹；缺图的平台用代码画的示意图。
-现有照片来自 Wikimedia Commons，摄影 Evan-Amos，公有领域（Public domain）：
-`Nintendo-3DS-AquaOpen.png`、`Nintendo-Game-Boy-Color-FL.png`。白底的照片由脚本把背景抠成透明并缩到 1100px。
+`assets/consoles/<type>.png` is bundled into the APK and used for the console pictures; platforms without a picture fall back to a drawn console.
+The current photos are by Evan-Amos on Wikimedia Commons and are in the **public domain**:
+`Nintendo-3DS-AquaOpen.png`, `Nintendo-Game-Boy-Color-FL.png`.
+Optional bundled backgrounds go in `assets/backgrounds/<type>.png`.
 
-## 启动方式备忘
+## Launch notes
 
-- AzaharPlus 只接受它已获授权的文件夹下的 tree URI：
-  `content://com.android.externalstorage.documents/tree/<卷>%3ARoms%2F3DS/document/<卷>%3ARoms%2F3DS%2F<文件名>`
-- Citra MMJ：`org.citra.emu/org.citra.emu.ui.EmulationActivity`，`-e GamePath <路径>`
-- DraStic、RetroArch：沿用天马G元数据里的命令。
+- AzaharPlus only accepts a tree URI under a folder it already has access to:
+  `content://com.android.externalstorage.documents/tree/<volume>%3ARoms%2F3DS/document/<volume>%3ARoms%2F3DS%2F<file>`
+- Citra MMJ: `org.citra.emu/org.citra.emu.ui.EmulationActivity` with `-e GamePath <path>`
+- DraStic and RetroArch: the commands from the Pegasus metadata are used unchanged.

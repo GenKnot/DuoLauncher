@@ -219,11 +219,11 @@ final class Library {
 
     static String platformTitle(String n) {
         switch (n.toUpperCase(Locale.ROOT)) {
-            case "3DS": return "任天堂 3DS";
-            case "NDS": return "任天堂 DS";
+            case "3DS": return I18n.t(I18n.S.T_3DS);
+            case "NDS": return I18n.t(I18n.S.T_NDS);
             case "GBA": return "Game Boy Advance";
-            case "GBA HACK": return "GBA 改版";
-            case "GBA VIB": return "GBA 震动版";
+            case "GBA HACK": return I18n.t(I18n.S.T_GBA_HACK);
+            case "GBA VIB": return I18n.t(I18n.S.T_GBA_VIB);
             case "GBC": return "Game Boy Color";
             case "GB": return "Game Boy";
             case "PS2": return "PlayStation 2";
@@ -283,7 +283,7 @@ final class Library {
             case "gba":
                 o.add(new String[]{"RetroArch · mGBA", retroArch("mgba")});
                 o.add(new String[]{"RetroArch · gpSP", retroArch("gpsp")});
-                o.add(new String[]{"RetroArch · gpSP 震动", retroArch("gpsp_rumble")});
+                o.add(new String[]{"RetroArch · gpSP Rumble", retroArch("gpsp_rumble")});
                 break;
             default:
                 break;
@@ -295,7 +295,7 @@ final class Library {
     private static final Pattern COMPONENT = Pattern.compile("-n\\s+([\\w.]+)/");
 
     static String emulatorLabel(String cmd) {
-        if (cmd == null || cmd.isEmpty()) return "未设置";
+        if (cmd == null || cmd.isEmpty()) return I18n.t(I18n.S.NOT_SET);
         if (cmd.contains("azahar")) return "AzaharPlus";
         if (cmd.contains("org.citra.emu")) return "Citra MMJ";
         if (cmd.contains("drastic")) return "DraStic";
@@ -304,6 +304,6 @@ final class Library {
             return "RetroArch" + (m.find() ? " · " + m.group(1) : "");
         }
         Matcher m = COMPONENT.matcher(cmd);
-        return m.find() ? m.group(1) : "自定义";
+        return m.find() ? m.group(1) : I18n.t(I18n.S.CUSTOM);
     }
 }

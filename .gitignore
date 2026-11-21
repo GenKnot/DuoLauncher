@@ -1,6 +1,15 @@
+# build output
 build/
 *.apk
 *.idsig
 *.keystore
+
+# local test captures and source artwork downloads
 shot_*.png
-art/原图/
+art/
+
+# personal notes and editor config
+.vscode/
+.idea/
+notes/
+*.local.md

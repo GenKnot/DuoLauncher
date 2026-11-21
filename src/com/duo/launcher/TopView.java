@@ -30,12 +30,16 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 
+import static com.duo.launcher.I18n.S;
+import static com.duo.launcher.I18n.t;
+
 /** Upper screen: platform showcase or the focused game's artwork, with a slow 3D tilt. */
 final class TopView extends ViewGroup {
     private final Icons icons;
     private final ImageView bg;
     private final HeroView hero;
-    private final View scrim, dots;
+    private final View scrim;
+    private final BackdropView dots;
     private final TextView title, desc, message;
     private final ChipsView chips, hints;
     private final StatusView status;
@@ -49,19 +53,7 @@ final class TopView extends ViewGroup {
         super(c);
         this.icons = icons;
 
-        dots = new View(c) {
-            final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
-            @Override protected void onDraw(Canvas cv) {
-                float w = getWidth(), h = getHeight();
-                p.setShader(new RadialGradient(w / 2, h * 0.42f, w * 0.6f, 0xFFF9FBFD, 0xFFE4EAF0, Shader.TileMode.CLAMP));
-                cv.drawRect(0, 0, w, h, p);
-                p.setShader(null);
-                p.setColor(0xFFCDD7E1);
-                float s = w / 60f;
-                for (float y = s / 2; y < h; y += s)
-                    for (float x = s / 2; x < w; x += s) cv.drawCircle(x, y, s * 0.06f, p);
-            }
-        };
+        dots = new BackdropView(c);
         bg = new ImageView(c);
         bg.setScaleType(ImageView.ScaleType.CENTER_CROP);
         bg.setRenderEffect(RenderEffect.createBlurEffect(70, 70, Shader.TileMode.CLAMP));
@@ -104,7 +96,7 @@ final class TopView extends ViewGroup {
         bob.setInterpolator(new AccelerateDecelerateInterpolator());
         bob.start();
         setDark(false);
-        showMessage("正在读取游戏…");
+        showMessage(t(S.LOADING));
     }
 
     private static TextView text(Context c, int style) {
@@ -212,14 +204,34 @@ final class TopView extends ViewGroup {
         message.setVisibility(GONE);
         setDark(false);
         enter(p);
-        if (recent) refreshFan(p); else hero.setDrawable(new ConsoleDrawable(p.type(), true));
-        title.setText(recent ? "最近玩过" : p.title());
-        if (recent) chips.set(false, p.games.size() + " 款游戏");
-        else chips.set(false, p.games.size() + " 款游戏", "▶ " + emu);
+        if (recent) {
+            refreshFan(p);
+            dots.set(0xFFF2A93B, t(S.RECENT), null);
+        } else {
+            hero.setDrawable(ConsoleDrawable.of(p, true));
+            dots.set(Library.platformColor(p.type()), p.name, Theme.background(p));
+        }
+        title.setText(recent ? t(S.RECENT) : p.title());
+        if (recent) chips.set(false, I18n.f(S.GAMES_COUNT, p.games.size()));
+        else chips.set(false, I18n.f(S.GAMES_COUNT, p.games.size()), "▶ " + emu);
         desc.setText("");
         desc.setVisibility(GONE);
-        if (recent) hints.set(false, "A|打开");
-        else hints.set(false, "A|打开", "Y|平台模拟器");
+        if (recent) hints.set(false, "A|" + t(S.OPEN));
+        else hints.set(false, "A|" + t(S.OPEN), "Y|" + t(S.PLATFORM_EMULATOR));
+        requestLayout();
+    }
+
+    void showSettings() {
+        message.setVisibility(GONE);
+        setDark(false);
+        enter(ShelfView.SETTINGS);
+        hero.setDrawable(new ConsoleDrawable("gear", null, true));
+        dots.set(0xFF6D8299, t(S.SETTINGS), null);
+        title.setText(t(S.SETTINGS));
+        chips.set(false, t(S.SETTINGS_HINT), I18n.name());
+        desc.setText("");
+        desc.setVisibility(GONE);
+        hints.set(false, "A|" + t(S.OPEN));
         requestLayout();
     }
 
@@ -232,7 +244,7 @@ final class TopView extends ViewGroup {
         chips.set(true, g.platform.title(), "▶ " + emu);
         desc.setText(g.description.replace('\n', ' '));
         desc.setVisibility(g.description.isEmpty() ? GONE : VISIBLE);
-        hints.set(true, "A|开始游戏", "Y|选择模拟器");
+        hints.set(true, "A|" + t(S.PLAY), "Y|" + t(S.CHOOSE_EMULATOR));
         if (fresh) {
             bg.setImageDrawable(null);
             hero.clear();
@@ -321,7 +333,8 @@ final class TopView extends ViewGroup {
             c.drawText(s, bx - h * 0.25f, h * 0.68f, p);
             float tw = p.measureText(s);
             p.setTextSize(h * 0.52f);
-            c.drawText(new SimpleDateFormat("ah:mm", Locale.CHINA).format(new Date()), bx - h * 0.25f - tw - h * 0.5f, h * 0.68f, p);
+            String time = java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT, Locale.forLanguageTag(I18n.code())).format(new Date());
+            c.drawText(time, bx - h * 0.25f - tw - h * 0.5f, h * 0.68f, p);
         }
     }
 }

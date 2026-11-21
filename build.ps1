@@ -14,7 +14,7 @@ if (Test-Path $out) { Remove-Item $out -Recurse -Force }
 New-Item -ItemType Directory -Force "$out\classes", "$out\dex" | Out-Null
 
 & "$bt\aapt2.exe" link -o "$out\base.apk" -I $jar --manifest "$root\AndroidManifest.xml" `
-    --min-sdk-version 30 --target-sdk-version 35 --version-code 1 --version-name 0.1
+    --min-sdk-version 30 --target-sdk-version 35 --version-code 2 --version-name 0.2
 if ($LASTEXITCODE) { throw 'aapt2 link failed' }
 
 $srcs = Get-ChildItem "$root\src" -Recurse -Filter *.java | ForEach-Object FullName

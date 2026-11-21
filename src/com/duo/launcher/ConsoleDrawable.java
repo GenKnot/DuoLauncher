@@ -1,8 +1,6 @@
 package com.duo.launcher;
 
-import android.content.res.AssetManager;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.ColorFilter;
 import android.graphics.LinearGradient;
@@ -14,41 +12,27 @@ import android.graphics.RectF;
 import android.graphics.Shader;
 import android.graphics.drawable.Drawable;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.HashMap;
-import java.util.Map;
-
-/** Console picture: a bundled photo from assets/consoles/<type>.png, or a vector stand-in. */
+/** Console picture: a photo (user's own or bundled, see {@link Theme}) or a drawn stand-in. */
 final class ConsoleDrawable extends Drawable {
-    private static final Map<String, Bitmap> PHOTOS = new HashMap<>();
-
-    /** Loads the bundled console photos once, at start-up. */
-    static void loadPhotos(AssetManager am) {
-        if (!PHOTOS.isEmpty()) return;
-        for (String t : new String[]{"3ds", "nds", "gba", "gbc", "gb", "ps2"}) {
-            try (InputStream in = am.open("consoles/" + t + ".png")) {
-                Bitmap b = BitmapFactory.decodeStream(in);
-                if (b != null) PHOTOS.put(t, b);
-            } catch (IOException ignored) {
-            }
-        }
-    }
-
     private final String type;
+    private final Bitmap photo;
     private final boolean shadow;
     private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF r = new RectF();
 
-    ConsoleDrawable(String type, boolean shadow) {
+    ConsoleDrawable(String type, Bitmap photo, boolean shadow) {
         this.type = type;
+        this.photo = photo;
         this.shadow = shadow;
+    }
+
+    static ConsoleDrawable of(Library.Platform p, boolean shadow) {
+        return new ConsoleDrawable(p.type(), Theme.console(p), shadow);
     }
 
     @Override public void draw(Canvas c) {
         Rect b = getBounds();
         float w = b.width(), h = b.height();
-        Bitmap photo = PHOTOS.get(type);
         if (photo != null) {
             drawPhoto(c, b, photo);
             return;
@@ -60,6 +44,7 @@ final class ConsoleDrawable extends Drawable {
             case "gba": aspect = 0.58f; break;
             case "gb": case "gbc": aspect = 1.62f; break;
             case "ps2": aspect = 0.62f; break;
+            case "gear": aspect = 1f; break;
             default: aspect = 0.7f;
         }
         float avail = shadow ? h * 0.9f : h;
@@ -83,9 +68,26 @@ final class ConsoleDrawable extends Drawable {
             case "gbc": gb(c, u, 0xFF1FA99B, 0xFFB8D8B0); break;
             case "gb": gb(c, u, 0xFFC8C4BC, 0xFF9BBC0F); break;
             case "ps2": ps2(c, u); break;
+            case "gear": gear(c, u); break;
             default: body(c, 0, 0, u, u * 0.7f, u * 0.08f, 0xFF4A90D9);
         }
         c.restore();
+    }
+
+    private void gear(Canvas c, float u) {
+        float cx = u / 2, cy = u / 2;
+        p.setShader(new LinearGradient(0, 0, 0, u, 0xFF8FA6BD, 0xFF4F6478, Shader.TileMode.CLAMP));
+        for (int i = 0; i < 8; i++) {
+            c.save();
+            c.rotate(i * 45f, cx, cy);
+            r.set(cx - u * 0.075f, cy - u * 0.47f, cx + u * 0.075f, cy - u * 0.25f);
+            c.drawRoundRect(r, u * 0.03f, u * 0.03f, p);
+            c.restore();
+        }
+        c.drawCircle(cx, cy, u * 0.36f, p);
+        p.setShader(null);
+        p.setColor(0xFFEEF3F7);
+        c.drawCircle(cx, cy, u * 0.15f, p);
     }
 
     private void drawPhoto(Canvas c, Rect b, Bitmap photo) {
