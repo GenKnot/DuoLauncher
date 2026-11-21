@@ -1,0 +1,6 @@
+build/
+*.apk
+*.idsig
+*.keystore
+shot_*.png
+art/原图/
