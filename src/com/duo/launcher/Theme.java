@@ -51,12 +51,21 @@ final class Theme {
     /** Icon and backdrop of a home-page tool such as "search", "settings" or "recent". */
     static Bitmap toolIcon(String name) { return asset("consoles/" + name + ".png"); }
 
-    static Bitmap toolBackground(String name) { return asset("backgrounds/" + name + ".jpg"); }
+    /**
+     * Backdrops come in two cuts: the light one may be shaded, while dark mode prefers a pure
+     * line-art version under backgrounds/dark/ (shading turns into grey haze once inverted).
+     */
+    static Bitmap toolBackground(String name) {
+        Bitmap b = Palette.dark ? asset("backgrounds/dark/" + name + ".jpg") : null;
+        return b != null ? b : asset("backgrounds/" + name + ".jpg");
+    }
 
     static Bitmap console(Library.Platform p) { return get(p, CONSOLE, "consoles/" + p.type() + ".png"); }
 
     static Bitmap background(Library.Platform p) {
-        return get(p, BACKGROUND, "backgrounds/" + p.backdropType() + ".jpg", "backgrounds/" + p.backdropType() + ".png");
+        String t = p.backdropType();
+        if (Palette.dark) return get(p, BACKGROUND + "-dark", "backgrounds/dark/" + t + ".jpg", "backgrounds/" + t + ".jpg", "backgrounds/" + t + ".png");
+        return get(p, BACKGROUND, "backgrounds/" + t + ".jpg", "backgrounds/" + t + ".png");
     }
 
     /** Drops cached pictures of a platform, after its chosen artwork changed. */
@@ -65,8 +74,10 @@ final class Theme {
         forget(platform, BACKGROUND);
     }
 
-    private static Bitmap get(Library.Platform p, String kind, String... assetNames) {
-        String key = p.name + "/" + kind;
+    /** kind may carry a "-dark" suffix for the cache; the user's own picture is shared by both modes. */
+    private static Bitmap get(Library.Platform p, String cacheKind, String... assetNames) {
+        String kind = cacheKind.replace("-dark", "");
+        String key = p.name + "/" + cacheKind;
         Bitmap b = cache.get(key);
         if (b != null || absent.containsKey(key)) return b;
         File f = file(p.name, kind);
@@ -103,7 +114,9 @@ final class Theme {
     }
 
     private static void forget(String platform, String kind) {
-        cache.remove(platform + "/" + kind);
-        absent.remove(platform + "/" + kind);
+        for (String k : new String[]{kind, kind + "-dark"}) {
+            cache.remove(platform + "/" + k);
+            absent.remove(platform + "/" + k);
+        }
     }
 }

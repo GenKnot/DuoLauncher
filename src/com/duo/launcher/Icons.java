@@ -109,7 +109,7 @@ final class Icons {
             try {
                 String e = g.ext();
                 if (e.equals("nds")) raw = nds(g.path);
-                else if (e.equals("3ds") || e.equals("cci") || e.equals("cxi")) raw = ctr(g.path);
+                else if (e.equals("3ds") || e.equals("cci") || e.equals("cxi") || e.equals("app")) raw = ctr(g.path);
             } catch (Throwable ignored) { }
             try {
                 if (raw != null) {
@@ -182,6 +182,69 @@ final class Icons {
                             px[(ty * 8 + y) * 32 + tx * 8 + x] = pal[(x & 1) == 0 ? v & 15 : v >> 4];
                         }
             return Bitmap.createBitmap(px, 32, 32, Bitmap.Config.ARGB_8888);
+        }
+    }
+
+    /** SMDH title slots: 0 Japanese, 1 English, 6 Simplified Chinese, 11 Traditional Chinese, ... */
+    private static int smdhLanguage() {
+        switch (I18n.code()) {
+            case "zh-CN": return 6;
+            case "zh-TW": return 11;
+            case "ja": return 0;
+            case "fr": return 2;
+            case "de": return 3;
+            case "it": return 4;
+            case "es": return 5;
+            case "ko": return 7;
+            case "pt": return 9;
+            case "ru": return 10;
+            default: return 1;
+        }
+    }
+
+    /**
+     * Program ID and display title of a decrypted 3DS image (NCSD or NCCH, e.g. an installed title's .app).
+     * Returns null when the header is missing or encrypted; the title is null when there is no SMDH.
+     */
+    static Object[] ctrInfo(File f) {
+        try (RandomAccessFile r = new RandomAccessFile(f, "r")) {
+            byte[] h = new byte[0x200];
+            r.readFully(h);
+            long ncch;
+            if (magic(h, 0x100, "NCSD")) ncch = le32(h, 0x120) * 0x200;
+            else if (magic(h, 0x100, "NCCH")) ncch = 0;
+            else return null;
+            byte[] n = new byte[0x200];
+            r.seek(ncch);
+            r.readFully(n);
+            if (!magic(n, 0x100, "NCCH")) return null;
+            long pid = (le32(n, 0x118) & 0xFFFFFFFFL) | (le32(n, 0x11C) & 0xFFFFFFFFL) << 32;
+            if ((n[0x18F] & 0x04) == 0) return new Object[]{pid, null};
+            long exefs = ncch + le32(n, 0x1A0) * 0x200;
+            byte[] e = new byte[0x200];
+            r.seek(exefs);
+            r.readFully(e);
+            for (int i = 0; i < 10; i++) {
+                if (!new String(e, i * 16, 8, StandardCharsets.US_ASCII).replace("\0", "").equals("icon")) continue;
+                byte[] s = new byte[0x2008];
+                r.seek(exefs + 0x200 + le32(e, i * 16 + 8));
+                r.readFully(s);
+                if (!magic(s, 0, "SMDH")) break;
+                // preferred language first, then any filled slot
+                int want = smdhLanguage();
+                String title = null;
+                for (int k = -1; k < 16 && title == null; k++) {
+                    int lang = k < 0 ? want : k;
+                    String t = new String(s, 8 + lang * 0x200, 0x80, StandardCharsets.UTF_16LE);
+                    int z = t.indexOf('\0');
+                    t = (z < 0 ? t : t.substring(0, z)).trim();
+                    if (!t.isEmpty()) title = t;
+                }
+                return new Object[]{pid, title};
+            }
+            return new Object[]{pid, null};
+        } catch (IOException e) {
+            return null;
         }
     }
 

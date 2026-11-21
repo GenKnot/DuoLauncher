@@ -1,4 +1,4 @@
-# Builds DuoLauncher.apk with the plain SDK tools (no Gradle): aapt2 -> javac -> d8 -> zipalign -> apksigner.
+﻿# Builds DuoLauncher.apk with the plain SDK tools (no Gradle): aapt2 -> javac -> d8 -> zipalign -> apksigner.
 # Usage: powershell -File build.ps1 [-Install]
 param([switch]$Install)
 $ErrorActionPreference = 'Stop'
@@ -16,7 +16,7 @@ New-Item -ItemType Directory -Force "$out\classes", "$out\dex" | Out-Null
 & "$bt\aapt2.exe" compile --dir "$root\res" -o "$out\res.zip"
 if ($LASTEXITCODE) { throw 'aapt2 compile failed' }
 & "$bt\aapt2.exe" link -o "$out\base.apk" -I $jar --manifest "$root\AndroidManifest.xml" -R "$out\res.zip" --auto-add-overlay `
-    --min-sdk-version 30 --target-sdk-version 35 --version-code 4 --version-name 0.4
+    --min-sdk-version 30 --target-sdk-version 35 --version-code 100 --version-name 1.0.0
 if ($LASTEXITCODE) { throw 'aapt2 link failed' }
 
 $srcs = Get-ChildItem "$root\src" -Recurse -Filter *.java | ForEach-Object FullName

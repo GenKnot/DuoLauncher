@@ -41,6 +41,8 @@ final class ShelfView extends View {
         void onEditFolder(Library.Platform folder);
         void onAddToFolder(Library.Game g, Menu parent);
         void onRemoveFromFolder(Library.Platform folder, Library.Game g);
+        void onHideFolder(Library.Platform folder);
+        void onHideGame(Library.Game g);
     }
 
     /** Marker items for the Search, Settings and "new folder" tiles on the home page. */
@@ -91,6 +93,8 @@ final class ShelfView extends View {
         /** Search results are shown as a pseudo-platform. */
         final Library.Platform results = new Library.Platform();
         String query = "";
+        /** Names of platform folders the user hid from the home page. */
+        final java.util.Set<String> hidden = new java.util.HashSet<>();
 
         State() {
             recent.name = "recent";
@@ -166,7 +170,7 @@ final class ShelfView extends View {
     private void rebuildHome() {
         st.items.clear();
         if (!st.recent.games.isEmpty()) st.items.add(st.recent);
-        st.items.addAll(st.lib.platforms);
+        for (Library.Platform p : st.lib.platforms) if (!st.hidden.contains(p.name)) st.items.add(p);
         st.items.add(ADD);
         st.items.add(SEARCH);
         st.items.add(SETTINGS);
@@ -201,7 +205,9 @@ final class ShelfView extends View {
 
     private void cycle(int d) {
         if (st.lib == null || st.lib.platforms.isEmpty()) return;
-        List<Library.Platform> ps = st.lib.platforms;
+        List<Library.Platform> ps = new ArrayList<>();
+        for (Library.Platform p : st.lib.platforms) if (!st.hidden.contains(p.name)) ps.add(p);
+        if (ps.isEmpty()) return;
         int i = st.current == null ? -1 : ps.indexOf(st.current);
         int n = i + d;
         if (n < -1) n = ps.size() - 1;
@@ -302,12 +308,15 @@ final class ShelfView extends View {
         if (o instanceof Library.Platform) {
             Library.Platform pl = (Library.Platform) o;
             if (pl.isCustom()) { listener.onEditFolder(pl); return; }
-            if (pl == st.recent || pl == st.results || isNative(pl)) return;
-            Menu m = new Menu(t(S.CHOOSE_EMULATOR), I18n.f(S.PLATFORM_DEFAULT, pl.name));
-            String cur = listener.chosenCmd(o);
-            m.add(I18n.f(S.PEGASUS_DEFAULT, Library.emulatorLabel(pl.launch)), cur == null, () -> { listener.onChoose(o, null); closeMenu(); });
-            for (String[] opt : Library.options(pl, getContext().getPackageManager()))
-                m.add(opt[0], opt[1].equals(cur), () -> { listener.onChoose(o, opt[1]); closeMenu(); });
+            if (pl == st.recent || pl == st.results) return;
+            Menu m = new Menu(isNative(pl) ? pl.title() : t(S.CHOOSE_EMULATOR), isNative(pl) ? null : I18n.f(S.PLATFORM_DEFAULT, pl.name));
+            if (!isNative(pl)) {
+                String cur = listener.chosenCmd(o);
+                m.add(I18n.f(S.PEGASUS_DEFAULT, Library.emulatorLabel(pl.launch)), cur == null, () -> { listener.onChoose(o, null); closeMenu(); });
+                for (String[] opt : Library.options(pl, getContext().getPackageManager()))
+                    m.add(opt[0], opt[1].equals(cur), () -> { listener.onChoose(o, opt[1]); closeMenu(); });
+            }
+            m.add("－ " + t(S.HIDE_FOLDER), false, () -> { closeMenu(); listener.onHideFolder(pl); });
             showMenu(m);
             return;
         }
@@ -325,6 +334,7 @@ final class ShelfView extends View {
         Library.Platform here = st.current;
         if (here != null && here.isCustom())
             m.add("－ " + t(S.REMOVE_FROM_FOLDER), false, () -> { closeMenu(); listener.onRemoveFromFolder(here, g); });
+        m.add("－ " + t(S.HIDE_GAME), false, () -> { closeMenu(); listener.onHideGame(g); });
         showMenu(m);
     }
 
@@ -362,6 +372,17 @@ final class ShelfView extends View {
             st.current = null;
             open(fresh);
             st.sel = clampSel(sel);
+        } else if (st.current != st.recent && st.current != st.results) {
+            // a game on this page was hidden: rebuild the page, keeping the cursor near where it was
+            Library.Platform cur = st.current;
+            int sel = st.sel;
+            st.current = null;
+            open(cur);
+            st.sel = clampSel(sel);
+        } else if (st.current == st.recent) {
+            st.items.clear();
+            st.items.addAll(st.recent.games);
+            st.sel = clampSel(st.sel);
         }
         fireFocus();
     }
@@ -557,8 +578,11 @@ final class ShelfView extends View {
         c.restore();
     }
 
-    private void drawFolder(Canvas c, Library.Platform pl, float rad) {
-        int color = pl.accent();
+    /** Colours of the home-page tool folders. */
+    private static final int RECENT_COLOR = 0xFFF0943A, SEARCH_COLOR = 0xFF2F8BFF, SETTINGS_COLOR = 0xFF5E7186, ADD_COLOR = 0xFF9B7BE0;
+
+    /** Folder body (tab + front) in {@code color}, drawn into {@link #r}. */
+    private void folderShape(Canvas c, float rad, int color) {
         float w = r.width(), h = r.height();
         r2.set(r.left, r.top, r.left + w * 0.42f, r.top + h * 0.3f);
         p.setColor(mul(color, 0.72f));
@@ -569,6 +593,22 @@ final class ShelfView extends View {
         c.drawRoundRect(r2, rad, rad, p);
         p.setShader(null);
         p.clearShadowLayer();
+    }
+
+    /** Picture in the folder's top-right area, label bottom-left, small note bottom-right. */
+    private void folderContent(Canvas c, Bitmap pic, String fallback, String label, String note) {
+        float w = r.width(), h = r.height();
+        ConsoleDrawable d = new ConsoleDrawable(fallback, pic, false);
+        d.setBounds((int) (r.left + w * 0.4f), (int) (r.top + h * 0.18f), (int) (r.right - w * 0.05f), (int) (r.bottom - h * 0.28f));
+        d.draw(c);
+        text(c, ellipsize(label, w * 0.7f, h * 0.16f), r.left + w * 0.07f, r.bottom - h * 0.12f, h * 0.16f, 0xFFFFFFFF, true, Paint.Align.LEFT);
+        if (note != null)
+            text(c, note, r.right - w * 0.07f, r.bottom - h * 0.12f, h * 0.12f, 0xDDFFFFFF, true, Paint.Align.RIGHT);
+    }
+
+    private void drawFolder(Canvas c, Library.Platform pl, float rad) {
+        folderShape(c, rad, pl.accent());
+        float w = r.width(), h = r.height();
         ConsoleDrawable d = ConsoleDrawable.of(pl, false);
         d.setBounds((int) (r.left + w * 0.4f), (int) (r.top + h * 0.18f), (int) (r.right - w * 0.05f), (int) (r.bottom - h * 0.28f));
         d.draw(c);
@@ -578,81 +618,64 @@ final class ShelfView extends View {
     }
 
     private void drawRecent(Canvas c, float rad) {
-        card(c, r, rad, Palette.card());
+        folderShape(c, rad, RECENT_COLOR);
         float w = r.width(), h = r.height();
-        Bitmap clock = Theme.toolIcon("recent");
-        float tx = r.left + w * 0.07f;
-        if (clock != null) {
-            float ih = h * 0.22f, iw = ih * clock.getWidth() / clock.getHeight();
-            r2.set(tx, r.top + h * 0.06f, tx + iw, r.top + h * 0.06f + ih);
-            src.set(0, 0, clock.getWidth(), clock.getHeight());
-            c.drawBitmap(clock, src, r2, p);
-            tx = r2.right + w * 0.03f;
-        }
-        text(c, t(S.RECENT), tx, r.top + h * 0.21f, h * 0.12f, Palette.text(), true, Paint.Align.LEFT);
-        float s = w * 0.27f, gap = w * 0.035f, x = r.left + w * 0.07f, y = r.top + h * 0.34f;
-        for (int i = 0; i < Math.min(3, st.recent.games.size()); i++) {
-            r2.set(x, y, x + s, y + s);
+        // the three latest games fanned out in the picture area
+        int n = Math.min(3, st.recent.games.size());
+        float s = h * 0.36f, cx = r.left + w * 0.66f, cy = r.top + h * 0.42f;
+        float[] dx = {-0.42f, 0.42f, 0f}, rot = {-12, 12, 0};
+        int[] order = n == 3 ? new int[]{2, 1, 0} : n == 2 ? new int[]{1, 0} : new int[]{0};
+        for (int i : order) {
             Bitmap b = icons.tile(st.recent.games.get(i), redraw);
-            p.setColor(Palette.cardSoft());
+            int slot = n == 1 ? 2 : i == 0 ? 2 : i == 1 ? 0 : 1;
+            c.save();
+            c.translate(cx + dx[slot] * s, cy);
+            c.rotate(rot[slot]);
+            r2.set(-s / 2, -s / 2, s / 2, s / 2);
+            p.setColor(0xFFFFFFFF);
+            p.setShadowLayer(6 * u(), 0, 3 * u(), 0x40000000);
             c.drawRoundRect(r2, s * 0.16f, s * 0.16f, p);
+            p.clearShadowLayer();
             if (b != null) {
                 path.reset();
                 path.addRoundRect(r2, s * 0.16f, s * 0.16f, Path.Direction.CW);
-                c.save();
                 c.clipPath(path);
+                if (b.hasAlpha()) r2.inset(s * 0.1f, s * 0.1f);
                 src.set(0, 0, b.getWidth(), b.getHeight());
                 c.drawBitmap(b, src, r2, p);
-                c.restore();
             }
-            x += s + gap;
+            c.restore();
         }
+        text(c, ellipsize(t(S.RECENT), w * 0.7f, h * 0.16f), r.left + w * 0.07f, r.bottom - h * 0.12f, h * 0.16f, 0xFFFFFFFF, true, Paint.Align.LEFT);
+        text(c, String.valueOf(st.recent.games.size()), r.right - w * 0.07f, r.bottom - h * 0.12f, h * 0.12f, 0xDDFFFFFF, true, Paint.Align.RIGHT);
     }
 
     private void drawSettings(Canvas c, float rad) {
-        card(c, r, rad, Palette.card());
-        float w = r.width(), h = r.height();
-        ConsoleDrawable gear = new ConsoleDrawable("gear", Theme.toolIcon("settings"), false);
-        float gs = h * 0.5f;
-        gear.setBounds((int) (r.centerX() - gs / 2), (int) (r.top + h * 0.14f), (int) (r.centerX() + gs / 2), (int) (r.top + h * 0.14f + gs));
-        gear.draw(c);
-        text(c, t(S.SETTINGS), r.centerX(), r.bottom - h * 0.2f, h * 0.13f, Palette.text(), true, Paint.Align.CENTER);
-        text(c, I18n.name(), r.centerX(), r.bottom - h * 0.07f, h * 0.085f, Palette.text3(), false, Paint.Align.CENTER);
+        folderShape(c, rad, SETTINGS_COLOR);
+        folderContent(c, Theme.toolIcon("settings"), "gear", t(S.SETTINGS), null);
     }
 
     private void drawAddTile(Canvas c, float rad) {
-        // dashed outline, so it reads as "make a new one" rather than a folder
-        float h = r.height();
-        p.setColor(Palette.card());
-        p.setAlpha(Palette.dark ? 140 : 170);
-        c.drawRoundRect(r, rad, rad, p);
-        p.setAlpha(255);
+        folderShape(c, rad, ADD_COLOR);
+        // dashed inner outline, so it reads as "make a new one"
+        float inset = 8 * u();
+        r2.set(r.left + inset, r.top + r.height() * 0.12f + inset, r.right - inset, r.bottom - inset);
         p.setStyle(Paint.Style.STROKE);
-        p.setStrokeWidth(3 * u());
-        p.setPathEffect(new android.graphics.DashPathEffect(new float[]{14 * u(), 10 * u()}, 0));
-        p.setColor(Palette.text3());
-        c.drawRoundRect(r, rad, rad, p);
+        p.setStrokeWidth(2.5f * u());
+        p.setPathEffect(new android.graphics.DashPathEffect(new float[]{12 * u(), 9 * u()}, 0));
+        p.setColor(0x99FFFFFF);
+        c.drawRoundRect(r2, rad * 0.8f, rad * 0.8f, p);
         p.setPathEffect(null);
         p.setStyle(Paint.Style.FILL);
-        ConsoleDrawable plus = new ConsoleDrawable("apps", Theme.toolIcon("custom"), false);
-        float gs = h * 0.5f;
-        plus.setBounds((int) (r.centerX() - gs / 2), (int) (r.top + h * 0.12f), (int) (r.centerX() + gs / 2), (int) (r.top + h * 0.12f + gs));
-        plus.draw(c);
-        text(c, t(S.NEW_FOLDER), r.centerX(), r.bottom - h * 0.13f, h * 0.12f, Palette.text(), true, Paint.Align.CENTER);
+        folderContent(c, Theme.toolIcon("custom"), "apps", t(S.NEW_FOLDER), "+");
     }
 
     /** Installed Android games and apps, which run without an emulator. */
     private static boolean isNative(Library.Platform p) { return p.system.equals("ANDROID") || p.system.equals("APPS"); }
 
     private void drawSearchTile(Canvas c, float rad) {
-        card(c, r, rad, Palette.card());
-        float h = r.height();
-        ConsoleDrawable glass = new ConsoleDrawable("search", Theme.toolIcon("search"), false);
-        float gs = h * 0.5f;
-        glass.setBounds((int) (r.centerX() - gs / 2), (int) (r.top + h * 0.14f), (int) (r.centerX() + gs / 2), (int) (r.top + h * 0.14f + gs));
-        glass.draw(c);
-        text(c, t(S.SEARCH), r.centerX(), r.bottom - h * 0.2f, h * 0.13f, Palette.text(), true, Paint.Align.CENTER);
-        text(c, "R3", r.centerX(), r.bottom - h * 0.07f, h * 0.085f, Palette.text3(), false, Paint.Align.CENTER);
+        folderShape(c, rad, SEARCH_COLOR);
+        folderContent(c, Theme.toolIcon("search"), "search", t(S.SEARCH), "R3");
     }
 
     /** Shows search results as their own page; called again as the query changes. */
@@ -702,7 +725,9 @@ final class ShelfView extends View {
         float sw = measure("⌕ " + t(S.SEARCH), hh * 0.45f) + 50 * u;
         hitSearch.set(getWidth() - pad() - sw, y, getWidth() - pad(), y + hh);
         pill(c, hitSearch, "⌕ " + t(S.SEARCH), false);
-        String right = st.current == null ? I18n.f(S.PLATFORMS_COUNT, st.lib.platforms.size()) : I18n.f(S.GAMES_COUNT, st.items.size());
+        int shown = 0;
+        for (Library.Platform pl : st.lib.platforms) if (!st.hidden.contains(pl.name)) shown++;
+        String right = st.current == null ? I18n.f(S.PLATFORMS_COUNT, shown) : I18n.f(S.GAMES_COUNT, st.items.size());
         float rx = hitSearch.left - 20 * u;
         if (rx - measure(right, hh * 0.42f) > hitR.right + 10 * u)
             text(c, right, rx, y + hh * 0.68f, hh * 0.42f, Palette.text2(), true, Paint.Align.RIGHT);
@@ -722,8 +747,8 @@ final class ShelfView extends View {
             x = hintItem(c, x, cy, "Y", ((Library.Game) sel).pkg == null ? t(S.EMULATOR) : t(S.ADD_TO_FOLDER));
         } else if (sel instanceof Library.Platform && ((Library.Platform) sel).isCustom()) {
             x = hintItem(c, x, cy, "Y", t(S.EDIT_FOLDER));
-        } else if (sel instanceof Library.Platform && sel != st.recent && !isNative((Library.Platform) sel)) {
-            x = hintItem(c, x, cy, "Y", t(S.EMULATOR));
+        } else if (sel instanceof Library.Platform && sel != st.recent && sel != st.results) {
+            x = hintItem(c, x, cy, "Y", isNative((Library.Platform) sel) ? t(S.HIDE_FOLDER) : t(S.EMULATOR));
         }
         hitZoom.setEmpty();
         hitSort.setEmpty();

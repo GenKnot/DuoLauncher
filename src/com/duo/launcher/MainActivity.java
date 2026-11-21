@@ -53,6 +53,8 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
 
     private final Handler main = new Handler(Looper.getMainLooper());
     private final ShelfView.State shelfState = new ShelfView.State();
+    private final Set<String> hiddenGames = new HashSet<>();
+    private final java.util.Map<Library.Platform, List<Library.Game>> fullLists = new java.util.HashMap<>();
     private SharedPreferences prefs;
     private Icons icons;
     private TopView top;
@@ -70,6 +72,8 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         prefs = getSharedPreferences("duo", MODE_PRIVATE);
         I18n.set(prefs.getString("lang", I18n.systemDefault()));
         applyDisplayMode();
+        shelfState.hidden.addAll(prefs.getStringSet("hidden", new HashSet<>()));
+        hiddenGames.addAll(prefs.getStringSet("hiddenGames", new HashSet<>()));
         Theme.init(this);
         icons = new Icons(this);
         top = new TopView(this, icons);
@@ -98,6 +102,7 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
             }
         } else if (lib != null && shelf != null) {
             shelf.setRecent(recentGames());
+            if (pendingPermissions && shelfState.menu != null) showPermissionsMenu(shelfState.menu.parent);
             if (shelfState.menu == null) onFocus(shelf.selected());
             if (!prefs.contains("lang") && shelfState.menu == null) showLanguageMenu(null, true);
         }
@@ -171,8 +176,11 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
                 boolean rescan = lib != null;
                 loading = false;
                 lib = l;
+                fullLists.clear();
+                pinyin.clear();
                 shelfState.message = null;
                 shelfState.current = null;
+                applyHiddenGames();
                 applyCustomFolders();
                 if (shelf != null) shelf.setLibrary(l, recentGames());
                 else shelfState.lib = l;
@@ -181,7 +189,7 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
                 if (n == 0) Toast.makeText(this, t(S.NO_GAMES), Toast.LENGTH_LONG).show();
                 else if (rescan && !reloadPending) Toast.makeText(this, I18n.f(S.SCAN_DONE, n), Toast.LENGTH_SHORT).show();
                 if (!prefs.contains("lang")) showLanguageMenu(null, true);
-                if (reloadPending) { reloadPending = false; load(); }
+                if (reloadPending) { reloadPending = false; load(); } else prepareSearchIndex();
             });
         }, "library").start();
     }
@@ -259,15 +267,48 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         m.add(t(S.DISPLAY_MODE) + "  ·  " + t(mode.equals("dark") ? S.MODE_DARK : mode.equals("light") ? S.MODE_LIGHT : S.MODE_SYSTEM),
                 false, () -> showDisplayModeMenu(m));
         m.add(t(S.APPEARANCE), false, () -> showAppearanceMenu(m));
+        m.add(t(S.HIDDEN_FOLDERS) + (shelfState.hidden.isEmpty() ? "" : "  ·  " + shelfState.hidden.size()), false, () -> showHiddenMenu(m, 0));
+        if (!hiddenGames.isEmpty())
+            m.add(t(S.HIDDEN_GAMES) + "  ·  " + hiddenGames.size(), false, () -> showHiddenGamesMenu(m, 0));
         m.add(t(S.SET_HOME), false, () -> {
             try { startActivity(new Intent(Settings.ACTION_HOME_SETTINGS)); } catch (Exception ignored) { }
         });
-        if (!hasUsageAccess()) m.add(t(S.USAGE_ACCESS), false, () -> {
-            try { startActivity(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)); } catch (Exception ignored) { }
-        });
+        m.add(t(S.PERMISSIONS) + (hasUsageAccess() ? "" : "  ·  !"), false, () -> showPermissionsMenu(m));
         m.add(t(S.ABOUT) + "  ·  Duo Launcher " + versionName(), false, null);
         shelf.showMenu(m);
     }
+
+    /**
+     * Every permission the launcher uses, with its state; picking one opens the system page for it.
+     * Shown once after the first-run language choice and kept under Settings.
+     */
+    private void showPermissionsMenu(ShelfView.Menu parent) {
+        if (shelf == null) return;
+        boolean first = parent == null;
+        ShelfView.Menu m = new ShelfView.Menu(t(S.PERMISSIONS), first ? t(S.PERM_INTRO) : null);
+        m.parent = parent;
+        boolean files = Environment.isExternalStorageManager(), usage = hasUsageAccess();
+        m.add(t(S.PERM_FILES) + (files ? "  ·  " + t(S.PERM_ALLOWED) : ""), files, () -> {
+            if (!files) startActivity(new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, Uri.parse("package:" + getPackageName())));
+        });
+        m.add(t(S.PERM_USAGE) + (usage ? "  ·  " + t(S.PERM_ALLOWED) : ""), usage, () -> {
+            if (usage) return;
+            pendingPermissions = true;
+            try {
+                startActivity(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS, Uri.parse("package:" + getPackageName())));
+            } catch (Exception e) {
+                startActivity(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS));
+            }
+        });
+        m.add(t(S.SET_HOME), false, () -> {
+            try { startActivity(new Intent(Settings.ACTION_HOME_SETTINGS)); } catch (Exception ignored) { }
+        });
+        m.add(t(S.DONE), false, () -> { pendingPermissions = false; if (first) shelf.closeMenu(); else onSettings(); });
+        shelf.showMenu(m);
+    }
+
+    /** Back from a system permission page: show the permission list again with the new state. */
+    private boolean pendingPermissions;
 
     private void showLanguageMenu(ShelfView.Menu parent, boolean firstRun) {
         if (shelf == null) return;
@@ -278,7 +319,7 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
             m.add(I18n.NAMES[i], i == I18n.index(), () -> {
                 I18n.set(code);
                 prefs.edit().putString("lang", code).apply();
-                if (firstRun) shelf.closeMenu(); else onSettings();
+                if (firstRun) showPermissionsMenu(null); else onSettings();
                 if (shelfState.menu != null) onFocus(shelf.selected());
             });
         }
@@ -431,9 +472,16 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
 
     // ---- search ----
 
+    /** Platform the search is limited to (opened from inside a platform), or null for all platforms. */
+    private Library.Platform searchScope;
+
     @Override public void onSearch() {
         if (lib == null) return;
-        EditText field = new EditText(this);
+        Library.Platform cur = shelfState.current;
+        if (cur != shelfState.results) searchScope = cur == null || cur == shelfState.recent ? null : cur;
+        int theme = Palette.dark ? android.R.style.Theme_DeviceDefault_Dialog_Alert : android.R.style.Theme_DeviceDefault_Light_Dialog_Alert;
+        android.content.Context dc = new android.view.ContextThemeWrapper(this, theme);
+        EditText field = new EditText(dc);
         field.setSingleLine(true);
         // keep the dialog visible above the keyboard instead of the full-screen landscape editor
         field.setImeOptions(EditorInfo.IME_FLAG_NO_EXTRACT_UI | EditorInfo.IME_FLAG_NO_FULLSCREEN | EditorInfo.IME_ACTION_DONE);
@@ -445,32 +493,123 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
             @Override public void onTextChanged(CharSequence s, int a, int b, int c) { }
             @Override public void afterTextChanged(Editable s) { search(s.toString()); }
         });
-        int theme = Palette.dark ? android.R.style.Theme_DeviceDefault_Dialog_Alert : android.R.style.Theme_DeviceDefault_Light_Dialog_Alert;
-        AlertDialog d = new AlertDialog.Builder(this, theme)
-                .setTitle(t(S.SEARCH))
-                .setView(field)
-                .setPositiveButton(t(S.DONE), null)
-                .create();
+        // recent searches as one tappable row under the field
+        android.widget.LinearLayout box = new android.widget.LinearLayout(dc);
+        box.setOrientation(android.widget.LinearLayout.VERTICAL);
+        int pad = Math.round(20 * getResources().getDisplayMetrics().density);
+        box.setPadding(pad, pad / 2, pad, 0);
+        box.addView(field);
+        List<String> history = searchHistory();
+        if (!history.isEmpty()) {
+            android.widget.HorizontalScrollView hs = new android.widget.HorizontalScrollView(dc);
+            android.widget.LinearLayout row = new android.widget.LinearLayout(dc);
+            for (String h : history) row.addView(chip(dc, h, () -> field.setText(h)));
+            row.addView(chip(dc, "✕ " + t(S.CLEAR_HISTORY), () -> {
+                prefs.edit().remove("searchHistory").apply();
+                hs.setVisibility(android.view.View.GONE);
+            }));
+            hs.addView(row);
+            box.addView(hs);
+        }
+        AlertDialog.Builder b = new AlertDialog.Builder(this, theme)
+                .setTitle(searchScope == null ? t(S.SEARCH) : t(S.SEARCH_IN) + "  " + searchScope.title())
+                .setView(box)
+                .setPositiveButton(t(S.DONE), null);
+        if (searchScope != null) b.setNeutralButton(t(S.ALL_PLATFORMS), null);
+        AlertDialog d = b.create();
         d.setOnShowListener(x -> {
             field.requestFocus();
             d.getWindow().setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+            if (searchScope != null) d.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(v -> {
+                searchScope = null;
+                d.setTitle(t(S.SEARCH));
+                v.setVisibility(android.view.View.GONE);
+                search(field.getText().toString());
+            });
         });
+        d.setOnDismissListener(x -> rememberSearch(field.getText().toString().trim()));
         field.setOnEditorActionListener((v, action, ev) -> {
             d.dismiss();
             return true;
         });
         d.show();
+        prepareSearchIndex();
+    }
+
+    private android.widget.TextView chip(android.content.Context c, String s, Runnable onTap) {
+        android.widget.TextView v = new android.widget.TextView(c);
+        float dp = getResources().getDisplayMetrics().density;
+        v.setText(s);
+        v.setTextSize(14);
+        v.setPadding(Math.round(12 * dp), Math.round(6 * dp), Math.round(12 * dp), Math.round(6 * dp));
+        android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
+        bg.setCornerRadius(16 * dp);
+        bg.setColor(Palette.dark ? 0x33FFFFFF : 0x14000000);
+        v.setBackground(bg);
+        android.widget.LinearLayout.LayoutParams lp = new android.widget.LinearLayout.LayoutParams(-2, -2);
+        lp.setMargins(0, Math.round(8 * dp), Math.round(8 * dp), 0);
+        v.setLayoutParams(lp);
+        v.setOnClickListener(x -> onTap.run());
+        return v;
+    }
+
+    private List<String> searchHistory() {
+        List<String> out = new ArrayList<>();
+        for (String s : prefs.getString("searchHistory", "").split("\n")) if (!s.isEmpty()) out.add(s);
+        return out;
+    }
+
+    private void rememberSearch(String q) {
+        if (q.isEmpty() || shelfState.results.games.isEmpty()) return;
+        List<String> h = searchHistory();
+        h.remove(q);
+        h.add(0, q);
+        while (h.size() > 8) h.remove(h.size() - 1);
+        prefs.edit().putString("searchHistory", String.join("\n", h)).apply();
+    }
+
+    /** Pinyin of every title ("koudaiyaoguai") and its initials ("kdyg"), built once in the background. */
+    private final java.util.Map<Library.Game, String[]> pinyin = new java.util.concurrent.ConcurrentHashMap<>();
+    private boolean indexing;
+
+    private void prepareSearchIndex() {
+        if (indexing || lib == null) return;
+        indexing = true;
+        List<Library.Game> all = new ArrayList<>(lib.byKey.values());
+        new Thread(() -> {
+            android.icu.text.Transliterator tr = android.icu.text.Transliterator.getInstance("Han-Latin; Latin-ASCII; Lower");
+            for (Library.Game g : all) {
+                if (pinyin.containsKey(g)) continue;
+                String full = tr.transliterate(g.title);
+                StringBuilder ini = new StringBuilder(), joined = new StringBuilder();
+                for (String w : full.split("[^a-z0-9]+")) {
+                    if (w.isEmpty()) continue;
+                    ini.append(w.charAt(0));
+                    joined.append(w);
+                }
+                pinyin.put(g, new String[]{joined.toString(), ini.toString()});
+            }
+            main.post(() -> { indexing = false; if (shelfState.current == shelfState.results) search(shelfState.query); });
+        }, "pinyin").start();
     }
 
     private void search(String q) {
         if (shelf == null || lib == null) return;
         String needle = q.trim().toLowerCase(Locale.ROOT);
         if (needle.isEmpty()) return;
-        List<Library.Game> hits = new ArrayList<>();
-        for (Library.Platform p : lib.platforms)
-            for (Library.Game g : p.games)
-                if (g.title.toLowerCase(Locale.ROOT).contains(needle) || g.file.toLowerCase(Locale.ROOT).contains(needle)) hits.add(g);
-        shelf.showResults(q.trim(), hits);
+        String compact = needle.replaceAll("[^a-z0-9]", "");
+        boolean latin = compact.length() == needle.replace(" ", "").length();
+        java.util.LinkedHashSet<Library.Game> hits = new java.util.LinkedHashSet<>();
+        List<Library.Platform> where = new ArrayList<>();
+        if (searchScope != null) where.add(searchScope); else where.addAll(lib.platforms);
+        for (Library.Platform p : where)
+            for (Library.Game g : p.games) {
+                if (g.title.toLowerCase(Locale.ROOT).contains(needle) || g.file.toLowerCase(Locale.ROOT).contains(needle)) { hits.add(g); continue; }
+                // Latin letters also match Chinese titles by pinyin: "kdyg" or "koudai" finds 口袋妖怪
+                String[] py = latin && !compact.isEmpty() ? pinyin.get(g) : null;
+                if (py != null && (py[1].startsWith(compact) || py[1].contains(compact) && compact.length() >= 2 || py[0].contains(compact))) hits.add(g);
+            }
+        shelf.showResults(q.trim(), new ArrayList<>(hits));
     }
 
     // ---- custom folders: stored as cf.ids = "id,id" and cf.<id>.name|color|art|bg|items ----
@@ -512,7 +651,7 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
             p.bgArt = prefs.getString(fk(id, "bg"), "custom");
             for (String k : folderItems(id)) {
                 Library.Game g = lib.byKey.get(k);
-                if (g != null) p.games.add(g);
+                if (g != null && !hiddenGames.contains(k)) p.games.add(g);
             }
             lib.platforms.add(at++, p);
         }
@@ -693,6 +832,33 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         shelf.showMenu(m);
     }
 
+    @Override public void onHideFolder(Library.Platform folder) {
+        shelfState.hidden.add(folder.name);
+        prefs.edit().putStringSet("hidden", new HashSet<>(shelfState.hidden)).apply();
+        if (shelf != null) shelf.refresh();
+    }
+
+    /** Settings list of platform folders; ✓ = hidden, picking one toggles it. */
+    private void showHiddenMenu(ShelfView.Menu parent, int sel) {
+        if (shelf == null || lib == null) return;
+        ShelfView.Menu m = new ShelfView.Menu(t(S.HIDDEN_FOLDERS), null);
+        m.parent = parent;
+        List<Library.Platform> ps = new ArrayList<>();
+        for (Library.Platform p : lib.platforms) if (!p.isCustom()) ps.add(p);
+        for (int i = 0; i < ps.size(); i++) {
+            Library.Platform p = ps.get(i);
+            int idx = i;
+            m.add(p.title(), shelfState.hidden.contains(p.name), p.accent(), null, () -> {
+                if (!shelfState.hidden.remove(p.name)) shelfState.hidden.add(p.name);
+                prefs.edit().putStringSet("hidden", new HashSet<>(shelfState.hidden)).apply();
+                shelf.refresh();
+                showHiddenMenu(parent, idx);
+            });
+        }
+        m.sel = Math.max(0, Math.min(sel, ps.size() - 1));
+        shelf.showMenu(m);
+    }
+
     @Override public void onRemoveFromFolder(Library.Platform folder, Library.Game g) {
         String id = idOf(folder);
         List<String> items = folderItems(id);
@@ -756,9 +922,58 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         if (lib == null) return out;
         for (String k : prefs.getString("recent", "").split("\n")) {
             Library.Game g = lib.byKey.get(k);
-            if (g != null) out.add(g);
+            if (g != null && !hiddenGames.contains(k)) out.add(g);
         }
         return out;
+    }
+
+    // ---- hidden games: keys in prefs "hiddenGames"; each platform keeps its full list for unhiding ----
+
+    private void applyHiddenGames() {
+        if (lib == null) return;
+        for (Library.Platform p : lib.platforms) {
+            if (p.isCustom()) continue;
+            List<Library.Game> all = fullLists.computeIfAbsent(p, k -> new ArrayList<>(k.games));
+            p.games.clear();
+            for (Library.Game g : all) if (!hiddenGames.contains(g.key())) p.games.add(g);
+        }
+    }
+
+    private void hiddenGamesChanged() {
+        prefs.edit().putStringSet("hiddenGames", new HashSet<>(hiddenGames)).apply();
+        applyHiddenGames();
+        applyCustomFolders();
+        if (shelf != null) {
+            shelf.setRecent(recentGames());
+            shelf.refresh();
+        }
+    }
+
+    @Override public void onHideGame(Library.Game g) {
+        hiddenGames.add(g.key());
+        hiddenGamesChanged();
+    }
+
+    /** Settings list of hidden games and apps; picking one shows it again. */
+    private void showHiddenGamesMenu(ShelfView.Menu parent, int sel) {
+        if (shelf == null || lib == null) return;
+        ShelfView.Menu m = new ShelfView.Menu(t(S.HIDDEN_GAMES), null);
+        m.parent = parent;
+        List<String> keys = new ArrayList<>();
+        for (String k : hiddenGames) if (lib.byKey.containsKey(k)) keys.add(k);
+        keys.sort((a, b) -> lib.byKey.get(a).title.compareTo(lib.byKey.get(b).title));
+        for (int i = 0; i < keys.size(); i++) {
+            String k = keys.get(i);
+            Library.Game g = lib.byKey.get(k);
+            int idx = i;
+            m.add(g.title + "  ·  " + g.platform.title(), true, () -> {
+                hiddenGames.remove(k);
+                hiddenGamesChanged();
+                if (hiddenGames.isEmpty()) onSettings(); else showHiddenGamesMenu(parent, idx);
+            });
+        }
+        m.sel = Math.max(0, Math.min(sel, keys.size() - 1));
+        shelf.showMenu(m);
     }
 
     // ---- play time ----

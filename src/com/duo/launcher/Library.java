@@ -42,6 +42,7 @@ final class Library {
         String name = "", sortBy = "", launch = "", system = "";
         boolean scanned;             // built by scanning folders rather than from Pegasus metadata
         final List<Game> games = new ArrayList<>();
+        final Set<String> listedFiles = new HashSet<>(); // every file a Pegasus metadata file names, incl. extra discs
         // user-made folders: own name, colour, icon art and backdrop art
         String label, art, bgArt;
         int color;
@@ -58,6 +59,9 @@ final class Library {
         String pkg;                  // set for installed Android games and apps instead of a ROM file
         File path, dir;              // dir: folder that relative asset and file paths are based on
         String volumeId = "primary", relDir = "";
+        String treeDir;              // folder the emulator was granted, when it is above relDir (installed titles)
+        String titleId;              // 3DS program ID as 16 hex digits, for installed titles
+        File ownMedia;               // DuoLauncher/<platform>/media/<name>/, looked at before anything else
         Platform platform;
         final Map<String, String> assets = new HashMap<>();
         private final Map<String, File> resolved = new HashMap<>();
@@ -80,8 +84,8 @@ final class Library {
          */
         synchronized File asset(String kind) {
             if (resolved.containsKey(kind)) return resolved.get(kind);
-            File f = null;
-            if (dir != null) {
+            File f = ownMedia == null ? null : findImage(ownMedia, aliases(kind));
+            if (f == null && dir != null) {
                 String a = assets.get(kind);
                 if (a != null) {
                     File x = a.startsWith("/") ? new File(a) : new File(dir, a);
@@ -121,9 +125,9 @@ final class Library {
             {"PS1", "ps1 psx playstation", "pbp"},
             {"PS2", "ps2 playstation2", ""},
             {"PSP", "psp", "cso"},
-            {"PSV", "psv psvita vita", "vpk"},
+            {"PSV", "psv psvita vita", "vpk psvita"},
             {"PS3", "ps3 playstation3", ""},
-            {"SWITCH", "switch ns nintendoswitch", "nsp xci"},
+            {"SWITCH", "switch ns nintendoswitch", "nsp xci nsz xcz"},
     };
     /** Extensions accepted only when the folder name tells the system. */
     private static final Set<String> GENERIC = new HashSet<>(Arrays.asList("zip", "7z", "chd", "cue", "iso", "m3u"));
@@ -303,6 +307,7 @@ final class Library {
         }
         for (String f : folders) roots.add(new File(f));
         for (File r : roots) lib.scan(r, systemForFolder(r.getName()), raw, seen, 0);
+        addInstalled3ds(lib, raw);
 
         // scanned games join a Pegasus collection of the same name instead of making a second folder
         Collator col = Collator.getInstance(Locale.forLanguageTag(I18n.code()));
@@ -325,8 +330,128 @@ final class Library {
             return c != 0 ? c : a.name.compareTo(b.name);
         });
         addAndroid(ctx, lib, shownApps, col);
+        applyOwnMetadata(ctx, lib);
         for (Platform p : lib.platforms) for (Game g : p.games) lib.byKey.put(g.key(), g);
         return lib;
+    }
+
+    // ---- the launcher's own metadata: <volume>/DuoLauncher/<platform>/ ----
+
+    /**
+     * Additions and corrections kept apart from other frontends' files, in Pegasus syntax:
+     * DuoLauncher/<platform>/metadata.txt (entries matched by "file:" name or "titleid:") and
+     * DuoLauncher/<platform>/media/<file name without extension>/logo|cover|background.png.
+     * Whatever is set here wins over Pegasus, ES-DE and the game's own data.
+     */
+    private static void applyOwnMetadata(Context ctx, Library lib) {
+        List<File> roots = new ArrayList<>();
+        StorageManager sm = ctx.getSystemService(StorageManager.class);
+        for (StorageVolume v : sm.getStorageVolumes()) {
+            File r = v.getDirectory() == null ? null : new File(v.getDirectory(), "DuoLauncher");
+            if (r != null && r.isDirectory()) roots.add(r);
+        }
+        if (roots.isEmpty()) return;
+        for (Platform p : lib.platforms) {
+            if (p.isCustom() || p.games.isEmpty()) continue;
+            for (File root : roots) {
+                File dir = new File(root, p.name);
+                if (!dir.isDirectory() && !p.system.isEmpty()) dir = new File(root, p.system);
+                if (!dir.isDirectory()) continue;
+                Map<String, Game> byFile = new HashMap<>(), byId = new HashMap<>();
+                for (Game g : p.games) {
+                    if (g.path != null) byFile.put(g.path.getName(), g);
+                    if (g.titleId != null) byId.put(g.titleId, g);
+                    if (g.path != null) {
+                        File m = new File(dir, "media/" + new File(g.baseName()).getName());
+                        if (m.isDirectory()) { g.ownMedia = m; g.resolved.clear(); }
+                    }
+                }
+                File meta = new File(dir, "metadata.txt");
+                if (!meta.isFile()) continue;
+                try {
+                    for (Game e : parsePegasus(meta).games) {
+                        Game g = e.titleId != null ? byId.get(e.titleId.toUpperCase(Locale.ROOT)) : null;
+                        if (g == null && e.file != null) g = byFile.get(new File(e.file).getName());
+                        if (g == null) continue;
+                        if (e.title != null && !e.title.isEmpty()) g.title = e.title;
+                        if (!e.description.isEmpty()) g.description = e.description;
+                        if (!e.developer.isEmpty()) g.developer = e.developer;
+                        for (Map.Entry<String, String> a : e.assets.entrySet())
+                            g.assets.put(a.getKey(), new File(dir, a.getValue()).getAbsolutePath());
+                        if (!e.assets.isEmpty()) g.resolved.clear();
+                        // media/<own title>/ also works, handy for installed titles whose file is just 00000000.app
+                        File m = new File(dir, "media/" + g.title);
+                        if (g.ownMedia == null && m.isDirectory()) { g.ownMedia = m; g.resolved.clear(); }
+                    }
+                } catch (IOException ignored) {
+                }
+            }
+        }
+    }
+
+    // ---- 3DS titles installed into an emulator (from .cia files) ----
+
+    /** Emulator user folders on internal storage, and how to start a title installed there. */
+    private static final String[][] CTR_HOMES = {
+            {"azahar", "io.github.azaharplus.android"}, {"citra-emu", "org.citra.emu"}};
+
+    /**
+     * Adds installed games (title/00040000/<id>/content/*.app) to the 3DS page. Titles that are also on the
+     * card as a ROM file are left out; updates and DLC live under other title types and are skipped.
+     */
+    private static void addInstalled3ds(Library lib, Map<String, Platform> raw) {
+        File prim = Environment.getExternalStorageDirectory();
+        Platform p = raw.get("3DS");
+        Set<Long> have = new HashSet<>();
+        List<Game> known = new ArrayList<>();
+        if (p != null) known.addAll(p.games);
+        for (Platform q : lib.platforms) if ("3DS".equals(q.system)) known.addAll(q.games);
+        for (Game g : known) {
+            Object[] info = g.path == null ? null : Icons.ctrInfo(g.path);
+            if (info != null) have.add((Long) info[0]);
+        }
+        for (String[] home : CTR_HOMES) {
+            File[] id0s = new File(prim, home[0] + "/sdmc/Nintendo 3DS").listFiles(File::isDirectory);
+            if (id0s == null) continue;
+            for (File id0 : id0s) {
+                File[] id1s = id0.listFiles(File::isDirectory);
+                if (id1s == null) continue;
+                for (File id1 : id1s) {
+                    File[] titles = new File(id1, "title/00040000").listFiles(File::isDirectory);
+                    if (titles == null) continue;
+                    for (File t : titles) {
+                        File content = new File(t, "content");
+                        File[] apps = content.listFiles((d, n) -> n.toLowerCase(Locale.ROOT).endsWith(".app"));
+                        if (apps == null || apps.length == 0) continue;
+                        File main = apps[0];
+                        for (File a : apps) if (a.length() > main.length()) main = a;
+                        Object[] info = Icons.ctrInfo(main);
+                        if (info == null || info[1] == null || !have.add((Long) info[0])) continue;
+                        if (p == null) {
+                            p = new Platform();
+                            p.name = p.system = "3DS";
+                            p.scanned = true;
+                            p.launch = defaultLaunch("3DS");
+                            raw.put("3DS", p);
+                        }
+                        Game g = new Game();
+                        g.file = main.getName();
+                        g.title = (String) info[1];
+                        g.platform = p;
+                        g.scanned = true;
+                        g.titleId = String.format(Locale.ROOT, "%016X", (Long) info[0]);
+                        place(g, content);
+                        if (home[1].equals(PKG_CITRA)) {
+                            g.launch = CITRA;
+                        } else {
+                            g.treeDir = home[0]; // the emulator holds access to its whole user folder
+                            g.launch = azahar(home[1]);
+                        }
+                        p.games.add(g);
+                    }
+                }
+            }
+        }
     }
 
     // ---- installed Android games and apps ----
@@ -336,7 +461,9 @@ final class Library {
             "io.github.azaharplus.android", "org.azahar_emu.azahar", "org.citra.emu", "com.dsemu.drastic",
             "com.retroarch.aarch64", "com.retroarch", "org.pegasus_frontend.android", "me.magnum.melonds",
             "org.ppsspp.ppsspp", "org.ppsspp.ppssppgold", "xyz.aethersx2.android", "com.github.stenzek.duckstation",
-            "org.vita3k.emulator", "com.retroidpocket.gamelauncher", "com.android.launcher3", "com.teslacoilsw.launcher"));
+            "org.vita3k.emulator", "com.retroidpocket.gamelauncher", "com.android.launcher3", "com.teslacoilsw.launcher",
+            "com.armsx2", "dev.eden.eden_emulator", "com.flycast.emulator", "org.dolphinemu.mmjr", "org.dolphinemu.dolphinemu",
+            "org.mupen64plusae.v3.fzurita.pro", "org.mupen64plusae.v3.fzurita"));
 
     private static boolean isGame(ApplicationInfo ai) {
         return ai.category == ApplicationInfo.CATEGORY_GAME || (ai.flags & ApplicationInfo.FLAG_IS_GAME) != 0;
@@ -403,6 +530,25 @@ final class Library {
                 p.system = hint != null ? hint : systemFromGames(p);
                 for (Game g : p.games) place(g, dir);
                 p.games.removeIf(g -> g.file == null || !g.path.isFile());
+                // games copied in later without a metadata entry still show up
+                Set<String> listed = new HashSet<>(p.listedFiles);
+                List<Game> extra = new ArrayList<>();
+                for (File f : fs) {
+                    String n = f.getName();
+                    if (f.isDirectory() || n.startsWith(".") || listed.contains(n)) continue;
+                    if (systemForFile(extension(n), p.system.isEmpty() ? hint : p.system) == null) continue;
+                    Game g = new Game();
+                    g.file = n;
+                    g.title = n.substring(0, n.length() - extension(n).length() - (extension(n).isEmpty() ? 0 : 1));
+                    g.platform = p;
+                    g.scanned = true;
+                    place(g, dir);
+                    extra.add(g);
+                }
+                if (!extra.isEmpty()) {
+                    applyGamelists(dir, extra);
+                    p.games.addAll(extra);
+                }
                 if (!p.games.isEmpty()) platforms.add(p);
             } catch (IOException ignored) {
             }
@@ -521,10 +667,15 @@ final class Library {
                     break;
                 case "file":
                 case "files":
+                    for (String f : v.split("\n")) if (!f.trim().isEmpty()) p.listedFiles.add(new File(f.trim()).getName());
                     if (g != null && g.file == null) {
                         String f = firstLine(v);
                         if (!f.isEmpty()) g.file = f;
                     }
+                    break;
+                case "titleid":
+                case "title-id":
+                    if (g != null) g.titleId = v.trim().toUpperCase(Locale.ROOT);
                     break;
                 case "launch":
                 case "command":
@@ -661,7 +812,19 @@ final class Library {
     // ---- emulators ----
 
     static final String PKG_AZAHAR_PLUS = "io.github.azaharplus.android", PKG_AZAHAR = "org.azahar_emu.azahar",
-            PKG_CITRA = "org.citra.emu", PKG_DRASTIC = "com.dsemu.drastic", PKG_RETROARCH = "com.retroarch.aarch64";
+            PKG_CITRA = "org.citra.emu", PKG_DRASTIC = "com.dsemu.drastic", PKG_RETROARCH = "com.retroarch.aarch64",
+            PKG_ARMSX2 = "com.armsx2", PKG_AETHERSX2 = "xyz.aethersx2.android", PKG_VITA3K = "org.vita3k.emulator",
+            PKG_EDEN = "dev.eden.eden_emulator", PKG_PPSSPP = "org.ppsspp.ppsspp",
+            PKG_DUCKSTATION = "com.github.stenzek.duckstation", PKG_MUPEN = "org.mupen64plusae.v3.fzurita.pro";
+
+    // standalone emulators that take a content link get the game through RomProvider
+    static final String ARMSX2 = "am start --user 0 -n com.armsx2/.MainActivity -a android.intent.action.VIEW -d {file.provider} --activity-clear-top";
+    static final String AETHERSX2 = "am start --user 0 -n xyz.aethersx2.android/.EmulationActivity -a android.intent.action.MAIN -e bootPath {file.provider}";
+    static final String VITA3K = "am start --user 0 -n org.vita3k.emulator/.Emulator -a android.intent.action.MAIN --esa AppStartParameters \"-r,{vita.titleid}\"";
+    static final String EDEN = "am start --user 0 -n dev.eden.eden_emulator/org.yuzu.yuzu_emu.activities.EmulationActivity -a android.intent.action.VIEW -d {file.provider} --activity-clear-task";
+    static final String PPSSPP = "am start --user 0 -n org.ppsspp.ppsspp/.PpssppActivity -a android.intent.action.VIEW -d {file.provider} --activity-clear-task";
+    static final String DUCKSTATION = "am start --user 0 -n com.github.stenzek.duckstation/.EmulationActivity -a android.intent.action.MAIN -e bootPath {file.path}";
+    static final String MUPEN = "am start --user 0 -n org.mupen64plusae.v3.fzurita.pro/paulscode.android.mupen64plusae.SplashActivity -a android.intent.action.VIEW -d {file.provider}";
 
     private static String azahar(String pkg) {
         return "am start --user 0 -n " + pkg + "/org.citra.citra_emu.activities.EmulationActivity"
@@ -718,6 +881,7 @@ final class Library {
                 break;
             case "N64":
                 o.add(new String[]{"RetroArch · Mupen64Plus-Next", retroArch("mupen64plus_next_gles3"), PKG_RETROARCH});
+                o.add(new String[]{"Mupen64Plus FZ", MUPEN, PKG_MUPEN});
                 break;
             case "MD":
                 o.add(new String[]{"RetroArch · Genesis Plus GX", retroArch("genesis_plus_gx"), PKG_RETROARCH});
@@ -726,9 +890,21 @@ final class Library {
             case "PS1":
                 o.add(new String[]{"RetroArch · PCSX ReARMed", retroArch("pcsx_rearmed"), PKG_RETROARCH});
                 o.add(new String[]{"RetroArch · SwanStation", retroArch("swanstation"), PKG_RETROARCH});
+                o.add(new String[]{"DuckStation", DUCKSTATION, PKG_DUCKSTATION});
+                break;
+            case "PS2":
+                o.add(new String[]{"ARMSX2", ARMSX2, PKG_ARMSX2});
+                o.add(new String[]{"AetherSX2", AETHERSX2, PKG_AETHERSX2});
                 break;
             case "PSP":
+                o.add(new String[]{"PPSSPP", PPSSPP, PKG_PPSSPP});
                 o.add(new String[]{"RetroArch · PPSSPP", retroArch("ppsspp"), PKG_RETROARCH});
+                break;
+            case "PSV":
+                o.add(new String[]{"Vita3K", VITA3K, PKG_VITA3K});
+                break;
+            case "SWITCH":
+                o.add(new String[]{"Eden", EDEN, PKG_EDEN});
                 break;
             default:
                 break;
@@ -761,6 +937,13 @@ final class Library {
         if (cmd.contains(PKG_AZAHAR)) return "Azahar";
         if (cmd.contains(PKG_CITRA)) return "Citra MMJ";
         if (cmd.contains("drastic")) return "DraStic";
+        if (cmd.contains(PKG_ARMSX2 + "/")) return "ARMSX2";
+        if (cmd.contains(PKG_AETHERSX2)) return "AetherSX2";
+        if (cmd.contains(PKG_VITA3K)) return "Vita3K";
+        if (cmd.contains(PKG_EDEN)) return "Eden";
+        if (cmd.contains(PKG_PPSSPP)) return "PPSSPP";
+        if (cmd.contains(PKG_DUCKSTATION)) return "DuckStation";
+        if (cmd.contains(PKG_MUPEN)) return "Mupen64Plus FZ";
         if (cmd.contains("retroarch")) {
             Matcher m = CORE.matcher(cmd);
             return "RetroArch" + (m.find() ? " · " + m.group(1) : "");
