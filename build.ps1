@@ -29,6 +29,11 @@ Copy-Item "$out\base.apk" "$out\unsigned.apk"
 Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem
 $z = [IO.Compression.ZipFile]::Open("$out\unsigned.apk", 'Update')
 [void][IO.Compression.ZipFileExtensions]::CreateEntryFromFile($z, "$out\dex\classes.dex", 'classes.dex')
+# assets added here rather than with aapt2 -A, which writes Windows backslashes into entry names
+foreach ($f in Get-ChildItem "$root\assets" -Recurse -File) {
+    $name = 'assets/' + $f.FullName.Substring("$root\assets\".Length).Replace('\', '/')
+    [void][IO.Compression.ZipFileExtensions]::CreateEntryFromFile($z, $f.FullName, $name, 'NoCompression')
+}
 $z.Dispose()
 
 & "$bt\zipalign.exe" -f -p 4 "$out\unsigned.apk" "$out\aligned.apk"

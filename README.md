@@ -31,6 +31,12 @@ powershell -File build.ps1 -Install   # 并通过 adb 安装到掌机、授予�
 
 第一次编译时会自动生成调试签名 `debug.keystore`（不入库）。
 
+## 主机图片
+
+`assets/consoles/<平台>.png` 会被打包进 APK，用于上屏的主机大图和下屏文件夹；缺图的平台用代码画的示意图。
+现有照片来自 Wikimedia Commons，摄影 Evan-Amos，公有领域（Public domain）：
+`Nintendo-3DS-AquaOpen.png`、`Nintendo-Game-Boy-Color-FL.png`。白底的照片由脚本把背景抠成透明并缩到 1100px。
+
 ## 启动方式备忘
 
 - AzaharPlus 只接受它已获授权的文件夹下的 tree URI：

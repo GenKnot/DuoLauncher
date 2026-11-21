@@ -44,6 +44,7 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         StrictMode.setVmPolicy(new StrictMode.VmPolicy.Builder().build());
         prefs = getSharedPreferences("duo", MODE_PRIVATE);
         icons = new Icons(this);
+        ConsoleDrawable.loadPhotos(getAssets());
         top = new TopView(this, icons);
         setContentView(top);
     }

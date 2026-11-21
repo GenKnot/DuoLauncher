@@ -1,5 +1,8 @@
 package com.duo.launcher;
 
+import android.content.res.AssetManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.ColorFilter;
 import android.graphics.LinearGradient;
@@ -11,8 +14,27 @@ import android.graphics.RectF;
 import android.graphics.Shader;
 import android.graphics.drawable.Drawable;
 
-/** Vector stand-in for a console photo (placeholder until real artwork is supplied). */
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.HashMap;
+import java.util.Map;
+
+/** Console picture: a bundled photo from assets/consoles/<type>.png, or a vector stand-in. */
 final class ConsoleDrawable extends Drawable {
+    private static final Map<String, Bitmap> PHOTOS = new HashMap<>();
+
+    /** Loads the bundled console photos once, at start-up. */
+    static void loadPhotos(AssetManager am) {
+        if (!PHOTOS.isEmpty()) return;
+        for (String t : new String[]{"3ds", "nds", "gba", "gbc", "gb", "ps2"}) {
+            try (InputStream in = am.open("consoles/" + t + ".png")) {
+                Bitmap b = BitmapFactory.decodeStream(in);
+                if (b != null) PHOTOS.put(t, b);
+            } catch (IOException ignored) {
+            }
+        }
+    }
+
     private final String type;
     private final boolean shadow;
     private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -26,6 +48,11 @@ final class ConsoleDrawable extends Drawable {
     @Override public void draw(Canvas c) {
         Rect b = getBounds();
         float w = b.width(), h = b.height();
+        Bitmap photo = PHOTOS.get(type);
+        if (photo != null) {
+            drawPhoto(c, b, photo);
+            return;
+        }
         // unit box aspect per console
         float aspect;
         switch (type) {
@@ -59,6 +86,25 @@ final class ConsoleDrawable extends Drawable {
             default: body(c, 0, 0, u, u * 0.7f, u * 0.08f, 0xFF4A90D9);
         }
         c.restore();
+    }
+
+    private void drawPhoto(Canvas c, Rect b, Bitmap photo) {
+        float avail = shadow ? b.height() * 0.9f : b.height();
+        float k = Math.min(b.width() / (float) photo.getWidth(), avail / photo.getHeight());
+        float dw = photo.getWidth() * k, dh = photo.getHeight() * k;
+        float left = b.left + (b.width() - dw) / 2, top = b.top + (avail - dh) / 2;
+        if (shadow) {
+            float cx = b.centerX(), cy = top + dh + b.height() * 0.035f, rad = dw * 0.55f;
+            p.setShader(new RadialGradient(cx, cy, rad, 0x48000000, 0x00000000, Shader.TileMode.CLAMP));
+            c.save();
+            c.scale(1f, 0.1f, cx, cy);
+            c.drawCircle(cx, cy, rad, p);
+            c.restore();
+            p.setShader(null);
+        }
+        r.set(left, top, left + dw, top + dh);
+        p.setFilterBitmap(true);
+        c.drawBitmap(photo, null, r, p);
     }
 
     private static int shade(int color, float f) {
