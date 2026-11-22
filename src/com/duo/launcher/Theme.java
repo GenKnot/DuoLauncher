@@ -342,10 +342,10 @@ final class Theme {
         Bitmap b = cache.get(key);
         if (b != null || absent.containsKey(key)) return b;
         List<File> own = new ArrayList<>();
-        if (!owner.startsWith("tool:")) {
-            if (dark) own.add(file(owner, BACKGROUND_DARK));
-            own.add(file(owner, BACKGROUND));
-        }
+        // a home tool's own backdrop is kept as "tool-<id>", like its icon
+        String ownName = owner.startsWith("tool:") ? "tool-" + owner.substring(5) : owner;
+        if (dark) own.add(file(ownName, BACKGROUND_DARK));
+        own.add(file(ownName, BACKGROUND));
         for (File f : own) if (b == null && f.isFile()) b = BitmapFactory.decodeFile(f.getPath());
         if (b == null && pack != null) {
             List<String> names = new ArrayList<>();
@@ -378,6 +378,7 @@ final class Theme {
 
     /** Drops cached pictures of a platform, after its chosen artwork changed. */
     static void forgetPlatform(String platform) {
+        if (platform.startsWith("tool-")) forget("tool:" + platform.substring(5), BACKGROUND);
         forget(platform, CONSOLE);
         forget(platform, BACKGROUND);
         forget(platform, BACKGROUND_DARK);

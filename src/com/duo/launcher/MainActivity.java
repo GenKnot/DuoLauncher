@@ -681,6 +681,13 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
             Theme.reset(tp.name, Theme.CONSOLE);
             iconChanged.run();
         });
+        // and its backdrop on the upper screen
+        m.add(t(S.BACKGROUND_LIGHT) + "  ·  " + t(S.AI_MAKE), false, () -> { shelf.closeMenu(); aiPicture(tp, Theme.BACKGROUND, iconChanged); });
+        m.add(t(S.BACKGROUND_LIGHT) + "  ·  " + t(S.PICK_IMAGE), false, () -> pickImage(tp, Theme.BACKGROUND));
+        if (Theme.isCustom(tp.name, Theme.BACKGROUND)) m.add(t(S.BACKGROUND_LIGHT) + "  ·  " + t(S.RESET_DEFAULT), false, () -> {
+            Theme.reset(tp.name, Theme.BACKGROUND);
+            iconChanged.run();
+        });
         m.add(t(S.RENAME), false, () -> askText(t(S.RENAME), label, name -> {
             prefs.edit().putString("tool." + id + ".name", name).apply();
             loadToolLooks();
@@ -906,7 +913,7 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
     /** What the picture of a home tool tile shows, in words the image service understands. */
     private static String toolSubject(String id, String label) {
         switch (id) {
-            case "storage": return "a chunky SD memory card with a storage gauge bar";
+            case "storage": return "SD memory cards, a storage gauge bar, folders and boxes";
             case "stats": return "a golden trophy with small bar charts";
             case "random": return "two dice";
             case "search": return "a magnifying glass over a game cartridge";

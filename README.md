@@ -351,7 +351,7 @@ Point it at your ROM folders and it finds the games, shows them on the lower scr
 - **Custom artwork** – replace any platform's console picture, light and dark backdrop, and folder colour in Settings → Platform look.
 - **Text size** – four sizes for both screens.
 - **Cover margin** – game pictures fill their tiles, or all sit with the same small, medium or large margin; white frames baked into cover pictures are trimmed.
-- **Clay icons everywhere** – every home tile, console and genre folder can get its own picture or one drawn by the image service in the bundled clay style (Y → Icon); Settings → AI and voice → AI: genre folder icons can draw the whole set again in one style.
+- **Clay icons everywhere** – every home tile, console and genre folder can get its own picture or one drawn by the image service in the bundled clay style (Y → Icon); the built-in tiles (Statistics, Storage, What to play? …) can also get their own upper-screen backdrop, picked or drawn in the paper-cut style; Settings → AI and voice → AI: genre folder icons can draw the whole set again in one style.
 - **Screensaver** – after a few idle minutes the upper screen shows your covers with a clock and the lower screen goes black. Text changes corner with every picture and drifts slowly, so nothing burns into an OLED panel.
 
 ### Handy tools · 实用工具
