@@ -2737,15 +2737,25 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         if (shelf != null) shelf.refresh();
     }
 
+    /** A dialog's field, lined up with the dialog's title instead of touching its edges. */
+    private android.view.View inset(android.view.View field) {
+        android.widget.FrameLayout box = new android.widget.FrameLayout(field.getContext());
+        int pad = Math.round(20 * getResources().getDisplayMetrics().density);
+        box.setPadding(pad, pad / 2, pad, 0);
+        box.addView(field);
+        return box;
+    }
+
     /** Text input on the upper screen. */
     private void askText(String title, String initial, java.util.function.Consumer<String> done) {
-        EditText field = new EditText(this);
+        int theme = Palette.dark ? android.R.style.Theme_DeviceDefault_Dialog_Alert : android.R.style.Theme_DeviceDefault_Light_Dialog_Alert;
+        // the field takes its text colour from the dialog's theme, not the launcher's (which made it pale on a light dialog)
+        EditText field = new EditText(new android.view.ContextThemeWrapper(this, theme));
         field.setSingleLine(true);
         field.setImeOptions(EditorInfo.IME_FLAG_NO_EXTRACT_UI | EditorInfo.IME_FLAG_NO_FULLSCREEN | EditorInfo.IME_ACTION_DONE);
         field.setText(initial);
         field.selectAll();
-        int theme = Palette.dark ? android.R.style.Theme_DeviceDefault_Dialog_Alert : android.R.style.Theme_DeviceDefault_Light_Dialog_Alert;
-        AlertDialog d = new AlertDialog.Builder(this, theme).setTitle(title).setView(field)
+        AlertDialog d = new AlertDialog.Builder(this, theme).setTitle(title).setView(inset(field))
                 .setPositiveButton(t(S.DONE), (x, w) -> {
                     String s = field.getText().toString().trim();
                     if (!s.isEmpty()) done.accept(s);
@@ -3696,15 +3706,15 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
 
     /** Several lines of cheat code, "XXXXXXXX YYYYYYYY" each; anything else is refused with a hint. */
     private void askCodes(boolean strict, java.util.function.Consumer<List<String>> done) {
-        EditText field = new EditText(this);
+        int theme = Palette.dark ? android.R.style.Theme_DeviceDefault_Dialog_Alert : android.R.style.Theme_DeviceDefault_Light_Dialog_Alert;
+        EditText field = new EditText(new android.view.ContextThemeWrapper(this, theme));
         field.setSingleLine(false);
         field.setMinLines(4);
         field.setHint(strict ? "12345678 0000FFFF" : "82025F42 0063");
         field.setTypeface(android.graphics.Typeface.MONOSPACE);
         field.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE
                 | android.text.InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS | android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
-        int theme = Palette.dark ? android.R.style.Theme_DeviceDefault_Dialog_Alert : android.R.style.Theme_DeviceDefault_Light_Dialog_Alert;
-        AlertDialog d = new AlertDialog.Builder(this, theme).setTitle(t(S.CHEAT_CODES)).setView(field)
+        AlertDialog d = new AlertDialog.Builder(this, theme).setTitle(t(S.CHEAT_CODES)).setView(inset(field))
                 .setPositiveButton(t(S.DONE), null).setNegativeButton(t(S.CANCEL), null).create();
         d.setOnShowListener(x -> {
             field.requestFocus();
