@@ -13,42 +13,112 @@ Point it at your ROM folders and it finds the games, shows them on the lower scr
 
 <table>
   <tr>
-    <th>Game page with play time · 游戏页与游玩时间</th>
-    <th>Icons read from the ROMs · ROM 自带图标</th>
+    <th>Game page with video preview · 游戏页与视频预览</th>
+    <th>Logo, cover or video, per game · 每个游戏可选上屏显示</th>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/en_3dsgame.png" alt="3DS game page"></td>
-    <td><img src="docs/screenshots/en_ndsgame.png" alt="NDS game list"></td>
+    <td><img src="docs/screenshots/en_game.png" alt="Game page"></td>
+    <td><img src="docs/screenshots/en_menu.png" alt="Game menu"></td>
+  </tr>
+  <tr>
+    <th>List view · 列表视图</th>
+    <th>Play statistics · 游玩统计</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/en_list.png" alt="List view"></td>
+    <td><img src="docs/screenshots/en_stats.png" alt="Play statistics"></td>
+  </tr>
+  <tr>
+    <th>Colour themes · 颜色主题</th>
+    <th>Theme colours reach the backdrops · 主题色会染到上屏背景</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/en_themes.png" alt="Theme menu"></td>
+    <td><img src="docs/screenshots/en_pink.png" alt="Pink theme"></td>
   </tr>
   <tr>
     <th>Dark mode · 深色模式</th>
     <th>Dark mode · 深色模式</th>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/en_dnds.png" alt="Dark mode, NDS"></td>
-    <td><img src="docs/screenshots/en_dndsgame.png" alt="Dark mode, NDS game list"></td>
+    <td><img src="docs/screenshots/en_d3ds.png" alt="Dark mode, 3DS"></td>
+    <td><img src="docs/screenshots/en_dstats.png" alt="Dark mode, statistics"></td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/en_dsearch.png" alt="Dark mode, search"></td>
-    <td><img src="docs/screenshots/en_dsettings.png" alt="Dark mode, settings"></td>
+    <th>Wi-Fi transfer · Wi-Fi 传输</th>
+    <th>Tidy-up tools · 整理工具</th>
   </tr>
   <tr>
-    <th>Search, your own folders, settings · 搜索、自定义文件夹、设置</th>
+    <td><img src="docs/screenshots/en_wifi.png" alt="Wi-Fi transfer"></td>
+    <td><img src="docs/screenshots/en_tools.png" alt="Tools"></td>
+  </tr>
+  <tr>
+    <th>Screensaver (OLED-safe) · 屏保（防烧屏）</th>
     <th>11 languages · 11 种语言</th>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/en_search.png" alt="Search, new folder and settings"></td>
-    <td><img src="docs/screenshots/en_lang.png" alt="Language menu"></td>
-  </tr>
-  <tr>
-    <th>简体中文</th>
-    <th>简体中文 · 深色</th>
-  </tr>
-  <tr>
-    <td><img src="docs/screenshots/zh_game.png" alt="Chinese UI"></td>
-    <td><img src="docs/screenshots/zh_dark.png" alt="Chinese UI, dark mode"></td>
+    <td><img src="docs/screenshots/en_saver.png" alt="Screensaver"></td>
+    <td><img src="docs/screenshots/en_lang.png" alt="Languages"></td>
   </tr>
 </table>
+
+<details>
+<summary><b>简体中文截图</b></summary>
+
+<p align="center"><img src="docs/screenshots/zh_light-dark.png" alt="浅色与深色"></p>
+
+<table>
+  <tr>
+    <th>主页</th>
+    <th>游戏页</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/zh_home.png" alt="主页"></td>
+    <td><img src="docs/screenshots/zh_game.png" alt="游戏页"></td>
+  </tr>
+  <tr>
+    <th>上屏显示：Logo / 封面 / 视频</th>
+    <th>列表视图</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/zh_menu.png" alt="游戏菜单"></td>
+    <td><img src="docs/screenshots/zh_list.png" alt="列表视图"></td>
+  </tr>
+  <tr>
+    <th>游玩统计</th>
+    <th>游玩统计 · 深色</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/zh_stats.png" alt="游玩统计"></td>
+    <td><img src="docs/screenshots/zh_dstats.png" alt="游玩统计 深色"></td>
+  </tr>
+  <tr>
+    <th>颜色主题</th>
+    <th>樱花粉主题</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/zh_themes.png" alt="主题"></td>
+    <td><img src="docs/screenshots/zh_pink.png" alt="樱花粉"></td>
+  </tr>
+  <tr>
+    <th>Wi-Fi 传输</th>
+    <th>整理工具</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/zh_wifi.png" alt="Wi-Fi 传输"></td>
+    <td><img src="docs/screenshots/zh_tools.png" alt="整理工具"></td>
+  </tr>
+  <tr>
+    <th>深色模式</th>
+    <th>屏保</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/zh_dark.png" alt="深色模式"></td>
+    <td><img src="docs/screenshots/zh_saver.png" alt="屏保"></td>
+  </tr>
+</table>
+
+</details>
 
 ## Features
 
@@ -60,6 +130,11 @@ Point it at your ROM folders and it finds the games, shows them on the lower scr
 - **Lower screen (1280×960)** – platform folders and a zoomable icon grid. Works with the gamepad and with touch.
 - **Play time** – how long and when you last played each game, Switch-style. With Usage access granted it counts only the time the game was really on screen.
 - **Search** – R3 or the search button; results update as you type. Chinese titles also match pinyin and its initials (`kdyg` → 口袋妖怪), opened from inside a platform it searches only that platform, and recent searches are one tap away.
+- **Continue and favorites** – the first home tile jumps straight back into the last game; star games with Y to collect them in a Favorites folder.
+- **Sort and filter** (SELECT) – default order, name, recently played or most played, and show only 简 / 繁 / 英 games.
+- **Themes** – colour schemes, console art, backdrops, font, sounds and music from a folder; see [Themes](#themes).
+- **Sounds** – soft UI sounds (can be turned off) and each 3DS game's own banner tune when it is selected.
+- **Starts instantly** – the last scan is cached, so the home screen is up in a second and the scan runs in the background.
 - **Hide what you don't play** – hide a platform folder, or a single game or app (Y → Hide); bring them back in Settings.
 - **First-start setup** – language, then every permission it uses (file access, usage access for play time, home screen) on one page, also under Settings → Permissions.
 - **Light and dark mode** – follows the system or set it yourself.
@@ -78,9 +153,18 @@ Point it at your ROM folders and it finds the games, shows them on the lower scr
   | PSP | PPSSPP, RetroArch · PPSSPP |
   | PS Vita | Vita3K (by title ID, e.g. a file named `PCSE00000.psvita` or a name containing it) |
   | Switch | Eden |
+- **Video previews** – a game's video snap (`videos/` or `video.mp4` in its media folder) starts on the upper screen after a moment; per game you can choose logo, cover or video instead (Y → Top screen).
+- **List view** – press X until the grid becomes a list with names, play time and last played.
+- **Play statistics** – total play time, this week by day, time per platform and the most played games.
+- **Screensaver** – after a few idle minutes the upper screen shows your covers with a clock and the lower screen goes black. Text changes corner with every picture and drifts slowly, so nothing burns into an OLED panel.
+- **Wi-Fi transfer** – Settings → Wi-Fi transfer shows an address; open it in a browser on the same network and drop ROMs or theme packs straight into any platform folder.
+- **Tidy-up tools** (Settings → Tools) – find duplicate games, list games without pictures, fetch missing NDS/GBA box art and title screens from the libretro thumbnail sets (matched by the game code in the ROM), back up and restore emulator saves (DraStic, RetroArch, PPSSPP, AetherSX2, DuckStation, Mupen64Plus FZ, Azahar, Citra), export the current theme as a zip, and a diagnostics page.
+- **Button layout** – swap A/B and X/Y for Nintendo- or Xbox-style confirm buttons.
 - **Custom artwork** – replace any platform's console picture or backdrop in Settings → Platform look.
 - **Works with existing setups** – reads Pegasus `metadata.pegasus.txt`, ES-DE / EmulationStation `gamelist.xml` and `downloaded_media`, RetroArch thumbnails, and `media/`, `covers/`, `images/` folders next to the games.
-- **Home screen** – can be set as the default home app so it starts on boot.
+- **Home screen** – can be set as the default home app so it starts on boot; the Android home tile (or Settings → Exit to Android home) leads back to the system home screen.
+- **Everything on the home page is yours** – every built-in tile (Continue, Recently played, Favorites, New folder, Search, Settings, Android home) and every platform folder can be renamed, recoloured or hidden, and brought back under Settings → Hidden folders.
+- **Text size** – four sizes for both screens.
 - **11 languages** – 简体中文, 繁體中文, English, 日本語, 한국어, Français, Español, Deutsch, Italiano, Português, Русский.
 
 ## Your own game info
@@ -102,6 +186,37 @@ titleid: 0004000000065600
 description: …
 ```
 
+Names and descriptions can be given per language with `name.<language>:` and `description.<language>:` (`en`, `zh-CN`, `zh-TW`, `ja`, `ko`, `fr`, `es`, `de`, `it`, `pt`, `ru`; `zh` covers both Chinese). They are used while the launcher runs in that language, so one folder can serve players of several languages:
+
+```
+game: 塞尔达传说 姆祖拉的假面
+file: 塞尔达传说 姆祖拉的假面 汉化版.cci
+name.en: The Legend of Zelda: Majora's Mask 3D
+description.en: Link has three days before the moon falls on Termina…
+```
+
+## Themes
+
+Settings → Theme offers seven built-in colour themes (blue, red, green, purple, orange, pink, graphite), **Custom colours** (pick a main colour and a background colour; every shade for light and dark mode is worked out from them), and any installed theme packs. A theme colours both screens, including the line-art backdrops on the upper screen.
+
+Settings → Platform look sets, per platform, the console picture, a separate light-mode and dark-mode backdrop, and the folder colour.
+
+A theme pack is a folder (or a `.zip` of one, unpacked on first use) in `DuoLauncher/themes/` on the SD card or internal storage, picked in Settings → Theme. Everything is optional; whatever a theme leaves out comes from the built-in look, so a theme can be as small as a few colours.
+
+```
+DuoLauncher/themes/my-theme/
+  theme.txt                      name, author, colours (see below)
+  consoles/<type>.png            console pictures      (3ds, nds, gba, ..., recent, search, settings, custom)
+  backgrounds/<type>.jpg         upper-screen backdrops
+  backgrounds/dark/<type>.jpg    backdrops for dark mode
+  logo.png
+  font.ttf, font-bold.ttf
+  sounds/move|open|back|launch.ogg   (or .wav / .mp3)
+  music.ogg                      loops on the home screen
+```
+
+`theme.txt` uses `key: value` lines: `color.<name>` for light mode and `dark.color.<name>` for dark mode, with names such as `accent`, `shelf-top`, `shelf-bottom`, `card`, `text`, `pill`, `footer`, `backdrop-paper` / `backdrop-ink` (the upper-screen line art) and `folder.<type>` for the home folders. `base-color: #RRGGBB` alone is enough for a complete colour scheme. [themes/sakura](themes/sakura/theme.txt) is a complete example with every key explained. Settings → Tools → Export current theme saves whatever you have set up as a zip that others can drop into their own `themes/` folder.
+
 ## Controls
 
 | Button | Action |
@@ -110,9 +225,10 @@ description: …
 | A | Open / play |
 | B | Back |
 | L / R | Previous / next platform |
-| X | Icon size |
-| Y | Choose emulator, add to a folder, hide, or edit a folder |
-| SELECT | Sort (default / by name) |
+| X | Icon size, then list view |
+| Y | Choose emulator, favorite, add to a folder, top-screen display, hide, or edit a folder; on the home page also rename, recolour or hide any tile |
+| START | Settings (from the home page, even with the Settings tile hidden) |
+| SELECT | Sort and language filter |
 | R3 | Search |
 
 ## Building
@@ -129,7 +245,7 @@ A debug signing key (`debug.keystore`) is generated on the first build and is no
 
 ## Artwork
 
-`assets/consoles/<type>.png` (chibi console renders) and `assets/backgrounds/<type>.jpg` (monochrome backdrops, inverted automatically in dark mode) were made for this project.
+`assets/consoles/<type>.png` (chibi console renders) and `assets/backgrounds/<type>.jpg` (paper-cut line-art backdrops, with their own versions in `backgrounds/dark/`) were made for this project. The backdrops are greyscale, so a colour theme can tint them.
 Platforms without a picture fall back to a drawn console.
 
 ## Launch notes

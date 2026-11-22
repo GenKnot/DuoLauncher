@@ -30,11 +30,29 @@ final class BackdropView extends View {
     private final RectF r = new RectF();
     private final Rect src = new Rect();
     private final DashPathEffect dash = new DashPathEffect(new float[]{4, 14}, 0);
-    private static final ColorMatrixColorFilter INVERT = new ColorMatrixColorFilter(new ColorMatrix(new float[]{
-            -0.85f, 0, 0, 0, 235,
-            0, -0.85f, 0, 0, 240,
-            0, 0, -0.80f, 0, 250,
-            0, 0, 0, 1, 0}));
+    private static ColorMatrixColorFilter duo;
+    private static int duoPaper, duoInk;
+
+    /**
+     * The backdrops are black lines on white paper; this maps white to the paper colour and black to the
+     * ink colour of the current mode and theme (by default white/dark, or navy/pale in dark mode).
+     */
+    static ColorMatrixColorFilter duotone(int paper, int ink) {
+        if (duo != null && paper == duoPaper && ink == duoInk) return duo;
+        float[] m = new float[20];
+        for (int ch = 0; ch < 3; ch++) {
+            int sh = 16 - ch * 8;
+            float pc = (paper >> sh) & 255, ic = (ink >> sh) & 255, k = (pc - ic) / 255f / 3f;
+            m[ch * 5] = k;
+            m[ch * 5 + 1] = k;
+            m[ch * 5 + 2] = k;
+            m[ch * 5 + 4] = ic;
+        }
+        m[18] = 1;
+        duoPaper = paper;
+        duoInk = ink;
+        return duo = new ColorMatrixColorFilter(new ColorMatrix(m));
+    }
 
     BackdropView(Context c) { super(c); }
 
@@ -59,8 +77,9 @@ final class BackdropView extends View {
         boolean dark = Palette.dark;
         double time = SystemClock.uptimeMillis() / 1000.0;
 
-        int base0 = dark ? 0xFF161D29 : 0xFFFCFDFE;
-        int base1 = dark ? mix(accent, 0xFF0B0F15, 0.82f) : mix(accent, 0xFFFFFFFF, 0.8f);
+        int paper = Palette.backdropPaper(), ink = Palette.backdropInk();
+        int base0 = paper;
+        int base1 = dark ? mix(accent, mix(paper, 0xFF000000, 0.4f), 0.82f) : mix(accent, paper, 0.8f);
         p.setShader(new RadialGradient(cx, cy, w * 0.75f, base0, base1, Shader.TileMode.CLAMP));
         c.drawRect(0, 0, w, h, p);
         p.setShader(null);
@@ -70,11 +89,12 @@ final class BackdropView extends View {
             float dw = picture.getWidth() * k, dh = picture.getHeight() * k;
             r.set((w - dw) / 2, (h - dh) / 2, (w + dw) / 2, (h + dh) / 2);
             src.set(0, 0, picture.getWidth(), picture.getHeight());
-            pic.setColorFilter(dark ? INVERT : null);
+            boolean plain = !Theme.isTintable(picture) || paper == 0xFFFFFFFF && ink == 0xFF000000;
+            pic.setColorFilter(plain ? null : duotone(paper, ink));
             c.drawBitmap(picture, src, r, pic);
         } else {
             // oversized lettering along the bottom, drifting slowly
-            p.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
+            p.setTypeface(Theme.font(true));
             p.setTextAlign(Paint.Align.CENTER);
             float size = h * 0.78f;
             p.setTextSize(size);
@@ -114,10 +134,10 @@ final class BackdropView extends View {
         }
 
         // halo behind the console, and a fade at the bottom so the title stays readable
-        int glow = dark ? 0x00000000 | (mix(accent, 0xFF1A2230, 0.7f) & 0xFFFFFF) : 0xFFFFFF;
+        int glow = dark ? (mix(accent, paper, 0.7f) & 0xFFFFFF) : paper & 0xFFFFFF;
         p.setShader(new RadialGradient(cx, cy, 520 * u, (dark ? 0x99000000 : 0xCC000000) | glow, glow, Shader.TileMode.CLAMP));
         c.drawRect(0, 0, w, h, p);
-        int fade = dark ? 0x0F141C : 0xFFFFFF;
+        int fade = dark ? mix(paper, 0xFF000000, 0.2f) & 0xFFFFFF : paper & 0xFFFFFF;
         p.setShader(new LinearGradient(0, h * 0.55f, 0, h, fade, (picture != null ? 0xE6000000 : 0x99000000) | fade, Shader.TileMode.CLAMP));
         c.drawRect(0, h * 0.55f, w, h, p);
         p.setShader(null);

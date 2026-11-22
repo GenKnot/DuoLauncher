@@ -50,7 +50,7 @@ final class Library {
         String title() { return label != null ? label : platformTitle(name); }
         String type() { return art != null ? art : consoleType(system.isEmpty() ? name : system); }
         String backdropType() { return bgArt != null ? bgArt : type(); }
-        int accent() { return color != 0 ? color : platformColor(type()); }
+        int accent() { return color != 0 ? color : Palette.folder(type(), platformColor(type())); }
         boolean isCustom() { return system.equals("CUSTOM"); }
     }
 
@@ -210,6 +210,7 @@ final class Library {
             case "box_front": es = new String[]{"covers", "3dboxes", "miximages"}; ra = new String[]{"Named_Boxarts"}; break;
             case "logo": es = new String[]{"marquees"}; ra = new String[0]; break;
             case "background": es = new String[]{"fanart", "screenshots", "titlescreens"}; ra = new String[]{"Named_Snaps", "Named_Titles"}; break;
+            case "video": es = new String[]{"videos"}; ra = new String[0]; break;
             default: return null;
         }
         for (File root : esdeRoots)
@@ -332,7 +333,97 @@ final class Library {
         addAndroid(ctx, lib, shownApps, col);
         applyOwnMetadata(ctx, lib);
         for (Platform p : lib.platforms) for (Game g : p.games) lib.byKey.put(g.key(), g);
+        lib.signature = lib.computeSignature();
         return lib;
+    }
+
+    // ---- start-up cache: the last scan, so the launcher can show it before scanning again ----
+
+    /** Changes whenever a game, its name, description or pictures change; compared to skip needless redraws. */
+    String signature = "";
+    private static final int CACHE_VERSION = 1;
+
+    private String computeSignature() {
+        long h = 1125899906842597L;
+        for (Platform p : platforms) {
+            h = 31 * h + p.name.hashCode() + p.launch.hashCode();
+            for (Game g : p.games) {
+                h = 31 * h + g.key().hashCode();
+                h = 31 * h + (g.title + "\u0001" + g.description + "\u0001" + g.assets + "\u0001" + g.ownMedia + "\u0001" + g.launch).hashCode();
+            }
+        }
+        return Long.toHexString(h);
+    }
+
+    private static void str(java.io.DataOutputStream o, String s) throws IOException {
+        o.writeBoolean(s != null);
+        if (s != null) o.writeUTF(s);
+    }
+
+    private static String str(java.io.DataInputStream in) throws IOException { return in.readBoolean() ? in.readUTF() : null; }
+
+    private static void file(java.io.DataOutputStream o, File f) throws IOException { str(o, f == null ? null : f.getPath()); }
+
+    private static File file(java.io.DataInputStream in) throws IOException {
+        String s = str(in);
+        return s == null ? null : new File(s);
+    }
+
+    static void writeCache(File out, Library lib) {
+        File tmp = new File(out.getPath() + ".tmp");
+        try (java.io.DataOutputStream o = new java.io.DataOutputStream(new java.io.BufferedOutputStream(
+                new java.util.zip.GZIPOutputStream(new java.io.FileOutputStream(tmp))))) {
+            o.writeInt(CACHE_VERSION);
+            o.writeUTF(lib.signature);
+            o.writeInt(lib.platforms.size());
+            for (Platform p : lib.platforms) {
+                str(o, p.name); str(o, p.sortBy); str(o, p.launch); str(o, p.system);
+                o.writeBoolean(p.scanned);
+                o.writeInt(p.games.size());
+                for (Game g : p.games) {
+                    str(o, g.title); str(o, g.file); str(o, g.developer); str(o, g.description); str(o, g.launch); str(o, g.pkg);
+                    file(o, g.path); file(o, g.dir); file(o, g.ownMedia);
+                    str(o, g.volumeId); str(o, g.relDir); str(o, g.treeDir); str(o, g.titleId);
+                    o.writeBoolean(g.scanned);
+                    o.writeInt(g.assets.size());
+                    for (Map.Entry<String, String> a : g.assets.entrySet()) { str(o, a.getKey()); str(o, a.getValue()); }
+                }
+            }
+        } catch (IOException e) {
+            tmp.delete();
+            return;
+        }
+        tmp.renameTo(out);
+    }
+
+    static Library readCache(File in) {
+        if (!in.isFile()) return null;
+        try (java.io.DataInputStream d = new java.io.DataInputStream(new java.io.BufferedInputStream(
+                new java.util.zip.GZIPInputStream(new FileInputStream(in))))) {
+            if (d.readInt() != CACHE_VERSION) return null;
+            Library lib = new Library();
+            lib.signature = d.readUTF();
+            for (int i = d.readInt(); i > 0; i--) {
+                Platform p = new Platform();
+                p.name = str(d); p.sortBy = str(d); p.launch = str(d); p.system = str(d);
+                p.scanned = d.readBoolean();
+                for (int j = d.readInt(); j > 0; j--) {
+                    Game g = new Game();
+                    g.title = str(d); g.file = str(d); g.developer = str(d); g.description = str(d); g.launch = str(d); g.pkg = str(d);
+                    g.path = file(d); g.dir = file(d); g.ownMedia = file(d);
+                    g.volumeId = str(d); g.relDir = str(d); g.treeDir = str(d); g.titleId = str(d);
+                    g.scanned = d.readBoolean();
+                    for (int k = d.readInt(); k > 0; k--) g.assets.put(str(d), str(d));
+                    g.platform = p;
+                    p.games.add(g);
+                }
+                lib.platforms.add(p);
+            }
+            for (Platform p : lib.platforms) for (Game g : p.games) lib.byKey.put(g.key(), g);
+            return lib;
+        } catch (IOException | RuntimeException e) {
+            return null;
+        }
     }
 
     // ---- the launcher's own metadata: <volume>/DuoLauncher/<platform>/ ----
@@ -695,9 +786,19 @@ final class Library {
                     break;
                 default:
                     if (g != null && k.startsWith("assets.")) g.assets.put(k.substring(7), firstLine(v));
+                    // name.en / description.en ... : used instead when the launcher runs in that language
+                    else if (g != null && (k.startsWith("name.") || k.startsWith("game.") || k.startsWith("description.")) && forThisLanguage(k)) {
+                        if (k.startsWith("description.")) g.description = v; else g.title = firstLine(v);
+                    }
             }
         }
         return p;
+    }
+
+    /** "name.en", "description.zh-tw", "name.zh" (either Chinese) ... against the current interface language. */
+    private static boolean forThisLanguage(String key) {
+        String lang = key.substring(key.indexOf('.') + 1), cur = I18n.code().toLowerCase(Locale.ROOT);
+        return lang.equals(cur) || cur.startsWith(lang + "-");
     }
 
     private static String firstLine(String v) {
@@ -727,9 +828,11 @@ final class Library {
         }
     }
 
+    /** Pictures, and video snaps for the "video" kind (an image name never ends in a video extension). */
     private static boolean isImage(String n) {
         String s = n.toLowerCase(Locale.ROOT);
-        return s.endsWith(".png") || s.endsWith(".jpg") || s.endsWith(".jpeg") || s.endsWith(".webp");
+        return s.endsWith(".png") || s.endsWith(".jpg") || s.endsWith(".jpeg") || s.endsWith(".webp")
+                || s.endsWith(".mp4") || s.endsWith(".webm") || s.endsWith(".mkv");
     }
 
     // ---- presentation ----

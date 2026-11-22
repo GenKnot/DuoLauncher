@@ -37,17 +37,17 @@ final class ChipsView extends View {
     private float chipWidth(String s) {
         int bar = s.indexOf('|');
         tp.setTextSize(size);
-        tp.setTypeface(Typeface.DEFAULT_BOLD);
+        tp.setTypeface(Theme.font(true));
         if (bar < 0) return tp.measureText(s) + padX() * 2;
         float key = badgeW(s.substring(0, bar));
         tp.setTextSize(size);
-        tp.setTypeface(Typeface.DEFAULT);
+        tp.setTypeface(Theme.font(false));
         return key + size * 0.45f + tp.measureText(s.substring(bar + 1)) + padX() * 1.4f;
     }
 
     private float badgeW(String key) {
         tp.setTextSize(size * 0.72f);
-        tp.setTypeface(Typeface.DEFAULT_BOLD);
+        tp.setTypeface(Theme.font(true));
         return Math.max(size * 1.2f, tp.measureText(key) + size * 0.6f);
     }
 
@@ -74,7 +74,7 @@ final class ChipsView extends View {
             tp.setColor(fg);
             if (bar < 0) {
                 tp.setTextSize(size);
-                tp.setTypeface(Typeface.DEFAULT_BOLD);
+                tp.setTypeface(Theme.font(true));
                 tp.setTextAlign(Paint.Align.CENTER);
                 c.drawText(s, r.centerX(), cy + size * 0.36f, tp);
             } else {
@@ -84,12 +84,12 @@ final class ChipsView extends View {
                 p.setColor(dark ? 0xFFFFFFFF : 0xFF2A3644);
                 c.drawRoundRect(r, bh / 2, bh / 2, p);
                 tp.setTextSize(size * 0.72f);
-                tp.setTypeface(Typeface.DEFAULT_BOLD);
+                tp.setTypeface(Theme.font(true));
                 tp.setTextAlign(Paint.Align.CENTER);
                 tp.setColor(dark ? 0xFF202830 : 0xFFFFFFFF);
                 c.drawText(key, r.centerX(), cy + size * 0.26f, tp);
                 tp.setTextSize(size);
-                tp.setTypeface(Typeface.DEFAULT);
+                tp.setTypeface(Theme.font(false));
                 tp.setTextAlign(Paint.Align.LEFT);
                 tp.setColor(fg);
                 c.drawText(label, r.right + size * 0.45f, cy + size * 0.36f, tp);

@@ -1,0 +1,50 @@
+# Duo Launcher theme example. Copy this folder to <SD card>/DuoLauncher/themes/ and pick it in Settings → Theme.
+# Every line is optional; anything left out uses the built-in look.
+#
+# Colours: color.<name> for light mode, dark.color.<name> for dark mode (#RRGGBB or #AARRGGBB).
+#   shelf-top, shelf-bottom   lower screen background gradient
+#   card, card-soft           game tiles and menus
+#   text, text2, text3        main / secondary / faint text
+#   pill, pill-text           header buttons
+#   footer, footer-line       bottom hint bar
+#   key, key-text             button badges (A, B, Y ...)
+#   accent                    selection outline and highlighted rows
+#   top-bg, top-title, top-text   upper screen
+#   backdrop-paper, backdrop-ink  the line-art backdrops on the upper screen: white becomes paper, lines become ink
+#
+# Shortcut: "base-color: #RRGGBB" (plus color.accent) works out every other colour, light and dark;
+# any color.* line still overrides what it would pick. Set "tint-backdrops: yes" if your own backdrops
+# are line art that should take the paper/ink colours too.
+#   folder.<type>             home folders: 3ds nds gba gbc gb nes snes n64 md ps1 ps2 psp psv switch
+#                             android apps recent favorites continue search settings custom
+#
+# Pictures (same paths as the app's own assets, .png or .jpg):
+#   consoles/<type>.png, backgrounds/<type>.jpg, backgrounds/dark/<type>.jpg, logo.png
+# Font: font.ttf (and optionally font-bold.ttf)
+# Sounds: sounds/move, sounds/open, sounds/back, sounds/launch (.ogg .wav .mp3); music.ogg loops on the home screen
+
+name: 樱花 Sakura
+author: Duo Launcher
+
+color.accent: #E8618C
+color.shelf-top: #FFF4F7
+color.shelf-bottom: #F8E1E9
+color.pill-text: #6B3A4B
+color.key: #8C4A62
+color.footer-line: #F1D3DD
+dark.color.accent: #F07AA0
+dark.color.shelf-top: #2A1D24
+dark.color.shelf-bottom: #1A1217
+dark.color.card: #35262E
+dark.color.footer: #1E151A
+color.backdrop-paper: #FFF1F5
+color.backdrop-ink: #9A5570
+dark.color.backdrop-paper: #2A1D24
+dark.color.backdrop-ink: #F3C7D6
+
+color.folder.recent: #F2A07B
+color.folder.favorites: #E8618C
+color.folder.continue: #C973A8
+color.folder.search: #9C7BE0
+color.folder.settings: #8E7D8A
+color.folder.custom: #D98FB5

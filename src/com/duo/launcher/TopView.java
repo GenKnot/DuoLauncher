@@ -45,6 +45,36 @@ final class TopView extends ViewGroup {
     private final TextView title, desc, message;
     private final ChipsView chips, hints;
     private final StatusView status;
+    private final SaverView saver;
+    private final StatsView stats;
+    private final VideoPane video;
+    /** Set from Settings: play a game's video snap after it stays selected for a moment. */
+    static boolean videoEnabled = true;
+    static android.content.SharedPreferences prefs;
+
+    /** Per game: auto (video when there is one and previews are on), logo, cover or video. */
+    static String displayMode(Library.Game g) {
+        return prefs == null ? "auto" : prefs.getString("show:" + g.key(), "auto");
+    }
+
+    static boolean wantsVideo(Library.Game g) {
+        String m = displayMode(g);
+        return g.asset("video") != null && (m.equals("video") || (m.equals("auto") && videoEnabled));
+    }
+
+    /** Forget what is shown, so the next show call redraws it (after a display change). */
+    void reset() {
+        stopVideo();
+        shown = null;
+    }
+
+    private void stopVideo() {
+        if (video == null) return;
+        if (startVideo != null) removeCallbacks(startVideo);
+        video.stop();
+        hero.setAlpha(1f);
+    }
+    private Runnable startVideo;
     private Object shown;
     private boolean dark;
     private final Runnable tick = new Runnable() {
@@ -82,7 +112,12 @@ final class TopView extends ViewGroup {
         chips = new ChipsView(c, false);
         hints = new ChipsView(c, true);
         status = new StatusView(c);
-        for (View v : new View[]{dots, bg, scrim, hero, title, chips, desc, hints, status, message}) addView(v);
+        saver = new SaverView(c);
+        stats = new StatsView(c, icons);
+        video = new VideoPane(c);
+        video.setCallbacks(() -> hero.animate().alpha(0f).setDuration(450).start(),
+                () -> hero.animate().alpha(1f).setDuration(250).start());
+        for (View v : new View[]{dots, bg, scrim, hero, video, title, chips, desc, hints, stats, status, message, saver}) addView(v);
 
         ObjectAnimator tilt = ObjectAnimator.ofFloat(hero, "rotationY", -10f, 10f);
         tilt.setDuration(4200);
@@ -103,7 +138,7 @@ final class TopView extends ViewGroup {
 
     private static TextView text(Context c, int style) {
         TextView t = new TextView(c);
-        t.setTypeface(Typeface.create(Typeface.DEFAULT, style));
+        t.setTypeface(Theme.font(style == Typeface.BOLD));
         t.setGravity(Gravity.CENTER);
         t.setIncludeFontPadding(false);
         return t;
@@ -117,15 +152,16 @@ final class TopView extends ViewGroup {
     @Override protected void onMeasure(int ws, int hs) {
         int w = MeasureSpec.getSize(ws), h = MeasureSpec.getSize(hs);
         setMeasuredDimension(w, h);
-        float u = w / 1920f;
-        title.setTextSize(TypedValue.COMPLEX_UNIT_PX, 62 * u);
-        desc.setTextSize(TypedValue.COMPLEX_UNIT_PX, 27 * u);
-        message.setTextSize(TypedValue.COMPLEX_UNIT_PX, 40 * u);
-        chips.setTextSize(27 * u);
-        hints.setTextSize(25 * u);
+        float u = w / 1920f, ts = u * Palette.textScale;
+        title.setTextSize(TypedValue.COMPLEX_UNIT_PX, 62 * ts);
+        desc.setTextSize(TypedValue.COMPLEX_UNIT_PX, 27 * ts);
+        message.setTextSize(TypedValue.COMPLEX_UNIT_PX, 40 * ts);
+        chips.setTextSize(27 * ts);
+        hints.setTextSize(25 * ts);
         int ex = MeasureSpec.EXACTLY, at = MeasureSpec.AT_MOST;
-        for (View v : new View[]{dots, bg, scrim}) v.measure(MeasureSpec.makeMeasureSpec(w, ex), MeasureSpec.makeMeasureSpec(h, ex));
+        for (View v : new View[]{dots, bg, scrim, saver, stats}) v.measure(MeasureSpec.makeMeasureSpec(w, ex), MeasureSpec.makeMeasureSpec(h, ex));
         hero.measure(MeasureSpec.makeMeasureSpec((int) (1120 * u), ex), MeasureSpec.makeMeasureSpec((int) (560 * u), ex));
+        video.measure(MeasureSpec.makeMeasureSpec((int) (1120 * u), ex), MeasureSpec.makeMeasureSpec((int) (560 * u), ex));
         title.measure(MeasureSpec.makeMeasureSpec((int) (w - 300 * u), ex), MeasureSpec.makeMeasureSpec(h, at));
         desc.measure(MeasureSpec.makeMeasureSpec((int) (1240 * u), ex), MeasureSpec.makeMeasureSpec(h, at));
         message.measure(MeasureSpec.makeMeasureSpec((int) (w - 300 * u), ex), MeasureSpec.makeMeasureSpec(h, at));
@@ -137,10 +173,11 @@ final class TopView extends ViewGroup {
     @Override protected void onLayout(boolean changed, int l, int t, int r, int b) {
         int w = r - l, h = b - t;
         float u = w / 1920f;
-        for (View v : new View[]{dots, bg, scrim}) v.layout(0, 0, w, h);
+        for (View v : new View[]{dots, bg, scrim, saver, stats}) v.layout(0, 0, w, h);
         boolean hasDesc = desc.getVisibility() == VISIBLE && desc.getText().length() > 0;
         int hy = (int) ((hasDesc ? 96 : 120) * u);
         place(hero, (w - hero.getMeasuredWidth()) / 2, hy);
+        place(video, (w - video.getMeasuredWidth()) / 2, hy);
         hero.setPivotX(hero.getMeasuredWidth() / 2f);
         hero.setPivotY(hero.getMeasuredHeight() / 2f);
         hero.setCameraDistance(9000 * getResources().getDisplayMetrics().density);
@@ -150,10 +187,25 @@ final class TopView extends ViewGroup {
         place(chips, 0, y);
         y += chips.getMeasuredHeight() + (int) (22 * u);
         place(desc, (w - desc.getMeasuredWidth()) / 2, y);
-        place(message, (w - message.getMeasuredWidth()) / 2, (h - message.getMeasuredHeight()) / 2);
+        // below the logo, so the two never overlap
+        int my = Math.max((h - message.getMeasuredHeight()) / 2, hy + hero.getMeasuredHeight() + (int) (34 * u));
+        place(message, (w - message.getMeasuredWidth()) / 2, Math.min(my, h - message.getMeasuredHeight() - (int) (40 * u)));
         place(status, w - status.getMeasuredWidth() - (int) (40 * u), (int) (26 * u));
         place(hints, -(int) (40 * u), h - hints.getMeasuredHeight() - (int) (30 * u));
     }
+
+    void startSaver(List<Library.Game> games) { saver.start(games); }
+
+    /** Statistics page (the home statistics tile); any other show* call hides it again. */
+    void showStats(StatsView.Stats s) {
+        message.setVisibility(GONE);
+        setDark(false);
+        enter(ShelfView.STATS);
+        stats.set(s);
+        stats.setVisibility(VISIBLE);
+    }
+
+    void stopSaver() { saver.stop(); }
 
     private static void place(View v, int x, int y) { v.layout(x, y, x + v.getMeasuredWidth(), y + v.getMeasuredHeight()); }
 
@@ -175,6 +227,8 @@ final class TopView extends ViewGroup {
 
     /** Fade and scale the new content in when the selection changes. */
     private void enter(Object item) {
+        if (stats != null && item != ShelfView.STATS) stats.setVisibility(GONE);
+        if (item != shown) stopVideo();
         if (item == shown) return;
         shown = item;
         for (View v : new View[]{hero, title, chips, desc}) {
@@ -191,6 +245,7 @@ final class TopView extends ViewGroup {
     }
 
     void showMessage(String m) {
+        stopVideo();
         shown = null;
         setDark(false);
         Bitmap logo = Theme.asset("logo.png");
@@ -205,19 +260,23 @@ final class TopView extends ViewGroup {
         requestLayout();
     }
 
-    void showPlatform(Library.Platform p, String emu, boolean recent) {
+    /** @param list "recent", "favorites" or "search" for those game lists, null for a platform or folder */
+    void showPlatform(Library.Platform p, String emu, String list) {
         message.setVisibility(GONE);
         setDark(false);
         enter(p);
+        boolean recent = list != null;
+        String label = "favorites".equals(list) ? ShelfView.toolName("favorites", t(S.FAVORITES)) : ShelfView.toolName("recent", t(S.RECENT));
         if (recent) {
             refreshFan(p);
-            dots.set(0xFFF2A93B, t(S.RECENT), Theme.toolBackground("recent"));
+            boolean fav = "favorites".equals(list);
+            dots.set(fav ? ShelfView.FAVORITES_COLOR : 0xFFF2A93B, label, Theme.toolBackground(fav ? "custom" : "recent"));
         } else {
             hero.setDrawable(ConsoleDrawable.of(p, true));
             dots.set(p.accent(), p.isCustom() ? p.title() : p.name, Theme.background(p));
         }
         boolean native_ = p.system.equals("ANDROID") || p.system.equals("APPS") || p.isCustom();
-        title.setText(recent ? t(S.RECENT) : p.title());
+        title.setText(recent ? label : p.title());
         if (recent || native_ || emu == null) chips.set(Palette.dark, I18n.f(S.GAMES_COUNT, p.games.size()));
         else chips.set(Palette.dark, I18n.f(S.GAMES_COUNT, p.games.size()), "▶ " + emu);
         desc.setText("");
@@ -230,17 +289,21 @@ final class TopView extends ViewGroup {
 
     /** The Settings or Search tile on the home page. */
     void showTool(Object which) {
-        boolean settings = which == ShelfView.SETTINGS;
+        boolean settings = which == ShelfView.SETTINGS, desktop = which == ShelfView.DESKTOP;
         message.setVisibility(GONE);
         setDark(false);
         enter(which);
-        String name = settings ? "settings" : "search";
+        String name = settings ? "settings" : desktop ? "desktop" : "search";
         Bitmap icon = Theme.toolIcon(name);
+        if (icon == null && desktop) { name = "apps"; icon = Theme.toolIcon(name); }
         if (icon != null) hero.setDrawable(new ConsoleDrawable(name, icon, true));
-        else hero.setDrawable(new ConsoleDrawable(settings ? "gear" : "search", null, true));
-        dots.set(settings ? 0xFF6D8299 : 0xFF2F8BFF, settings ? t(S.SETTINGS) : t(S.SEARCH), Theme.toolBackground(name));
-        title.setText(settings ? t(S.SETTINGS) : t(S.SEARCH));
+        else hero.setDrawable(new ConsoleDrawable(settings ? "gear" : desktop ? "apps" : "search", null, true));
+        String label = settings ? ShelfView.toolName("settings", t(S.SETTINGS))
+                : desktop ? ShelfView.toolName("desktop", t(S.ANDROID_DESKTOP)) : ShelfView.toolName("search", t(S.SEARCH));
+        dots.set(settings ? 0xFF6D8299 : desktop ? ShelfView.DESKTOP_COLOR : 0xFF2F8BFF, label, Theme.toolBackground(name));
+        title.setText(label);
         if (settings) chips.set(Palette.dark, t(S.SETTINGS_HINT), I18n.name());
+        else if (desktop) chips.set(Palette.dark, t(S.DESKTOP_HINT));
         else chips.set(Palette.dark, t(S.SEARCH_HINT));
         desc.setText("");
         desc.setVisibility(GONE);
@@ -272,6 +335,13 @@ final class TopView extends ViewGroup {
             hero.clear();
         }
         refreshGameImages(g);
+        if (fresh && wantsVideo(g)) {
+            startVideo = () -> {
+                File v = shown == g ? g.asset("video") : null;
+                if (v != null) video.play(v);
+            };
+            postDelayed(startVideo, displayMode(g).equals("video") ? 500 : 1800);
+        }
         requestLayout();
     }
 
@@ -297,7 +367,7 @@ final class TopView extends ViewGroup {
             }
         }
         if (hero.mode() == HeroView.NONE) {
-            if (logo != null) {
+            if (logo != null && !displayMode(g).equals("cover")) {
                 Bitmap b = icons.image(logo, 1200, again);
                 if (b != null) { hero.setBitmap(HeroView.LOGO, b); return; }
                 if (!icons.failed("img:1200:" + logo.getPath())) return;
@@ -350,7 +420,7 @@ final class TopView extends ViewGroup {
             // text
             p.setColor(fg);
             p.setTextAlign(Paint.Align.RIGHT);
-            p.setTypeface(Typeface.DEFAULT_BOLD);
+            p.setTypeface(Theme.font(true));
             p.setTextSize(h * 0.5f);
             String s = (charging ? "⚡" : "") + pct + "%";
             c.drawText(s, bx - h * 0.25f, h * 0.68f, p);
