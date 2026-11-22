@@ -67,6 +67,28 @@ final class ShelfView extends View {
         char initial(Library.Game g);
         /** The home page order changed (keys from {@link ShelfView#homeKey}, one per line). */
         void onHomeOrder(String order);
+        /** The home page switched between platforms and genres. */
+        void onHomeMode(int mode);
+        /** A game's note, or null. */
+        String noteOf(Library.Game g);
+        /** Y → Note on a game. */
+        void onNote(Library.Game g, Menu parent);
+        /** Y → Ask AI on a game. */
+        void onAskAi(Library.Game g, Menu parent);
+        /** Y → Status on a game (playing, done…) and its rating. */
+        void onStatus(Library.Game g, Menu parent);
+        /** The status row's label, e.g. "Playing · ★★★★☆". */
+        String statusLine(Library.Game g);
+        /** Y → How to play. */
+        void onHowTo(Library.Game g);
+        /** Y → Saves of one game. */
+        void onSaves(Library.Game g, Menu parent);
+        /** Y → Genre on a game. */
+        void onPickGenre(Library.Game g, Menu parent);
+        /** Y → Merge on a console folder. */
+        void onMergePlatform(Library.Platform p, Menu parent);
+        /** Y on a genre folder: its picture. */
+        void onEditGenre(Library.Platform p);
     }
 
     /** The user's own names and colours for the built-in home tiles, by tool id; filled from Settings. */
@@ -166,6 +188,16 @@ final class ShelfView extends View {
         final List<String> homeOrder = new ArrayList<>();
         /** Index the lifted tile came from while it is being moved, or -1. */
         int moveFrom = -1;
+        /** Home page by genre instead of by platform. */
+        int homeMode;
+        /** Space around a game's picture in its tile: 0 fills the tile, 1-3 leave a small, medium or large margin. */
+        int tilePad;
+        /** One folder per series with at least two games. */
+        final List<Library.Platform> series = new ArrayList<>();
+        /** The search keyboard is open on the top screen. */
+        boolean typing;
+        /** One folder per genre (and one for games without a genre), rebuilt with the library. */
+        final List<Library.Platform> genres = new ArrayList<>();
 
         State() {
             recent.name = "recent";
@@ -220,6 +252,8 @@ final class ShelfView extends View {
 
             @Override public void onLongPress(MotionEvent e) { longPress(e.getX(), e.getY()); }
         });
+        // the library may have arrived before this view existed (start-up, or back from a game)
+        if (st.lib != null && st.genres.isEmpty()) rebuildGenres();
     }
 
     // ---- state changes ----
@@ -227,6 +261,8 @@ final class ShelfView extends View {
     void setLibrary(Library lib, List<Library.Game> recent) {
         st.lib = lib;
         st.message = null;
+        rebuildGenres();
+        if (st.current != null && isGenre(st.current) && !st.genres.contains(st.current) && !st.series.contains(st.current)) st.current = null;
         setRecent(recent);
         if (st.current == null) goHome(); else fireFocus();
     }
@@ -247,7 +283,97 @@ final class ShelfView extends View {
     }
 
     /** True for the pages that are lists of games from several platforms rather than a platform. */
-    boolean isPseudo(Library.Platform p) { return p == st.recent || p == st.results || p == st.favorites; }
+    boolean isPseudo(Library.Platform p) { return p == st.recent || p == st.results || p == st.favorites || isGenre(p); }
+
+    static boolean isGenre(Library.Platform p) { return p != null && p.system.equals("GENRE"); }
+
+    /** Sorts every game of the library into the genre folders (after the library or a genre changed). */
+    void rebuildGenres() {
+        st.genres.clear();
+        if (st.lib == null) return;
+        Map<String, Library.Platform> by = new HashMap<>();
+        List<String> ids = new ArrayList<>(java.util.Arrays.asList(Genres.IDS));
+        ids.add("none");
+        for (String id : ids) {
+            Library.Platform g = new Library.Platform();
+            g.name = "genre-" + id;
+            g.system = "GENRE";
+            g.label = Genres.name(id);
+            g.color = Genres.color(id);
+            g.art = "custom";
+            g.bgArt = "custom";
+            // a bundled clay icon for the genre, unless the user picked their own
+            if (Theme.asset("consoles/genre-" + id + ".png") != null) g.art = "genre-" + id;
+            g.ownIcon = !g.art.equals("custom") || Theme.isCustom(g.name, Theme.CONSOLE);
+            by.put(id, g);
+            st.genres.add(g);
+        }
+        java.util.Set<Library.Game> seen = new java.util.HashSet<>();
+        for (Library.Platform p : st.lib.platforms) {
+            if (p.isCustom() || isNative(p)) continue;
+            for (Library.Game g : p.games) if (seen.add(g)) by.get(g.genre == null || Genres.index(g.genre) < 0 ? "none" : g.genre).games.add(g);
+        }
+        st.genres.removeIf(g -> g.games.isEmpty());
+        rebuildSeries();
+        if (st.current != null && isGenre(st.current)) {
+            for (Library.Platform g : st.genres) if (g.name.equals(st.current.name)) { st.current = g; return; }
+            for (Library.Platform g : st.series) if (g.name.equals(st.current.name)) { st.current = g; return; }
+        }
+    }
+
+    /** Groups the games of every platform by series (a folder needs two games or more). */
+    private void rebuildSeries() {
+        st.series.clear();
+        Map<String, Library.Platform> by = new java.util.LinkedHashMap<>();
+        boolean zh = I18n.code().startsWith("zh");
+        java.util.Set<Library.Game> seen = new java.util.HashSet<>();
+        for (Library.Platform p : st.lib.platforms) {
+            if (p.isCustom() || isNative(p)) continue;
+            for (Library.Game g : p.games) {
+                if (g.series == null || g.series.equals(Series.NONE) || !seen.add(g)) continue;
+                String k = Series.norm(g.series);
+                if (k.isEmpty()) continue;
+                Library.Platform s = by.get(k);
+                if (s == null) {
+                    s = new Library.Platform();
+                    s.name = "series-" + k;
+                    s.system = "GENRE";
+                    s.label = zh && g.seriesZh != null && !g.seriesZh.equals(Series.NONE) ? g.seriesZh : g.series;
+                    s.color = Genres.COLORS[Math.floorMod(k.hashCode(), Genres.COLORS.length)];
+                    s.art = "custom";
+                    s.bgArt = "custom";
+                    s.ownIcon = Theme.isCustom(s.name, Theme.CONSOLE);
+                    by.put(k, s);
+                }
+                s.games.add(g);
+            }
+        }
+        for (Library.Platform s : by.values()) if (s.games.size() >= 2) st.series.add(s);
+        st.series.sort((a, b) -> b.games.size() != a.games.size() ? b.games.size() - a.games.size() : a.label.compareTo(b.label));
+    }
+
+    /** The folders the home page shows, in its own order: platforms, or genres in genre mode. */
+    private List<Library.Platform> homePlatforms() {
+        List<Library.Platform> out = new ArrayList<>();
+        if (st.lib == null) return out;
+        if (st.homeMode == 0) {
+            for (Library.Platform p : st.lib.platforms) if (!st.hidden.contains(p.name)) out.add(p);
+            return out;
+        }
+        for (Library.Platform p : st.lib.platforms) if (p.isCustom() && !st.hidden.contains(p.name)) out.add(p);
+        for (Library.Platform p : st.homeMode == 2 ? st.series : st.genres) if (!st.hidden.contains(p.name)) out.add(p);
+        for (Library.Platform p : st.lib.platforms) if (isNative(p) && !st.hidden.contains(p.name)) out.add(p);
+        return out;
+    }
+
+    /** SELECT on the home page: platforms ⇄ genres. */
+    void toggleHomeMode() {
+        st.homeMode = (st.homeMode + 1) % 3;
+        if (st.homeMode != 0 && st.genres.isEmpty()) rebuildGenres();
+        st.lastSel.remove("#home");
+        listener.onHomeMode(st.homeMode);
+        goHome();
+    }
 
     private void rebuildHome() {
         st.items.clear();
@@ -257,7 +383,7 @@ final class ShelfView extends View {
             addTool(st.recent);
         }
         if (!st.favorites.games.isEmpty()) addTool(st.favorites);
-        for (Library.Platform p : st.lib.platforms) if (!st.hidden.contains(p.name)) st.items.add(p);
+        st.items.addAll(homePlatforms());
         addTool(ADD);
         addTool(SEARCH);
         addTool(STATS);
@@ -428,8 +554,7 @@ final class ShelfView extends View {
 
     private void cycle(int d) {
         if (st.lib == null || st.lib.platforms.isEmpty()) return;
-        List<Object> all = new ArrayList<>();
-        for (Library.Platform p : st.lib.platforms) if (!st.hidden.contains(p.name)) all.add(p);
+        List<Object> all = new ArrayList<>(homePlatforms());
         List<Library.Platform> ps = new ArrayList<>();
         for (Object o : inHomeOrder(all)) ps.add((Library.Platform) o);
         if (ps.isEmpty()) return;
@@ -550,7 +675,8 @@ final class ShelfView extends View {
     }
 
     private void sort() {
-        if (st.current == null || st.current == st.recent) return;
+        if (st.current == null) { toggleHomeMode(); return; }
+        if (st.current == st.recent) return;
         Menu m = new Menu(t(S.SORT_FILTER), null);
         for (int i = 0; i < SORT_LABELS.length; i++) {
             int mode = i;
@@ -628,6 +754,7 @@ final class ShelfView extends View {
         if (o instanceof Library.Platform) {
             Library.Platform pl = (Library.Platform) o;
             if (pl.isCustom()) { listener.onEditFolder(pl); return; }
+            if (isGenre(pl)) { listener.onEditGenre(pl); return; }
             if (isPseudo(pl)) return;
             Menu m = new Menu(isNative(pl) ? pl.title() : t(S.CHOOSE_EMULATOR), isNative(pl) ? null : I18n.f(S.PLATFORM_DEFAULT, pl.name));
             if (!isNative(pl)) {
@@ -637,7 +764,8 @@ final class ShelfView extends View {
                     m.add(opt[0], opt[1].equals(cur), () -> { listener.onChoose(o, opt[1]); closeMenu(); });
             }
             m.add(t(S.RENAME), false, () -> listener.onRenamePlatform(pl));
-            m.add("－ " + t(S.HIDE_FOLDER), false, () -> { closeMenu(); listener.onHideFolder(pl); });
+            if (!isNative(pl)) m.add(t(S.MERGE_FOLDER), false, () -> listener.onMergePlatform(pl, m));
+            m.add(t(S.HIDE_FOLDER), false, () -> { closeMenu(); listener.onHideFolder(pl); });
             showMenu(m);
             return;
         }
@@ -652,18 +780,27 @@ final class ShelfView extends View {
                 m.add(opt[0], opt[1].equals(cur), () -> { listener.onChoose(g, opt[1]); closeMenu(); });
         }
         boolean fav = listener.isFavorite(g);
-        m.add((fav ? "☆ " : "★ ") + t(fav ? S.REMOVE_FAVORITE : S.ADD_FAVORITE), false, () -> { closeMenu(); listener.onToggleFavorite(g); });
-        m.add("＋ " + t(S.ADD_TO_FOLDER), false, () -> listener.onAddToFolder(g, m));
+        m.add(t(fav ? S.REMOVE_FAVORITE : S.ADD_FAVORITE), false, () -> { closeMenu(); listener.onToggleFavorite(g); });
+        m.add(t(S.ADD_TO_FOLDER), false, () -> listener.onAddToFolder(g, m));
         Library.Platform here = st.current;
-        if (here != null && here.isCustom())
-            m.add("－ " + t(S.REMOVE_FROM_FOLDER), false, () -> { closeMenu(); listener.onRemoveFromFolder(here, g); });
-        if (emulated) m.add("✦ " + t(S.CHEATS), false, () -> listener.onCheats(g));
-        if (g.path != null) m.add("ⓘ " + t(S.DETAILS), false, () -> listener.onDetails(g));
+        if (here != null && here.isCustom() && here.smart == null)
+            m.add(t(S.REMOVE_FROM_FOLDER), false, () -> { closeMenu(); listener.onRemoveFromFolder(here, g); });
+        if (emulated) m.add(t(S.CHEATS), false, () -> listener.onCheats(g));
+        if (g.path != null) m.add(t(S.DETAILS), false, () -> listener.onDetails(g));
+        if (g.path != null) m.add(t(S.GENRE) + "  ·  " + Genres.name(g.genre), false, () -> listener.onPickGenre(g, m));
+        if (g.path != null) {
+            String note = listener.noteOf(g);
+            m.add(t(S.NOTE) + (note == null ? "" : "  ·  " + note), false, () -> listener.onNote(g, m));
+            m.add(t(S.ASK_AI), false, () -> listener.onAskAi(g, m));
+            m.add(t(S.STATUS) + "  ·  " + listener.statusLine(g), false, () -> listener.onStatus(g, m));
+            m.add(t(S.HOW_TO), false, () -> listener.onHowTo(g));
+            if (emulated) m.add(t(S.SAVES), false, () -> listener.onSaves(g, m));
+        }
         String[] modes = {"auto", "logo", "cover", "video"};
         S[] modeNames = {S.DISPLAY_AUTO, S.DISPLAY_LOGO, S.DISPLAY_COVER, S.DISPLAY_VIDEO};
         String mode = TopView.displayMode(g);
         int mi = java.util.Arrays.asList(modes).indexOf(mode);
-        m.add("▣ " + t(S.TOP_DISPLAY) + "  ·  " + t(modeNames[Math.max(0, mi)]), false, () -> {
+        m.add(t(S.TOP_DISPLAY) + "  ·  " + t(modeNames[Math.max(0, mi)]), false, () -> {
             Menu dm = new Menu(t(S.TOP_DISPLAY), g.title);
             dm.parent = st.menu;
             for (int i = 0; i < modes.length; i++) {
@@ -679,7 +816,7 @@ final class ShelfView extends View {
             }
             showMenu(dm);
         });
-        m.add("－ " + t(S.HIDE_GAME), false, () -> { closeMenu(); listener.onHideGame(g); });
+        m.add(t(S.HIDE_GAME), false, () -> { closeMenu(); listener.onHideGame(g); });
         showMenu(m);
     }
 
@@ -702,6 +839,8 @@ final class ShelfView extends View {
     /** Rebuilds the current page after folders were created, edited or deleted. */
     void refresh() {
         if (st.lib == null) return;
+        rebuildGenres();
+        if (st.current != null && isGenre(st.current) && !st.genres.contains(st.current) && !st.series.contains(st.current)) { goHome(); return; }
         if (st.current == null) {
             Object keep = selected();
             rebuildHome();
@@ -949,6 +1088,8 @@ final class ShelfView extends View {
         }
         else if (o == SEARCH) drawSearchTile(c, rad);
         else if (o == ADD) drawAddTile(c, rad);
+        else if (o instanceof Library.Platform && (isGenre((Library.Platform) o) && !((Library.Platform) o).ownIcon || ((Library.Platform) o).smart != null && !((Library.Platform) o).games.isEmpty()))
+            drawFan(c, rad, (Library.Platform) o, ((Library.Platform) o).accent(), ((Library.Platform) o).title());
         else if (o instanceof Library.Platform) drawFolder(c, (Library.Platform) o, rad);
         else if (listView()) drawRow(c, (Library.Game) o);
         else drawGame(c, (Library.Game) o, rad);
@@ -963,7 +1104,7 @@ final class ShelfView extends View {
             c.drawRoundRect(r2, rad + 4 * u(), rad + 4 * u(), p);
             p.setStyle(Paint.Style.FILL);
             p.setAlpha(255);
-            postInvalidateDelayed(40);
+            if (!dimmed) postInvalidateDelayed(40);   // the pulse stops under the screensaver
         }
         c.restore();
     }
@@ -984,7 +1125,9 @@ final class ShelfView extends View {
         c.clipPath(path);
         if (b != null) {
             r2.set(r);
-            if (b.hasAlpha()) r2.inset(r.width() * 0.1f, r.height() * 0.1f);
+            // every picture the same way, by the setting (not by whether the file format has transparency)
+            float f = TILE_PAD[Math.max(0, Math.min(3, st.tilePad))];
+            if (f > 0) r2.inset(r.width() * f, r.height() * f);
             src.set(0, 0, b.getWidth(), b.getHeight());
             c.drawBitmap(b, src, r2, p);
         } else {
@@ -994,6 +1137,26 @@ final class ShelfView extends View {
             text(c, s, r.centerX(), r.centerY() + r.height() * 0.08f, r.height() * 0.2f, 0xFFFFFFFF, true, Paint.Align.CENTER);
         }
         c.restore();
+        if (isNew(g)) newBadge(c);
+    }
+
+    private static final long NEW_MS = 7L * 24 * 3600_000;
+    /** Margin around game pictures for Settings → Cover margin (fill, small, medium, large). */
+    static final float[] TILE_PAD = {0f, 0.05f, 0.09f, 0.13f};
+
+    /** Added in the last week and not played yet. */
+    private boolean isNew(Library.Game g) {
+        return g.added > 0 && System.currentTimeMillis() - g.added < NEW_MS && listener.playedLine(g) == null;
+    }
+
+    private void newBadge(Canvas c) {
+        float u = u(), h = 30 * u, w = 68 * u;
+        r2.set(r.left + 8 * u, r.top + 8 * u, r.left + 8 * u + w, r.top + 8 * u + h);
+        p.setShadowLayer(4 * u, 0, 2 * u, 0x44000000);
+        p.setColor(0xFFE8463E);
+        c.drawRoundRect(r2, h / 2, h / 2, p);
+        p.clearShadowLayer();
+        text(c, "NEW", r2.centerX(), r2.centerY() + 7 * u, 19 * u, 0xFFFFFFFF, true, Paint.Align.CENTER);
     }
 
     /** List view row: icon, name, platform and play time. */
@@ -1017,7 +1180,7 @@ final class ShelfView extends View {
         c.restore();
         float tx = r2.right + 24 * u, maxW = r.right - tx - 24 * u;
         text(c, ellipsize(g.title, maxW, 30 * u), tx, r.top + h * 0.45f, 30 * u, Palette.text(), true, Paint.Align.LEFT);
-        String sub = g.platform.title();
+        String sub = (isNew(g) ? "● NEW  ·  " : "") + g.platform.title();
         String played = listener.playedLine(g);
         if (played != null && !played.isEmpty()) sub += "  ·  " + played;
         text(c, ellipsize(sub, maxW, 22 * u), tx, r.top + h * 0.78f, 22 * u, Palette.text2(), false, Paint.Align.LEFT);
@@ -1125,7 +1288,8 @@ final class ShelfView extends View {
                 path.reset();
                 path.addRoundRect(r2, s * 0.16f, s * 0.16f, Path.Direction.CW);
                 c.clipPath(path);
-                if (b.hasAlpha()) r2.inset(s * 0.1f, s * 0.1f);
+                float f = TILE_PAD[Math.max(0, Math.min(3, st.tilePad))];
+                if (f > 0) r2.inset(s * f, s * f);
                 src.set(0, 0, b.getWidth(), b.getHeight());
                 c.drawBitmap(b, src, r2, p);
             }
@@ -1271,9 +1435,8 @@ final class ShelfView extends View {
         float sw = measure("⌕ " + t(S.SEARCH), hh * 0.45f) + 50 * u;
         hitSearch.set(getWidth() - pad() - sw, y, getWidth() - pad(), y + hh);
         pill(c, hitSearch, "⌕ " + t(S.SEARCH), false);
-        int shown = 0;
-        for (Library.Platform pl : st.lib.platforms) if (!st.hidden.contains(pl.name)) shown++;
-        String right = st.current == null ? I18n.f(S.PLATFORMS_COUNT, shown) : I18n.f(S.GAMES_COUNT, st.items.size());
+        int shown = homePlatforms().size();
+        String right = st.current == null ? I18n.f(st.homeMode == 1 ? S.GENRES_COUNT : st.homeMode == 2 ? S.SERIES_COUNT : S.PLATFORMS_COUNT, shown) : I18n.f(S.GAMES_COUNT, st.items.size());
         float rx = hitSearch.left - 20 * u;
         if (rx - measure(right, hh * 0.42f) > hitR.right + 10 * u)
             text(c, right, rx, y + hh * 0.68f, hh * 0.42f, Palette.text2(), true, Paint.Align.RIGHT);
@@ -1295,6 +1458,17 @@ final class ShelfView extends View {
             hitSort.setEmpty();
             return;
         }
+        if (st.typing) {
+            x = hintItem(c, x, cy, "A", t(S.KB_TYPE));
+            x = hintItem(c, x, cy, "B", t(S.KB_DELETE));
+            x = hintItem(c, x, cy, "X", t(S.SPACE_KEY));
+            x = hintItem(c, x, cy, "Y", t(S.SYSTEM_KEYBOARD));
+            x = hintItem(c, x, cy, "L", t(S.VOICE));
+            hintItem(c, x, cy, "START", t(S.KB_DONE));
+            hitZoom.setEmpty();
+            hitSort.setEmpty();
+            return;
+        }
         x = hintItem(c, x, cy, "A", sel instanceof Library.Game ? t(S.PLAY) : t(S.OPEN));
         if (st.current == null) x = hintItem(c, x, cy, "A", t(S.HOLD_TO_MOVE));
         if (st.current != null) x = hintItem(c, x, cy, "B", t(S.BACK));
@@ -1304,11 +1478,18 @@ final class ShelfView extends View {
             x = hintItem(c, x, cy, "Y", ((Library.Game) sel).pkg == null ? t(S.EMULATOR) : t(S.ADD_TO_FOLDER));
         } else if (sel instanceof Library.Platform && ((Library.Platform) sel).isCustom()) {
             x = hintItem(c, x, cy, "Y", t(S.EDIT_FOLDER));
+        } else if (sel instanceof Library.Platform && isGenre((Library.Platform) sel)) {
+            x = hintItem(c, x, cy, "Y", t(S.ICON));
         } else if (sel instanceof Library.Platform && !isPseudo((Library.Platform) sel)) {
             x = hintItem(c, x, cy, "Y", isNative((Library.Platform) sel) ? t(S.HIDE_FOLDER) : t(S.EMULATOR));
         }
         hitZoom.setEmpty();
         hitSort.setEmpty();
+        if (st.current == null) {
+            float x0 = x;
+            x = hintItem(c, x, cy, "SEL", st.homeMode == 0 ? t(S.HOME_BY_GENRE) : st.homeMode == 1 ? t(S.HOME_BY_SERIES) : t(S.HOME_BY_PLATFORM));
+            hitSort.set(x0, top, x, getHeight());
+        }
         if (st.current != null) {
             String[] z = {t(S.ZOOM_L), t(S.ZOOM_M), t(S.ZOOM_S), t(S.ZOOM_XS), t(S.LIST_VIEW)};
             float x0 = x;
@@ -1350,9 +1531,12 @@ final class ShelfView extends View {
         RectF cardR = new RectF();
         menuCard(cardR);
         card(c, cardR, 28 * u, Palette.card());
-        text(c, m.title, cardR.left + 36 * u, cardR.top + 56 * u, 32 * u, Palette.text(), true, Paint.Align.LEFT);
-        if (m.subtitle != null)
-            text(c, ellipsize(m.subtitle, cardR.width() * 0.45f, 23 * u), cardR.right - 36 * u, cardR.top + 56 * u, 23 * u, Palette.text3(), false, Paint.Align.RIGHT);
+        // the title first; the grey note gets what is left of the line (none when the title fills it)
+        String title = ellipsize(m.title, cardR.width() - 72 * u, 32 * u);
+        text(c, title, cardR.left + 36 * u, cardR.top + 56 * u, 32 * u, Palette.text(), true, Paint.Align.LEFT);
+        float room = Math.min(cardR.width() * 0.45f, cardR.width() - 72 * u - measure(title, 32 * u) - 28 * u);
+        if (m.subtitle != null && room > 90 * u)
+            text(c, ellipsize(m.subtitle, room, 23 * u), cardR.right - 36 * u, cardR.top + 56 * u, 23 * u, Palette.text3(), false, Paint.Align.RIGHT);
         int rows = Math.min(MENU_ROWS, m.labels.size());
         for (int k = 0; k < rows; k++) {
             int i = m.top + k;

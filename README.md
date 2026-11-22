@@ -12,8 +12,9 @@ Point it at your ROM folders and it finds the games, shows them on the lower scr
 - **Two screens, one launcher** – pick on the lower screen, see logos, cover art, video previews, play time and descriptions on the upper one. 下屏选、上屏看：Logo、封面、视频预览、游玩时间、简介。
 - **One place for every emulator** – 3DS, NDS, GBA, GB/GBC, NES, SNES, N64, GameCube, Wii, Mega Drive, PS1, PS2, PSP, PS Vita and Switch, with the emulator chosen per platform or per game; multi-disc games show as one. 一个入口管所有模拟器，每个平台、每个游戏都能单独选模拟器；多碟游戏自动合并。
 - **AI with your own key** – cheat names, game names and descriptions translated in context by DeepSeek, Qwen, OpenAI, Claude or Gemini; covers, console pictures and backdrops drawn by an image model. Keys stay on the handheld and can be typed on a phone over Wi-Fi. 用你自己的密钥接入 AI：按游戏语境翻译金手指、游戏名和简介，自动画封面、主机图和背景；密钥只存在掌机上，可以用手机通过 Wi-Fi 填。
+- **Sorted for you** – AI sorts every game into a genre and a series (Ys, Castlevania, Super Robot Wars …) and asks when new games turn up; the home page shows your library by console, by genre or by series, and smart folders keep "recently added", "playing", "want to play", "finished" or "top rated" up to date. AI 自动给游戏分类型、归系列，发现新游戏会问你要不要分；主页可以按主机、按类型、按系列看，智能文件夹自动整理「最近新增」「在玩」「想玩」「通关了」「评分最高」。
 - **Cheats, managed for you** – thousands of ready-made cheats (3DS, NDS, PSP, GBA and every RetroArch system), downloaded from public databases or taken from the Chinese packs already on the device, translated into your language in one tap, editable, and shared between emulators. 金手指一站式管理：联网下载、自带中文库、一键翻译成界面语言、可改名可自建，不同模拟器通用。
-- **Fills in what is missing** – box art and title screens for NDS/GBA games, matched by the game code in the ROM; your own names and descriptions in any language. 自动补全封面，游戏资料可按语言自己写。
+- **Fills in what is missing** – real box art from the libretro thumbnail sets, matched by the game code in NDS/GBA ROMs or by the English title for PlayStation, PSP, N64, GameCube, Wii, 3DS and more; your own names and descriptions in any language. 自动补全真实封面（NDS/GBA 按游戏代码，其他平台按英文名），游戏资料可按语言自己写。
 - **Made for handhelds** – OLED-safe screensaver, Wi-Fi transfer from a browser, save backups, play statistics, RetroAchievements progress, screenshots per game, quick start-up, held-down directions that keep scrolling, and controls that work with the gamepad or touch. 为掌机设计：防烧屏屏保、Wi-Fi 传文件、存档备份、游玩统计、成就进度、按游戏看截图、按住方向键连续移动、秒开。
 - **Yours to change** – colour themes and theme packs, light and dark mode, text size, every home tile renamed, recoloured, hidden or moved (hold A, or long-press), 11 languages. 随你定制：主题、深浅色、字体大小、主页每个格子都能改名、换色、隐藏或按住 A 拖动排序，11 种语言。
 
@@ -220,15 +221,22 @@ Point it at your ROM folders and it finds the games, shows them on the lower scr
 - **Android games and apps** – installed games get their own page automatically; pick any apps (video, browser, …) to show on the Apps page.
 - **Works with existing setups** – reads Pegasus `metadata.pegasus.txt`, ES-DE / EmulationStation `gamelist.xml` and `downloaded_media`, RetroArch thumbnails, and `media/`, `covers/`, `images/` folders next to the games.
 - **Your own game info** – names, descriptions and pictures in a `DuoLauncher` folder that wins over every other source, with names and descriptions per language (`name.en:`, `description.en:` …); see [Your own game info](#your-own-game-info).
-- **Missing covers filled in** – Settings → Tools → Fetch missing covers downloads box art and title screens for NDS and GBA games from the libretro thumbnail sets, matched by the game code inside the ROM (zipped ROMs too), so translated and renamed files still find their pictures.
+- **Missing covers filled in** – Settings → Tools → Fetch missing covers downloads box art from the libretro thumbnail sets: for NDS and GBA matched by the game code inside the ROM (zipped ROMs too, with title screens), so translated and renamed files still find their pictures; for PlayStation 1/2, PSP, N64, GameCube, Wii, 3DS, GB/GBC, NES, SNES and Mega Drive by the game's English title or an English file name.
 - **Icons straight from the ROMs** – NDS banner icons and 3DS SMDH icons (decrypted dumps); installed 3DS titles show their name in the interface language.
 - **Your own folders** – the "+" tile makes a folder with its own name, colour, icon and backdrop (from the bundled art or your own pictures); add any game or app to it with Y.
 - **Continue and favorites** – the first home tile jumps straight back into the last game; star games with Y to collect them in a Favorites folder.
-- **Search** – R3 or the search button; results update as you type. Chinese titles also match pinyin and its initials (`kdyg` → 口袋妖怪), opened from inside a platform it searches only that platform, and recent searches are one tap away.
+- **Search with the gamepad** – R3 or the search button opens a keyboard on the upper screen made for the d-pad (A types, B deletes, X space, Y system keyboard, START done), with recent searches and genre chips above it; hold L and speak to search by voice. Results update as you type. Chinese titles also match pinyin, its initials and the start of each syllable (`kdyg`, `mlao` → 马里奥), and the English title; opened from inside a platform it searches only that platform.
+- **Genres and series** – Settings → Tools → AI: sort into genres / find game series files every game under one of 14 genres and under its series, kept in `DuoLauncher/<platform>/genres.txt` and `series.txt` on the card so it is done once. A built-in table (`assets/gamedb.tsv`, about 3,500 games – every game in the Pegasus G pack lists for these consoles) already knows the genre, series and official English title of the common ROM sets by platform and file name, so those need no AI at all. The genre and series of a game show on the upper screen. SELECT on the home page switches between consoles, genres and series; a game's genre can be changed by hand (Y → Genre). When a scan finds new games the launcher offers to sort them.
+- **Smart folders** – the "+" tile also makes folders that fill themselves: recently added, not played yet, most played, playing, want to play, finished and top rated.
+- **Status and rating** (Y → Status) – mark a game as playing, want to play, finished or dropped and give it one to five stars; shown on the upper screen.
+- **New games stand out** – games added in the last week carry a NEW badge until they are played.
+- **Your catalog** – after every scan the whole library is written to `DuoLauncher/catalog.tsv` (platform, file, title, English title, genre, series, play time, status, rating), for spreadsheets, other tools and the AI.
+- **Merge folders** – Y → Merge folders on a console shows its games inside another console folder (two PS1 folders from different places become one); the games keep their own emulator, and folders with the same name merge by themselves.
 - **Sort and filter** (SELECT) – default order, name, recently played or most played, and show only 简 / 繁 / 英 games.
 - **Hide what you don't play** – hide a platform folder, or a single game or app (Y → Hide); bring them back in Settings.
 - **Jump by letter** – L2 / R2 jump to the previous / next first letter in a platform; Chinese titles count by their pinyin initial.
 - **What to play?** – a home tile that picks a random game, never-played games more often, and shows it.
+- **Notes** (Y → Note) – a line or two about where you are and what to do next, typed or spoken, shown on the upper screen with the game.
 - **Game details** (Y → Details) – file, size, number of discs, folder, emulator, play time, the official English title when known, and the game's screenshots (named after the game, or taken while it ran) on the upper screen.
 - **Starts instantly** – the last scan is cached, so the home screen is up in a second and the scan runs in the background.
 
@@ -256,6 +264,12 @@ Point it at your ROM folders and it finds the games, shows them on the lower scr
 - **Play statistics** – total play time, this week by day, time per platform and the most played games.
 - **Video previews** – a game's video snap (`videos/` or `video.mp4` in its media folder) starts on the upper screen after a moment; per game you can choose logo, cover or video instead (Y → Top screen).
 - **Sounds** – soft UI sounds (can be turned off) and each 3DS game's own banner tune when it is selected.
+- **Where you left off** – a played game's newest screenshot or save-state picture becomes its upper-screen background.
+- **How to play** (Y → How to play) – the AI writes the controls (including swapped confirm / cancel buttons in Japanese releases) and the basics a newcomer needs, once per game.
+- **Ask the AI** (Y → Ask AI) – type or say a question about the game and the answer appears on the upper screen.
+- **What to play today** – Y on the random-game tile (or Settings → Tools) has the AI pick six games from your own library to match your taste, with a reason for each; "Ask AI what to play" turns it into a conversation – say or type what you feel like ("a relaxed RPG, not too long"), then narrow it down ("something with action instead").
+- **When a game does not start** – a missing file, an emulator that is not installed, one that cannot be opened that way, or a game that closes at once each get a message saying what to do.
+- **Break reminder** – after two hours in a game (or one or three, or off) the launcher suggests a break when you come back.
 
 ### Look and feel · 外观
 
@@ -266,15 +280,19 @@ Point it at your ROM folders and it finds the games, shows them on the lower scr
 - **Everything on the home page is yours** – every built-in tile (Continue, Recently played, Favorites, New folder, Search, Statistics, Settings, Android home) and every platform folder can be renamed, recoloured or hidden, and brought back under Settings → Hidden folders.
 - **Custom artwork** – replace any platform's console picture, light and dark backdrop, and folder colour in Settings → Platform look.
 - **Text size** – four sizes for both screens.
+- **Cover margin** – game pictures fill their tiles, or all sit with the same small, medium or large margin; white frames baked into cover pictures are trimmed.
+- **Clay icons everywhere** – every home tile, console and genre folder can get its own picture or one drawn by the image service in the bundled clay style (Y → Icon).
 - **Screensaver** – after a few idle minutes the upper screen shows your covers with a clock and the lower screen goes black. Text changes corner with every picture and drifts slowly, so nothing burns into an OLED panel.
 
 ### Handy tools · 实用工具
 
-- **Wi-Fi transfer** – Settings → Wi-Fi transfer shows an address; open it in a browser on the same network and drop ROMs or theme packs straight into any platform folder. The same page has the AI and RetroAchievements settings behind an admin password shown on the handheld, so long keys can be pasted from a phone.
+- **Wi-Fi transfer** – Settings → Wi-Fi transfer shows an address and a password; open the address in a browser on the same network, enter the password, and drop ROMs or theme packs straight into any platform folder. The same page has the AI and RetroAchievements settings, so long keys can be pasted from a phone.
 - **RetroAchievements** – with your user name and Web API key, recently played games and their achievement progress, and a 🏆 tag on matching games.
 - **Updates** – Settings → About checks the latest GitHub release once a day and links to it.
-- **Save backups** – back up and restore the saves of DraStic, RetroArch, PPSSPP, AetherSX2, DuckStation, Mupen64Plus FZ, Azahar and Citra in one zip.
-- **Tidy-up tools** (Settings → Tools) – find duplicate games, list games without pictures, fetch missing covers, translate every cheat at once, AI names and descriptions for a whole platform, export the current theme as a zip, and a diagnostics page.
+- **Save backups** – back up and restore the saves of DraStic, RetroArch, PPSSPP, AetherSX2, DuckStation, Mupen64Plus FZ, Azahar and Citra in one zip, kept on the SD card. After three hours of play without a backup the launcher reminds you or, if you like, makes one by itself (the newest ten automatic ones are kept; your own are never removed). A restore replaces each save only once its copy is complete.
+- **One game's saves** (Y → Saves) – the save files of a single game, backed up and restored on their own.
+- **Storage** (Settings → Tools → Storage) – free space, the size of each console's games, the biggest games never played, and deleting a game's files (all discs, and the files a `.cue` or `.m3u` names) after a confirmation.
+- **Tidy-up tools** (Settings → Tools) – find duplicate games, list games without pictures, fetch missing covers, translate every cheat at once, AI names and descriptions for a whole platform, AI genres and series, AI pictures for every game that lacks a cover, background or title logo, AI icons for the genre folders, export the current theme as a zip, and a diagnostics page.
 - **Button layout** – swap A/B and X/Y for Nintendo- or Xbox-style confirm buttons.
 
 ### Setup · 设置
@@ -306,7 +324,9 @@ Y → Cheats on a game lists its cheats; A switches one on or off. 在游戏上�
 Everything here is optional and uses your own account; keys are kept in the launcher's settings on the handheld and sent only to the service you chose. Enter them in Settings, or on the Wi-Fi page from a phone or computer.
 
 - **Settings → AI translation** – DeepSeek, Qwen, OpenAI, Claude, Gemini or any OpenAI-compatible address. Used for cheat names (a whole game in one request) and for Settings → Tools → AI: game names and descriptions, which writes `name.<language>`, `description.<language>` and the official English title (`original:`) into the launcher's own metadata, so a library of Chinese titles reads naturally in English and the other way round. Without a key the free translation services are used for cheats.
-- **Settings → AI pictures** – an OpenAI image key (the newest image model the key can use is picked automatically). Y → Details → Make a cover with AI for games without box art; Platform look and folder icons / backdrops get "Make with AI", in the same clay-icon and paper-cut style as the built-in art. A picture takes about half a minute.
+- **Settings → AI pictures** – an OpenAI image key (the newest image model the key can use is picked automatically). Y → Details → Make a cover with AI for games without box art, or Settings → Tools → AI pictures for every game of a platform that lacks a cover, background or title logo; Platform look, folder and genre-folder icons and backdrops get "Make with AI", in the same clay-icon and paper-cut style as the built-in art. A picture takes about half a minute.
+- **Genres, series, help and picks** – the translation key above also sorts games into genres and series, writes a game's "How to play", answers questions about a game and picks what to play today.
+- **Speech** – holding L while the search keyboard is open, or after choosing to speak a note or a question, records from the microphone and sends it to the image service's speech-to-text (`/audio/transcriptions`, OpenAI or compatible). The handheld has no speech recognizer of its own.
 
 AI 功能都是可选的，用你自己的账号；密钥只存在掌机上，只发给你选的服务。可以在设置里填，也可以在手机或电脑上打开 Wi-Fi 页面填（需要掌机上显示的管理密码）。
 
@@ -358,7 +378,7 @@ DuoLauncher/themes/my-theme/
   music.ogg                      loops on the home screen
 ```
 
-`theme.txt` uses `key: value` lines: `color.<name>` for light mode and `dark.color.<name>` for dark mode, with names such as `accent`, `shelf-top`, `shelf-bottom`, `card`, `text`, `pill`, `footer`, `backdrop-paper` / `backdrop-ink` (the upper-screen line art) and `folder.<type>` for the home folders. `base-color: #RRGGBB` alone is enough for a complete colour scheme. [themes/sakura](themes/sakura/theme.txt) is a complete example with every key explained. Settings → Tools → Export current theme saves whatever you have set up as a zip that others can drop into their own `themes/` folder.
+`theme.txt` uses `key: value` lines: `color.<name>` for light mode and `dark.color.<name>` for dark mode, with names such as `accent`, `shelf-top`, `shelf-bottom`, `card`, `text`, `pill`, `footer`, `backdrop-paper` / `backdrop-ink` (the upper-screen line art) and `folder.<type>` for the home folders. `base-color: #RRGGBB` alone is enough for a complete colour scheme. [themes/sakura](themes/sakura/theme.txt) is a complete example with every key explained. Settings → Tools → Export current theme saves whatever you have set up as a zip that others can drop into their own `themes/` folder; your own pictures (console, folder, genre and tool icons, backdrops) go along under `own/`.
 
 ## Controls
 
@@ -371,10 +391,11 @@ DuoLauncher/themes/my-theme/
 | L / R | Previous / next platform |
 | L2 / R2 | Previous / next first letter |
 | X | Icon size, then list view |
-| Y | Choose emulator, cheats, details, favorite, add to a folder, top-screen display, hide, or edit a folder; on the home page also rename, recolour or hide any tile |
+| Y | Choose emulator, cheats, details, genre, note, ask AI, status and rating, how to play, saves, favorite, add to a folder, top-screen display, hide, or edit a folder; on a console folder also merge; on the home page also rename, recolour or hide any tile |
 | START | Settings (from the home page, even with the Settings tile hidden) |
-| SELECT | Sort and language filter |
+| SELECT | On the home page: consoles / genres / series; in a folder: sort and language filter |
 | R3 | Search |
+| L (search keyboard) | Hold and speak |
 
 ## Building
 

@@ -51,6 +51,8 @@ final class TopView extends ViewGroup {
     /** Set from Settings: play a game's video snap after it stays selected for a moment. */
     static boolean videoEnabled = true;
     static android.content.SharedPreferences prefs;
+    /** A line shown above a game's description, such as why the AI picked it. */
+    static final java.util.Map<Library.Game, String> extra = new java.util.HashMap<>();
 
     /** Per game: auto (video when there is one and previews are on), logo, cover or video. */
     static String displayMode(Library.Game g) {
@@ -149,6 +151,16 @@ final class TopView extends ViewGroup {
 
     // ---- layout on a 1920x1080 design canvas ----
 
+    /** A full-screen view above everything else (the gamepad keyboard), or null. */
+    private View overlay;
+
+    void setOverlay(View v) {
+        if (overlay != null) removeView(overlay);
+        overlay = v;
+        if (v != null) addView(v);
+        requestLayout();
+    }
+
     @Override protected void onMeasure(int ws, int hs) {
         int w = MeasureSpec.getSize(ws), h = MeasureSpec.getSize(hs);
         setMeasuredDimension(w, h);
@@ -174,6 +186,10 @@ final class TopView extends ViewGroup {
         int w = r - l, h = b - t;
         float u = w / 1920f;
         for (View v : new View[]{dots, bg, scrim, saver, stats}) v.layout(0, 0, w, h);
+        if (overlay != null) {
+            overlay.measure(MeasureSpec.makeMeasureSpec(w, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(h, MeasureSpec.EXACTLY));
+            overlay.layout(0, 0, w, h);
+        }
         boolean hasDesc = desc.getVisibility() == VISIBLE && desc.getText().length() > 0;
         int hy = (int) ((hasDesc ? 96 : 120) * u);
         place(hero, (w - hero.getMeasuredWidth()) / 2, hy);
@@ -265,19 +281,20 @@ final class TopView extends ViewGroup {
         message.setVisibility(GONE);
         setDark(false);
         enter(p);
-        boolean recent = list != null;
-        String label = "favorites".equals(list) ? ShelfView.toolName("favorites", t(S.FAVORITES)) : ShelfView.toolName("recent", t(S.RECENT));
+        boolean recent = list != null, genre = "genre".equals(list);
+        String label = genre ? p.title() : "favorites".equals(list) ? ShelfView.toolName("favorites", t(S.FAVORITES)) : ShelfView.toolName("recent", t(S.RECENT));
         if (recent) {
             refreshFan(p);
             boolean fav = "favorites".equals(list);
-            dots.set(fav ? ShelfView.FAVORITES_COLOR : 0xFFF2A93B, label, Theme.toolBackground(fav ? "custom" : "recent"));
+            dots.set(genre ? p.accent() : fav ? ShelfView.FAVORITES_COLOR : 0xFFF2A93B, label, Theme.toolBackground(fav || genre ? "custom" : "recent"));
         } else {
             hero.setDrawable(ConsoleDrawable.of(p, true));
             dots.set(p.accent(), p.isCustom() ? p.title() : p.name, Theme.background(p));
         }
         boolean native_ = p.system.equals("ANDROID") || p.system.equals("APPS") || p.isCustom();
         title.setText(recent ? label : p.title());
-        if (recent || native_ || emu == null) chips.set(Palette.dark, I18n.f(S.GAMES_COUNT, p.games.size()));
+        if (genre && emu != null) chips.set(Palette.dark, I18n.f(S.GAMES_COUNT, p.games.size()), emu);
+        else if (recent || native_ || emu == null) chips.set(Palette.dark, I18n.f(S.GAMES_COUNT, p.games.size()));
         else chips.set(Palette.dark, I18n.f(S.GAMES_COUNT, p.games.size()), "▶ " + emu);
         desc.setText("");
         desc.setVisibility(GONE);
@@ -338,6 +355,16 @@ final class TopView extends ViewGroup {
         requestLayout();
     }
 
+    /** The newest screenshot or save-state picture of the game shown, replacing its background art. */
+    void showLastShot(Library.Game g, File f) {
+        if (shown != g || f == null) return;
+        Bitmap b = icons.image(f, 640, () -> showLastShot(g, f));
+        if (b == null) return;
+        bg.setImageBitmap(b);
+        bg.setAlpha(0f);
+        bg.animate().alpha(1f).setDuration(350).start();
+    }
+
     void showGame(Library.Game g, String emu, String... played) {
         message.setVisibility(GONE);
         boolean fresh = shown != g;
@@ -346,11 +373,17 @@ final class TopView extends ViewGroup {
         title.setText(g.title);
         List<String> tags = new ArrayList<>();
         tags.add(g.platform.title());
+        String kind = Series.label(g), gen = g.genre != null ? Genres.name(g.genre) : null;
+        if (gen != null || kind != null) tags.add(gen == null ? kind : kind == null ? gen : gen + " · " + kind);
         if (emu != null) tags.add("▶ " + emu);
         for (String s : played) if (s != null) tags.add(s);
         chips.set(true, tags.toArray(new String[0]));
-        desc.setText(g.description.replace('\n', ' '));
-        desc.setVisibility(g.description.isEmpty() ? GONE : VISIBLE);
+        String text = g.description.replace('\n', ' ');
+        String note = prefs != null && g.path != null ? prefs.getString("note:" + g.key(), null) : null, why = extra.get(g);
+        if (note != null) text = "✎ " + note + (text.isEmpty() ? "" : "\n" + text);
+        if (why != null) text = "✦ " + why + (text.isEmpty() ? "" : "\n" + text);
+        desc.setText(text);
+        desc.setVisibility(text.isEmpty() ? GONE : VISIBLE);
         if (emu != null) hints.set(true, "A|" + t(S.PLAY), "Y|" + t(S.CHOOSE_EMULATOR));
         else hints.set(true, "A|" + t(S.OPEN));
         if (fresh) {

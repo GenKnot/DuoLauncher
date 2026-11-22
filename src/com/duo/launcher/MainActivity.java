@@ -77,6 +77,8 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         applyDisplayMode();
         shelfState.hidden.addAll(prefs.getStringSet("hidden", new HashSet<>()));
         for (String k : prefs.getString("homeOrder", "").split("\n")) if (!k.isEmpty()) shelfState.homeOrder.add(k);
+        shelfState.homeMode = prefs.getInt("homeMode", prefs.getBoolean("homeByGenre", false) ? 1 : 0);
+        shelfState.tilePad = prefs.getInt("tilePad", 0);
         hiddenGames.addAll(prefs.getStringSet("hiddenGames", new HashSet<>()));
         Theme.init(this);
         applyTextScale();
@@ -102,6 +104,7 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         main.removeCallbacks(idleCheck);
         main.postDelayed(idleCheck, 15_000);
         keepAwake(prefs.getInt("screensaver", 5) > 0);
+        getSystemService(DisplayManager.class).registerDisplayListener(displays, main);
         showShelf();
         if (lib == null && !loading) {
             if (Environment.isExternalStorageManager()) {
@@ -118,9 +121,13 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
                 }
             }
         } else if (lib != null && shelf != null) {
+            // games copied while the launcher was in the background show up without a manual rescan
+            if (!loading && SystemClock.uptimeMillis() - lastScanAt > RESCAN_MS) { quietScan = true; load(); }
             shelf.setRecent(recentGames());
             if (pendingPermissions && shelfState.menu != null) showPermissionsMenu(shelfState.menu.parent);
             if (shelfState.menu == null) onFocus(shelf.selected());
+            if (askBackup && shelfState.menu == null) showBackupReminder();
+            if (!newGames.isEmpty() && shelfState.menu == null) askNewGenres();
             if (!prefs.contains("lang") && shelfState.menu == null) showLanguageMenu(null, true);
         }
     }
@@ -132,10 +139,14 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         keepAwake(false);
         if (sfx != null) sfx.pauseMusic();
         // a game's video must not keep playing (or start late) under the emulator; redrawn on return
+        if (voice != null) { voice.stop(); voice = null; }
+        voiceTo = null;
+        closeKeyboard();
         if (top != null) top.reset();
         stopRepeat();
         // emulators drive the second screen themselves
         if (pres != null) { pres.dismiss(); pres = null; shelf = null; }
+        getSystemService(DisplayManager.class).unregisterDisplayListener(displays);
         super.onPause();
     }
 
@@ -156,6 +167,20 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
             c.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
         }
     }
+
+    private final DisplayManager.DisplayListener displays = new DisplayManager.DisplayListener() {
+        @Override public void onDisplayAdded(int id) { if (pres == null && hasWindowFocus()) showShelf(); }
+
+        @Override public void onDisplayRemoved(int id) {
+            if (pres != null && pres.getDisplay() != null && pres.getDisplay().getDisplayId() == id) {
+                try { pres.dismiss(); } catch (RuntimeException ignored) { }
+                pres = null;
+                shelf = null;
+            }
+        }
+
+        @Override public void onDisplayChanged(int id) { }
+    };
 
     private void showShelf() {
         if (pres != null) return;
@@ -201,20 +226,44 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
     private void load() {
         if (loading) { reloadPending = true; return; }
         loading = true;
-        boolean first = lib == null, manual = lib != null;
+        boolean first = lib == null, manual = lib != null && !quietScan;
+        quietScan = false;
         if (first) top.showMessage(t(S.LOADING));
         File cacheFile = new File(getFilesDir(), "library.cache");
         List<String> folders = folders();
         boolean autoFind = prefs.getBoolean("autoFind", true);
         Set<String> apps = new HashSet<>(prefs.getStringSet("apps", new HashSet<>()));
+        Library before = lib;
         new Thread(() -> {
+            Library prev = before;
             if (first) {
                 Library cached = Library.readCache(cacheFile);
                 if (cached != null) main.post(() -> { if (lib == null) applyLibrary(cached, false); });
+                if (prev == null) prev = cached;
             }
             long t0 = SystemClock.uptimeMillis();
-            Library l = Library.load(this, folders, autoFind, apps);
+            Library l;
+            try {
+                l = Library.load(this, folders, autoFind, apps);
+            } catch (RuntimeException e) {
+                main.post(() -> {
+                    loading = false;
+                    Toast.makeText(this, I18n.f(S.LAUNCH_FAILED, String.valueOf(e.getMessage())), Toast.LENGTH_LONG).show();
+                });
+                return;
+            }
             lastScanMs = SystemClock.uptimeMillis() - t0;
+            lastScanAt = SystemClock.uptimeMillis();
+            // right after start-up the SD card may not be mounted yet: keep what we had and look again shortly
+            if (prev != null && volumeMissing(prev, l) && cardRetries < 8) {
+                cardRetries++;
+                main.post(() -> {
+                    loading = false;
+                    main.postDelayed(() -> { quietScan = true; load(); }, 15_000);
+                });
+                return;
+            }
+            cardRetries = 0;
             Library.writeCache(cacheFile, l);
             main.post(() -> {
                 loading = false;
@@ -223,7 +272,7 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
                 for (Library.Platform p : l.platforms) n += p.games.size();
                 if (n == 0) Toast.makeText(this, t(S.NO_GAMES), Toast.LENGTH_LONG).show();
                 else if (manual && !reloadPending) Toast.makeText(this, I18n.f(S.SCAN_DONE, n), Toast.LENGTH_SHORT).show();
-                if (reloadPending) { reloadPending = false; load(); } else prepareSearchIndex();
+                if (reloadPending) { reloadPending = false; load(); } else { prepareSearchIndex(); askNewGenres(); writeCatalog(); }
                 checkForUpdate(false, null);
                 if (Achievements.configured(prefs)) new Thread(() -> Achievements.refresh(prefs, false), "ra").start();
             });
@@ -241,6 +290,8 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         shelfState.message = null;
         shelfState.current = null;
         applyHiddenGames();
+        applyMerges();
+        noteNewGames();
         applyCustomFolders();
         applyFavorites();
         for (Library.Platform p : l.platforms) {
@@ -315,6 +366,9 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         String k = item instanceof Library.Game ? "emu:" + ((Library.Game) item).key() : "pemu:" + ((Library.Platform) item).name;
         SharedPreferences.Editor e = prefs.edit();
         if (cmd == null) e.remove(k); else e.putString(k, cmd);
+        if (item instanceof Library.Platform) for (Library.Platform src : ((Library.Platform) item).mergedFrom) {
+            if (cmd == null) e.remove("pemu:" + src.name); else e.putString("pemu:" + src.name, cmd);
+        }
         e.apply();
     }
 
@@ -334,6 +388,13 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         m.add(t(S.THEME) + "  ·  " + (pack == null ? t(S.DEFAULT) : Theme.packName(pack)), false, () -> showThemeMenu(m));
         int fontRow = m.labels.size();
         m.add(t(S.FONT_SIZE) + "  ·  " + t(TEXT_SIZE_NAMES[prefs.getInt("textScale", 1)]), false, () -> showTextSizeMenu(fontRow));
+        int padRow = m.labels.size();
+        m.add(tilePadLabel(), false, () -> {
+            shelfState.tilePad = (shelfState.tilePad + 1) % 4;
+            prefs.edit().putInt("tilePad", shelfState.tilePad).apply();
+            m.labels.set(padRow, tilePadLabel());
+            shelf.invalidate();
+        });
         boolean sounds = prefs.getBoolean("sounds", true);
         int soundsRow = m.labels.size();
         m.add(t(S.SOUNDS) + "  ·  " + t(sounds ? S.ON : S.OFF), sounds, () -> {
@@ -524,6 +585,22 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
     @Override public void onEditTool(String id, String label, int color) {
         if (shelf == null) return;
         ShelfView.Menu m = new ShelfView.Menu(label, null);
+        if (id.equals("random")) {
+            m.add(t(S.AI_PICK), false, this::aiPick);
+            m.add(t(S.AI_CHAT), false, this::startChat);
+        }
+        // the tile's icon: the user's own picture or one drawn by the image service, instead of the bundled one
+        Library.Platform tp = new Library.Platform();
+        tp.name = "tool-" + id;
+        tp.system = "CUSTOM";
+        tp.label = label;
+        Runnable iconChanged = () -> { Theme.forgetPlatform(tp.name); if (shelf != null) { shelf.closeMenu(); shelf.refresh(); } };
+        m.add(t(S.ICON) + "  ·  " + t(S.AI_MAKE), false, () -> { shelf.closeMenu(); aiPicture(tp, Theme.CONSOLE, iconChanged); });
+        m.add(t(S.ICON) + "  ·  " + t(S.PICK_IMAGE), false, () -> pickImage(tp, Theme.CONSOLE));
+        if (Theme.isCustom(tp.name, Theme.CONSOLE)) m.add(t(S.ICON) + "  ·  " + t(S.RESET_DEFAULT), false, () -> {
+            Theme.reset(tp.name, Theme.CONSOLE);
+            iconChanged.run();
+        });
         m.add(t(S.RENAME), false, () -> askText(t(S.RENAME), label, name -> {
             prefs.edit().putString("tool." + id + ".name", name).apply();
             loadToolLooks();
@@ -553,7 +630,7 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
             });
             shelf.showMenu(cm);
         });
-        m.add("－ " + t(S.HIDE_TILE) + (id.equals("settings") ? "  ·  " + t(S.START_SETTINGS_HINT) : ""), false, () -> {
+        m.add(t(S.HIDE_TILE) + (id.equals("settings") ? "  ·  " + t(S.START_SETTINGS_HINT) : ""), false, () -> {
             shelf.closeMenu();
             shelfState.hidden.add("tool:" + id);
             prefs.edit().putStringSet("hidden", new HashSet<>(shelfState.hidden)).apply();
@@ -571,6 +648,12 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
     }
 
     private static final S[] TEXT_SIZE_NAMES = {S.ZOOM_S, S.ZOOM_M, S.ZOOM_L, S.SIZE_XL};
+
+    /** "Cover margin · Fill" and so on: A on the row steps through fill, small, medium and large. */
+    private String tilePadLabel() {
+        S[] names = {S.TILE_FILL, S.ZOOM_S, S.ZOOM_M, S.ZOOM_L};
+        return t(S.TILE_PAD) + "  ·  " + t(names[Math.max(0, Math.min(3, shelfState.tilePad))]);
+    }
 
     private void applyTextScale() {
         int i = Math.max(0, Math.min(Palette.TEXT_SCALES.length - 1, prefs.getInt("textScale", 1)));
@@ -691,7 +774,9 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         AiImage ai = AiImage.from(prefs);
         if (ai == null) { Toast.makeText(this, t(S.AI_IMAGES_NEEDED), Toast.LENGTH_LONG).show(); return; }
         boolean icon = kind.equals(Theme.CONSOLE);
-        String subject = p.isCustom() ? p.title() : Library.platformTitle(p.system.isEmpty() ? p.name : p.system) + " video game console";
+        String subject = p.isCustom() ? p.title() : p.name.startsWith("series-") ? p.title() + " video game series: one iconic object or creature from it"
+                : p.system.equals("GENRE") ? Genres.subject(p.name.substring("genre-".length()))
+                : Library.platformTitle(p.system.isEmpty() ? p.name : p.system) + " video game console";
         askText(t(S.AI_SUBJECT), subject, what -> {
             Toast.makeText(this, t(S.AI_DRAWING), Toast.LENGTH_LONG).show();
             new Thread(() -> {
@@ -739,6 +824,118 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         }, "ai-cover").start();
     }
 
+    // ---- AI pictures for every game that lacks one: covers, backgrounds, title logos ----
+
+    private static final String[] PIC_KINDS = {"box_front", "background", "logo"};
+    /** Set while pictures are being drawn; setting it to true stops after the current one. */
+    private java.util.concurrent.atomic.AtomicBoolean imageJob;
+
+    private File ownMediaDir(Library.Game g) {
+        return new File(GameText.ownDir(g.platform, g), "media/" + (g.mediaBase != null ? g.mediaBase : new File(g.baseName()).getName()));
+    }
+
+    private static String picName(String kind) {
+        switch (kind) {
+            case "box_front": return t(S.AI_COVER);
+            case "background": return t(S.BACKGROUND_IMAGE);
+            default: return t(S.AI_LOGO);
+        }
+    }
+
+    /** Games of the platform without this kind of picture (a logo only for games whose English title is known). */
+    private static List<Library.Game> missingPictures(Library.Platform p, String kind) {
+        List<Library.Game> out = new ArrayList<>();
+        for (Library.Game g : p.games) {
+            if (g.pkg != null || g.path == null || g.asset(kind) != null) continue;
+            if (kind.equals("logo") && (g.original == null || g.original.trim().isEmpty())) continue;
+            out.add(g);
+        }
+        return out;
+    }
+
+    private void showAiPicturesMenu() {
+        if (AiImage.from(prefs) == null) { Toast.makeText(this, t(S.AI_IMAGES_NEEDED), Toast.LENGTH_LONG).show(); return; }
+        ShelfView.Menu m = new ShelfView.Menu(t(S.AI_PICTURES), t(S.AI_PICTURES_HINT));
+        m.parent = shelfState.menu;
+        for (String kind : PIC_KINDS) m.add(picName(kind), false, () -> showAiPicturesFor(m, kind));
+        shelf.showMenu(m);
+    }
+
+    private void showAiPicturesFor(ShelfView.Menu parent, String kind) {
+        ShelfView.Menu m = new ShelfView.Menu(picName(kind), kind.equals("logo") ? t(S.AI_LOGO_HINT) : t(S.AI_PICTURES_HINT));
+        m.parent = parent;
+        List<Library.Platform> ps = new ArrayList<>();
+        int total = 0;
+        for (Library.Platform p : lib.platforms) {
+            if (p.isCustom() || shelf.isPseudo(p)) continue;
+            int n = missingPictures(p, kind).size();
+            if (n == 0) continue;
+            ps.add(p);
+            total += n;
+            m.add(p.title() + "  ·  " + I18n.f(S.GAMES_COUNT, n), false, () -> confirmAiPictures(m, java.util.Collections.singletonList(p), kind));
+        }
+        if (ps.isEmpty()) m.add(t(S.NONE_FOUND), false, null);
+        else if (ps.size() > 1) m.add(t(S.ALL_PLATFORMS) + "  ·  " + I18n.f(S.GAMES_COUNT, total), false, () -> confirmAiPictures(m, ps, kind));
+        shelf.showMenu(m);
+    }
+
+    private void confirmAiPictures(ShelfView.Menu parent, List<Library.Platform> ps, String kind) {
+        List<Library.Game> gs = new ArrayList<>();
+        for (Library.Platform p : ps) gs.addAll(missingPictures(p, kind));
+        ShelfView.Menu m = new ShelfView.Menu(picName(kind), I18n.f(S.AI_PICTURES_CONFIRM, gs.size(), Math.max(1, gs.size() / 2)));
+        m.parent = parent;
+        m.add(t(S.GO), false, () -> { shelf.closeMenu(); runAiPictures(gs, kind); });
+        m.add(t(S.CANCEL), false, () -> shelf.showMenu(parent));
+        shelf.showMenu(m);
+    }
+
+    private void runAiPictures(List<Library.Game> games, String kind) {
+        AiImage ai = AiImage.from(prefs);
+        if (ai == null || imageJob != null) return;
+        java.util.concurrent.atomic.AtomicBoolean stop = new java.util.concurrent.atomic.AtomicBoolean();
+        imageJob = stop;
+        Toast.makeText(this, I18n.f(S.AI_PICTURES_PROGRESS, 0, games.size()), Toast.LENGTH_SHORT).show();
+        new Thread(() -> {
+            int done = 0, failed = 0;
+            for (int i = 0; i < games.size() && !stop.get(); i++) {
+                Library.Game g = games.get(i);
+                String platform = Library.platformTitle(g.platform.system.isEmpty() ? g.platform.name : g.platform.system);
+                android.graphics.Bitmap b;
+                String file;
+                if (kind.equals("box_front")) { b = ai.generate(AiImage.coverPrompt(g.title, g.original, platform), "1024x1536"); file = "cover.png"; }
+                else if (kind.equals("background")) { b = ai.generate(AiImage.gameBackdropPrompt(g.title, g.original, platform), "1536x1024"); file = "background.png"; }
+                else {
+                    b = ai.generate(AiImage.logoPrompt(g.original.trim()), "1536x1024");
+                    if (b != null) b = AiImage.cutOut(b);
+                    file = "logo.png";
+                }
+                boolean ok = false;
+                if (b != null) {
+                    File dir = ownMediaDir(g);
+                    dir.mkdirs();
+                    try (java.io.FileOutputStream o = new java.io.FileOutputStream(new File(dir, file))) {
+                        o.write(AiImage.png(b));
+                        ok = true;
+                    } catch (IOException e) {
+                        ai.error = e.getMessage();
+                    }
+                }
+                if (ok) done++; else failed++;
+                // a key that is refused or out of credit fails every time: stop early
+                if (!ok && done == 0 && failed >= 2) break;
+                int n = i + 1;
+                main.post(() -> Toast.makeText(this, I18n.f(S.AI_PICTURES_PROGRESS, n, games.size()), Toast.LENGTH_SHORT).show());
+            }
+            int made = done;
+            String err = made < games.size() && !stop.get() ? ai.error : null;
+            main.post(() -> {
+                imageJob = null;
+                Toast.makeText(this, I18n.f(S.AI_PICTURES_DONE, made) + (err != null ? "\n" + I18n.f(S.AI_FAILED, err) : ""), Toast.LENGTH_LONG).show();
+                if (made > 0) load();
+            });
+        }, "ai-pictures").start();
+    }
+
     // ---- Wi-Fi transfer ----
 
     private WifiServer wifi;
@@ -770,7 +967,10 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
 
                 @Override public void save(String provider, String url, String model, String key) {
                     SharedPreferences.Editor e = prefs.edit().putString("ai.provider", provider).putString("ai.url", url).putString("ai.model", model);
-                    if (key != null) e.putString("ai.key", key);   // an empty field keeps the key already set
+                    // an empty field keeps the key already set, but only for the same address: a stored key is
+                    // never sent to a new one
+                    if (key != null) e.putString("ai.key", key);
+                    else if (!url.equals(prefs.getString("ai.url", "")) || !provider.equals(prefs.getString("ai.provider", provider))) e.remove("ai.key");
                     e.apply();
                     main.post(() -> Toast.makeText(MainActivity.this, t(S.AI_SAVED), Toast.LENGTH_LONG).show());
                 }
@@ -794,6 +994,7 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
                 @Override public void saveImage(String url, String model, String key) {
                     SharedPreferences.Editor e = prefs.edit().putString("img.url", url).putString("img.model", model);
                     if (key != null) e.putString("img.key", key);
+                    else if (!url.equals(prefs.getString("img.url", ""))) e.remove("img.key");
                     e.apply();
                     main.post(() -> Toast.makeText(MainActivity.this, t(S.AI_SAVED), Toast.LENGTH_LONG).show());
                 }
@@ -855,7 +1056,14 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         new Thread(() -> {
             Runnable then;
             try { then = work.call(); } catch (Exception e) { then = () -> Toast.makeText(this, String.valueOf(e.getMessage()), Toast.LENGTH_LONG).show(); }
-            main.post(then);
+            Runnable result = then;
+            main.post(() -> {
+                try {
+                    result.run();
+                } catch (NullPointerException gone) {
+                    // the lower screen went away (power button, a game started) while this was working
+                }
+            });
         }, "tools").start();
     }
 
@@ -887,8 +1095,10 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         }));
         m.add(t(S.BACKUP_SAVES), false, () -> runInBackground(() -> {
             File out = Backups.backup(Backups.folder(volumeRoots()));
+            prefs.edit().putLong("unbackedPlay", 0).apply();
             return () -> Toast.makeText(this, I18n.f(S.BACKUP_DONE, out.getAbsolutePath()), Toast.LENGTH_LONG).show();
         }));
+        m.add(t(S.BACKUP_REMINDER) + "  ·  " + backupRemindLabel(), false, () -> showBackupRemindMenu(shelfState.menu));
         m.add(t(S.RESTORE_SAVES), false, () -> {
             ShelfView.Menu rm = new ShelfView.Menu(t(S.RESTORE_SAVES), null);
             rm.parent = shelfState.menu;
@@ -926,6 +1136,20 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
                     + (err != null ? "\n" + I18n.f(S.AI_FAILED, err) : ""), Toast.LENGTH_LONG).show();
         }));
         m.add(t(S.AI_GAME_TEXT), false, this::showGameTextMenu);
+        m.add(t(S.AI_GENRES), false, this::showGenresMenu);
+        m.add(t(S.AI_GENRE_ICONS), false, this::confirmGenreIcons);
+        m.add(t(S.AI_SERIES), false, this::showSeriesMenu);
+        m.add(t(S.AI_PICK), false, this::aiPick);
+        m.add(t(S.AI_CHAT), false, this::startChat);
+        m.add(t(S.STORAGE), false, this::showStorage);
+        int restRow = m.labels.size();
+        m.add(restLabel(), false, () -> {
+            prefs.edit().putInt("restHours", (prefs.getInt("restHours", 2) + 1) % 4).apply();
+            m.labels.set(restRow, restLabel());
+            shelf.invalidate();
+        });
+        if (imageJob != null) m.add(t(S.AI_PICTURES_STOP), false, () -> { imageJob.set(true); shelf.closeMenu(); });
+        else m.add(t(S.AI_PICTURES), false, this::showAiPicturesMenu);
         m.add(t(S.EXPORT_THEME), false, () -> runInBackground(() -> {
             File out = Theme.export(this, new File(Backups.folder(volumeRoots()).getParentFile(), "exports"));
             return () -> Toast.makeText(this, I18n.f(S.EXPORTED, out.getAbsolutePath()), Toast.LENGTH_LONG).show();
@@ -956,6 +1180,963 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         shelf.showMenu(m);
     }
 
+    /** Settings → Tools → AI: sort games into genres, per platform or all at once. */
+    private void showGenresMenu() {
+        Ai ai = Ai.from(prefs);
+        if (ai == null) { Toast.makeText(this, t(S.AI_NEEDED), Toast.LENGTH_LONG).show(); return; }
+        ShelfView.Menu m = new ShelfView.Menu(t(S.AI_GENRES), t(S.AI_GENRES_HINT));
+        m.parent = shelfState.menu;
+        List<Library.Platform> ps = new ArrayList<>();
+        int total = 0;
+        for (Library.Platform p : lib.platforms) {
+            if (p.isCustom() || shelf.isPseudo(p)) continue;
+            int n = Genres.todo(p).size();
+            if (n == 0) continue;
+            ps.add(p);
+            total += n;
+            m.add(p.title() + "  ·  " + I18n.f(S.GAMES_COUNT, n), false, () -> runGenres(java.util.Collections.singletonList(p), ai));
+        }
+        if (ps.isEmpty()) m.add(t(S.NONE_FOUND), false, null);
+        else if (ps.size() > 1) m.add(t(S.ALL_PLATFORMS) + "  ·  " + I18n.f(S.GAMES_COUNT, total), false, () -> runGenres(ps, ai));
+        boolean ask = prefs.getBoolean("askGenres", true);
+        m.add(t(S.ASK_NEW_GAMES) + "  ·  " + t(ask ? S.ON : S.OFF), ask, () -> {
+            prefs.edit().putBoolean("askGenres", !ask).apply();
+            showGenresMenu();
+        });
+        shelf.showMenu(m);
+    }
+
+    private boolean sorting;
+
+    private void runGenres(List<Library.Platform> ps, Ai ai) { runGenres(ps, ai, false); }
+
+    /** Genres, and with {@code alsoSeries} the series too (for new games). */
+    private void runGenres(List<Library.Platform> ps, Ai ai, boolean alsoSeries) {
+        shelf.closeMenu();
+        if (sorting) return;
+        sorting = true;
+        int total = 0;
+        for (Library.Platform p : ps) total += Genres.todo(p).size() + (alsoSeries ? Series.todo(p).size() : 0);
+        int all = total;
+        Toast.makeText(this, I18n.f(S.AI_GENRES_PROGRESS, 0, all), Toast.LENGTH_SHORT).show();
+        Library startLib = lib;
+        new Thread(() -> {
+            int done = 0;
+            outer:
+            for (Library.Platform p : ps) {
+                for (java.util.Map.Entry<Library.Platform, List<Library.Game>> e : byPlatform(Genres.todo(p)).entrySet()) {
+                    List<Library.Game> gs = e.getValue();
+                    int base = done;
+                    int n = Genres.classify(ai, e.getKey(), gs, k -> main.post(() ->
+                            Toast.makeText(this, I18n.f(S.AI_GENRES_PROGRESS, base + k, all), Toast.LENGTH_SHORT).show()), null);
+                    done += n;
+                    if (n < gs.size() && ai.error != null) break outer;
+                }
+            }
+            if (alsoSeries && ai.error == null) done += seriesPass(ps, ai, done, all, S.AI_GENRES_PROGRESS);
+            int finished = done;
+            String err = ai.error;
+            main.post(() -> {
+                sorting = false;
+                Toast.makeText(this, I18n.f(S.AI_GENRES_DONE, finished) + (err != null ? "\n" + I18n.f(S.AI_FAILED, err) : ""), Toast.LENGTH_LONG).show();
+                if (lib != startLib) load();
+                else { if (shelf != null) shelf.refresh(); writeCatalog(); }
+            });
+        }, "genres").start();
+    }
+
+    /** Games grouped by their own platform, whose folder their files are kept in. */
+    private static java.util.Map<Library.Platform, List<Library.Game>> byPlatform(List<Library.Game> games) {
+        java.util.Map<Library.Platform, List<Library.Game>> m = new java.util.LinkedHashMap<>();
+        for (Library.Game g : games) m.computeIfAbsent(g.platform, k -> new ArrayList<>()).add(g);
+        return m;
+    }
+
+    // ---- new games: offer to sort them ----
+
+    /** Games first seen in this run of the launcher, until the user has been asked about them. */
+    private final List<Library.Game> newGames = new ArrayList<>();
+
+    private void askNewGenres() {
+        if (newGames.isEmpty() || shelf == null || lib == null || shelfState.menu != null || sorting || kb != null) return;
+        Ai ai = Ai.from(prefs);
+        if (ai == null || !prefs.getBoolean("askGenres", true)) { newGames.clear(); return; }
+        java.util.LinkedHashSet<Library.Platform> ps = new java.util.LinkedHashSet<>();
+        int n = 0;
+        for (Library.Game old : newGames) {
+            Library.Game g = lib.byKey.get(old.key());
+            if (g == null || g.genre != null) continue;
+            n++;
+            ps.add(g.platform);
+        }
+        newGames.clear();
+        if (n == 0) return;
+        ShelfView.Menu m = new ShelfView.Menu(I18n.f(S.NEW_GAMES_FOUND, n), t(S.AI_GENRES_HINT));
+        m.add(t(S.SORT_NOW), false, () -> runGenres(new ArrayList<>(ps), ai, true));
+        m.add(t(S.NOT_NOW), false, () -> shelf.closeMenu());
+        m.add(t(S.NEVER_ASK), false, () -> {
+            prefs.edit().putBoolean("askGenres", false).apply();
+            shelf.closeMenu();
+        });
+        shelf.showMenu(m);
+    }
+
+    // ---- series ----
+
+    /** Settings → Tools → AI: find the series of games, per platform or all at once. */
+    private void showSeriesMenu() {
+        Ai ai = Ai.from(prefs);
+        if (ai == null) { Toast.makeText(this, t(S.AI_NEEDED), Toast.LENGTH_LONG).show(); return; }
+        ShelfView.Menu m = new ShelfView.Menu(t(S.AI_SERIES), t(S.AI_SERIES_HINT));
+        m.parent = shelfState.menu;
+        List<Library.Platform> ps = new ArrayList<>();
+        int total = 0;
+        for (Library.Platform p : lib.platforms) {
+            if (p.isCustom() || shelf.isPseudo(p)) continue;
+            int n = Series.todo(p).size();
+            if (n == 0) continue;
+            ps.add(p);
+            total += n;
+            m.add(p.title() + "  ·  " + I18n.f(S.GAMES_COUNT, n), false, () -> runSeries(java.util.Collections.singletonList(p), ai));
+        }
+        if (ps.isEmpty()) m.add(t(S.NONE_FOUND), false, null);
+        else if (ps.size() > 1) m.add(t(S.ALL_PLATFORMS) + "  ·  " + I18n.f(S.GAMES_COUNT, total), false, () -> runSeries(ps, ai));
+        shelf.showMenu(m);
+    }
+
+    private void runSeries(List<Library.Platform> ps, Ai ai) {
+        shelf.closeMenu();
+        if (sorting) return;
+        sorting = true;
+        int total = 0;
+        for (Library.Platform p : ps) total += Series.todo(p).size();
+        int all = total;
+        Toast.makeText(this, I18n.f(S.AI_SERIES_PROGRESS, 0, all), Toast.LENGTH_SHORT).show();
+        Library startLib = lib;
+        new Thread(() -> {
+            int finished = seriesPass(ps, ai, 0, all, S.AI_SERIES_PROGRESS);
+            String err = ai.error;
+            main.post(() -> {
+                sorting = false;
+                Toast.makeText(this, I18n.f(S.AI_SERIES_DONE, finished) + (err != null ? "\n" + I18n.f(S.AI_FAILED, err) : ""), Toast.LENGTH_LONG).show();
+                if (lib != startLib) load();
+                else { if (shelf != null) shelf.refresh(); writeCatalog(); }
+            });
+        }, "series").start();
+    }
+
+    /** Runs in the background: the series of every game of {@code ps} not looked at yet; returns how many were done. */
+    private int seriesPass(List<Library.Platform> ps, Ai ai, int base0, int all, S progress) {
+        java.util.Set<String> known = Series.known(lib);
+        int done = 0;
+        for (Library.Platform p : ps) {
+            for (java.util.Map.Entry<Library.Platform, List<Library.Game>> e : byPlatform(Series.todo(p)).entrySet()) {
+                List<Library.Game> gs = e.getValue();
+                int base = base0 + done;
+                int n = Series.classify(ai, e.getKey(), gs, known, k -> main.post(() ->
+                        Toast.makeText(this, I18n.f(progress, base + k, all), Toast.LENGTH_SHORT).show()));
+                done += n;
+                if (n < gs.size() && ai.error != null) return done;
+            }
+        }
+        return done;
+    }
+
+    // ---- status (playing, want to play, done, dropped) and a 1-5 star rating ----
+
+    private static final String[] STATUSES = {"playing", "wish", "done", "dropped"};
+
+    private String restLabel() {
+        int rest = prefs.getInt("restHours", 2);
+        return t(S.REST_SETTING) + "  ·  " + (rest == 0 ? t(S.OFF) : I18n.f(S.REST_HOURS, rest));
+    }
+
+    private static String statusName(String s) {
+        switch (s) {
+            case "playing": return t(S.STATUS_PLAYING);
+            case "wish": return t(S.STATUS_WISH);
+            case "done": return t(S.STATUS_DONE);
+            case "dropped": return t(S.STATUS_DROPPED);
+            default: return t(S.STATUS_NONE);
+        }
+    }
+
+    private static String stars(int n) {
+        StringBuilder b = new StringBuilder();
+        for (int i = 1; i <= 5; i++) b.append(i <= n ? '★' : '☆');
+        return b.toString();
+    }
+
+    /** "Playing · ★★★★☆" for the top screen, or null when nothing is set. */
+    private String statusTag(Library.Game g) {
+        String s = prefs.getString("status:" + g.key(), null);
+        int r = prefs.getInt("rating:" + g.key(), 0);
+        if (s == null && r == 0) return null;
+        return (s != null ? statusName(s) : "") + (s != null && r > 0 ? " · " : "") + (r > 0 ? stars(r) : "");
+    }
+
+    @Override public String statusLine(Library.Game g) {
+        String tag = statusTag(g);
+        return tag != null ? tag : t(S.STATUS_NONE);
+    }
+
+    @Override public void onStatus(Library.Game g, ShelfView.Menu parent) {
+        String cur = prefs.getString("status:" + g.key(), "");
+        int rating = prefs.getInt("rating:" + g.key(), 0);
+        ShelfView.Menu m = new ShelfView.Menu(t(S.STATUS), g.title);
+        m.parent = parent;
+        m.add(t(S.STATUS_NONE), cur.isEmpty(), () -> setStatus(g, null, -1));
+        for (String s : STATUSES) m.add(statusName(s), s.equals(cur), () -> setStatus(g, s, -1));
+        for (int i = 5; i >= 1; i--) {
+            int r = i;
+            m.add(stars(r), r == rating, () -> setStatus(g, cur.isEmpty() ? null : cur, r));
+        }
+        m.add(t(S.NO_RATING), rating == 0, () -> setStatus(g, cur.isEmpty() ? null : cur, 0));
+        shelf.showMenu(m);
+    }
+
+    /** rating -1 keeps the rating. */
+    private void setStatus(Library.Game g, String status, int rating) {
+        SharedPreferences.Editor e = prefs.edit();
+        if (status == null) e.remove("status:" + g.key()); else e.putString("status:" + g.key(), status);
+        if (rating == 0) e.remove("rating:" + g.key()); else if (rating > 0) e.putInt("rating:" + g.key(), rating);
+        e.apply();
+        playedCache.clear();
+        applyCustomFolders();
+        if (shelf != null) {
+            shelf.closeMenu();
+            shelf.refresh();
+            onFocus(shelf.selected());
+        }
+    }
+
+    // ---- how to play: controls and basics written by the AI once, kept for next time ----
+
+    @Override public void onHowTo(Library.Game g) {
+        String cached = prefs.getString("howto:" + g.key(), null);
+        if (cached != null) { showHowTo(g, cached); return; }
+        Ai ai = Ai.from(prefs);
+        if (ai == null) { Toast.makeText(this, t(S.AI_NEEDED), Toast.LENGTH_LONG).show(); return; }
+        if (shelf != null) shelf.closeMenu();
+        Toast.makeText(this, t(S.THINKING), Toast.LENGTH_SHORT).show();
+        String game = g.title + (g.original != null && !g.original.isEmpty() ? " (" + g.original + ")" : "") + ", " + platformName(g);
+        String lang = I18n.name();
+        new Thread(() -> {
+            String a = ai.chat("You explain how to play a retro video game to someone starting it on a handheld emulator whose "
+                    + "buttons follow the original console's layout. Write in " + lang + ", plain text without markdown, at most "
+                    + "about 180 words: first the controls (which button does what, including confirm/cancel when they are swapped "
+                    + "as in many Japanese releases), then the few rules or systems a newcomer must know. If unsure of a detail, "
+                    + "leave it out.", "Game: " + game, 900);
+            String err = ai.error;
+            main.post(() -> {
+                if (a == null) { Toast.makeText(this, I18n.f(S.AI_FAILED, err), Toast.LENGTH_LONG).show(); return; }
+                String text = a.replace("**", "").replace("##", "").trim();
+                prefs.edit().putString("howto:" + g.key(), text).apply();
+                showHowTo(g, text);
+            });
+        }, "how-to").start();
+    }
+
+    private void showHowTo(Library.Game g, String text) {
+        showTextDialog(t(S.HOW_TO) + " · " + g.title, text, t(S.REGENERATE), () -> {
+            prefs.edit().remove("howto:" + g.key()).apply();
+            onHowTo(g);
+        });
+    }
+
+    // ---- the last picture of a played game (newest screenshot or save-state picture) on the top screen ----
+
+    private final java.util.Map<String, File> lastShots = new java.util.HashMap<>();
+    private Runnable shotLookup;
+
+    private void lookUpLastShot(Library.Game g) {
+        if (shotLookup != null) main.removeCallbacks(shotLookup);
+        shotLookup = null;
+        if (!prefs.getBoolean("lastShot", true) || prefs.getString("sessions:" + g.key(), "").isEmpty()) return;
+        if (lastShots.containsKey(g.key())) { top.showLastShot(g, lastShots.get(g.key())); return; }
+        shotLookup = () -> new Thread(() -> {
+            List<File> shots = screenshots(g);
+            File f = shots.isEmpty() ? null : shots.get(0);
+            main.post(() -> {
+                lastShots.put(g.key(), f);
+                if (top != null) top.showLastShot(g, f);
+            });
+        }, "last-shot").start();
+        main.postDelayed(shotLookup, 700);   // not while scrolling past
+    }
+
+    // ---- one game's saves: list, back up, restore ----
+
+    @Override public void onSaves(Library.Game g, ShelfView.Menu parent) {
+        Toast.makeText(this, t(S.WORKING), Toast.LENGTH_SHORT).show();
+        File dir = Backups.folder(volumeRoots());
+        new Thread(() -> {
+            List<File> saves = Backups.gameSaves(g);
+            main.post(() -> showSaves(g, saves, dir, parent));
+        }, "saves").start();
+    }
+
+    private static String safeName(String s) {
+        String t = s.replaceAll("[\\\\/:*?\"<>|\\s]+", "_");
+        return t.length() > 40 ? t.substring(0, 40) : t;
+    }
+
+    private void showSaves(Library.Game g, List<File> saves, File dir, ShelfView.Menu parent) {
+        if (shelf == null) return;
+        long total = 0;
+        for (File f : saves) total += f.length();
+        ShelfView.Menu m = new ShelfView.Menu(t(S.SAVES) + " · " + g.title,
+                saves.isEmpty() ? t(S.SAVES_NONE) : I18n.f(S.SAVES_HINT, saves.size(), gb(total)));
+        m.parent = parent;
+        String prefix = "game-" + safeName(g.title);
+        if (!saves.isEmpty()) m.add(t(S.SAVES_BACKUP), false, () -> runInBackground(() -> {
+            Backups.backupFiles(dir, prefix, saves);
+            return () -> Toast.makeText(this, I18n.f(S.SAVES_DONE, saves.size()), Toast.LENGTH_LONG).show();
+        }));
+        File[] zips = dir.listFiles((d, n) -> n.startsWith(prefix + "-") && n.endsWith(".zip"));
+        if (zips != null) {
+            java.util.Arrays.sort(zips, (a, b) -> Long.compare(b.lastModified(), a.lastModified()));
+            DateFormat df = DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT, Locale.forLanguageTag(I18n.code()));
+            for (File z : zips) m.add(I18n.f(S.SAVES_RESTORE, df.format(new Date(z.lastModified()))), false, () -> {
+                ShelfView.Menu sure = new ShelfView.Menu(t(S.SAVES_RESTORE_Q), z.getName());
+                sure.parent = m;
+                sure.add(t(S.GO), false, () -> runInBackground(() -> {
+                    int n = Backups.restore(z);
+                    return () -> Toast.makeText(this, I18n.f(S.SAVES_RESTORED, n), Toast.LENGTH_LONG).show();
+                }));
+                sure.add(t(S.CANCEL), false, () -> shelf.showMenu(m));
+                shelf.showMenu(sure);
+            });
+        }
+        DateFormat df = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT, Locale.forLanguageTag(I18n.code()));
+        for (File f : saves) m.add(f.getName() + "  ·  " + gb(f.length()) + "  ·  " + df.format(new Date(f.lastModified())), false, null);
+        shelf.showMenu(m);
+    }
+
+    // ---- game notes ----
+
+    @Override public String noteOf(Library.Game g) { return prefs.getString("note:" + g.key(), null); }
+
+    private void setNote(Library.Game g, String s) {
+        if (s == null || s.trim().isEmpty()) prefs.edit().remove("note:" + g.key()).apply();
+        else prefs.edit().putString("note:" + g.key(), s.trim()).apply();
+        if (shelf != null) {
+            shelf.closeMenu();
+            onFocus(shelf.selected());
+        }
+    }
+
+    @Override public void onNote(Library.Game g, ShelfView.Menu parent) {
+        String cur = noteOf(g);
+        ShelfView.Menu m = new ShelfView.Menu(t(S.NOTE), cur != null ? cur : t(S.NOTE_HINT));
+        m.parent = parent;
+        m.add(t(S.WRITE_NOTE), false, () -> askText(t(S.NOTE), cur != null ? cur : "", s -> setNote(g, s)));
+        m.add(t(S.SPEAK_NOTE), false, () -> { shelf.closeMenu(); listen(s -> setNote(g, s)); });
+        if (cur != null) m.add(t(S.DELETE_NOTE), false, () -> setNote(g, null));
+        shelf.showMenu(m);
+    }
+
+    // ---- asking the AI about a game ----
+
+    @Override public void onAskAi(Library.Game g, ShelfView.Menu parent) {
+        if (Ai.from(prefs) == null) { Toast.makeText(this, t(S.AI_NEEDED), Toast.LENGTH_LONG).show(); return; }
+        if (shelf == null) return;
+        ShelfView.Menu m = new ShelfView.Menu(t(S.ASK_AI), g.title);
+        m.parent = parent;
+        m.add(t(S.ASK_TYPE), false, () -> askText(t(S.ASK_AI), "", q -> askAi(g, q)));
+        m.add(t(S.ASK_SPEAK), false, () -> { shelf.closeMenu(); listen(q -> askAi(g, q)); });
+        shelf.showMenu(m);
+    }
+
+    private static String platformName(Library.Game g) {
+        return Library.platformTitle(g.platform.system.isEmpty() ? g.platform.name : g.platform.system);
+    }
+
+    private void askAi(Library.Game g, String q) {
+        Ai ai = Ai.from(prefs);
+        if (ai == null) return;
+        if (shelf != null) shelf.closeMenu();
+        Toast.makeText(this, t(S.THINKING), Toast.LENGTH_SHORT).show();
+        String game = g.title + (g.original != null && !g.original.isEmpty() ? " (" + g.original + ")" : "") + ", " + platformName(g);
+        new Thread(() -> {
+            String a = ai.chat("You help someone playing a retro video game on a handheld. Answer the question about the game in the "
+                    + "language the question is written in, short and practical (at most about 150 words, plain text, no markdown). "
+                    + "If you are not sure about a specific detail, say so rather than guessing.", "Game: " + game + "\nQuestion: " + q, 700);
+            String err = ai.error;
+            main.post(() -> showAnswer(g, q, a != null ? a.replace("**", "").replace("##", "").trim() : I18n.f(S.AI_FAILED, err)));
+        }, "ask-ai").start();
+    }
+
+    private void showAnswer(Library.Game g, String q, String a) {
+        showTextDialog(q, a, t(S.ASK_AGAIN), () -> onAskAi(g, null));
+    }
+
+    /**
+     * A text from the AI on the top screen, made for the gamepad: A or B closes it, Y does {@code onY}, up and down
+     * scroll a long text. (A dialog's own buttons would need the d-pad to reach, and B would not close it.)
+     */
+    private void showTextDialog(String title, String text, String yLabel, Runnable onY) {
+        int theme = Palette.dark ? android.R.style.Theme_DeviceDefault_Dialog_Alert : android.R.style.Theme_DeviceDefault_Light_Dialog_Alert;
+        AlertDialog.Builder b = new AlertDialog.Builder(this, theme).setTitle(title).setMessage(text)
+                .setPositiveButton("A · " + t(S.ASK_CLOSE), null);
+        if (onY != null) b.setNeutralButton("Y · " + yLabel, (x, w) -> onY.run());
+        AlertDialog d = b.create();
+        d.setOnKeyListener((di, code, e) -> {
+            int k = remap(code);
+            boolean ours = k == KeyEvent.KEYCODE_BUTTON_A || k == KeyEvent.KEYCODE_BUTTON_B || k == KeyEvent.KEYCODE_BUTTON_Y
+                    || k == KeyEvent.KEYCODE_DPAD_UP || k == KeyEvent.KEYCODE_DPAD_DOWN;
+            if (!ours) return false;
+            if (e.getAction() != KeyEvent.ACTION_DOWN || e.getRepeatCount() > 0 && k != KeyEvent.KEYCODE_DPAD_UP && k != KeyEvent.KEYCODE_DPAD_DOWN) return true;
+            if (k == KeyEvent.KEYCODE_BUTTON_Y) {
+                if (onY == null) return true;
+                di.dismiss();
+                onY.run();
+            } else if (k == KeyEvent.KEYCODE_DPAD_UP || k == KeyEvent.KEYCODE_DPAD_DOWN) {
+                android.view.View v = d.findViewById(android.R.id.message);
+                while (v != null && !(v instanceof android.widget.ScrollView)) v = v.getParent() instanceof android.view.View ? (android.view.View) v.getParent() : null;
+                if (v != null) ((android.widget.ScrollView) v).smoothScrollBy(0, (k == KeyEvent.KEYCODE_DPAD_UP ? -1 : 1) * v.getHeight() / 2);
+            } else {
+                di.dismiss();
+            }
+            return true;
+        });
+        d.show();
+    }
+
+    // ---- AI: what to play today ----
+
+    private void aiPick() {
+        Ai ai = Ai.from(prefs);
+        if (ai == null) { Toast.makeText(this, t(S.AI_NEEDED), Toast.LENGTH_LONG).show(); return; }
+        if (lib == null) return;
+        if (shelf != null) shelf.closeMenu();
+        Toast.makeText(this, t(S.THINKING), Toast.LENGTH_LONG).show();
+        List<Library.Game> all = new ArrayList<>();
+        for (Library.Game g : lib.byKey.values()) if (g.pkg == null && g.path != null) all.add(g);
+        List<Library.Game> most = new ArrayList<>(all);
+        most.sort((a, b) -> Long.compare(prefs.getLong("time:" + b.key(), 0), prefs.getLong("time:" + a.key(), 0)));
+        StringBuilder sb = new StringBuilder("Most played:\n");
+        for (int i = 0; i < Math.min(15, most.size()); i++) {
+            Library.Game g = most.get(i);
+            long min = prefs.getLong("time:" + g.key(), 0) / 60_000;
+            if (min < 1) break;
+            sb.append(g.title).append(" (").append(platformName(g)).append(", ").append(min).append(" min)\n");
+        }
+        sb.append("\nLibrary (index|title|platform|genre|minutes played):\n");
+        for (int i = 0; i < all.size(); i++) {
+            Library.Game g = all.get(i);
+            sb.append(i).append('|').append(g.title).append('|').append(platformName(g)).append('|')
+                    .append(g.genre == null ? "" : g.genre).append('|').append(prefs.getLong("time:" + g.key(), 0) / 60_000).append('\n');
+        }
+        String lang = I18n.name();
+        new Thread(() -> {
+            String a = ai.chat("You recommend what to play next from the user's own game library. Judge their taste from the most "
+                    + "played games. Pick 6 games from the library that they have played little or not at all: varied in platform "
+                    + "and genre, well regarded, good on a handheld. Answer only with a JSON array of objects {\"i\": index, "
+                    + "\"why\": one short sentence in " + lang + "}.", sb.toString(), 900);
+            List<Library.Game> picks = new ArrayList<>();
+            java.util.Map<Library.Game, String> whys = new java.util.HashMap<>();
+            if (a != null) {
+                int x = a.indexOf('['), y = a.lastIndexOf(']');
+                try {
+                    org.json.JSONArray arr = new org.json.JSONArray(a.substring(x, y + 1));
+                    for (int j = 0; j < arr.length(); j++) {
+                        org.json.JSONObject o = arr.getJSONObject(j);
+                        int i = o.optInt("i", -1);
+                        if (i < 0 || i >= all.size() || picks.contains(all.get(i))) continue;
+                        picks.add(all.get(i));
+                        whys.put(all.get(i), o.optString("why", ""));
+                    }
+                } catch (Exception ignored) {
+                }
+            }
+            String err = ai.error;
+            main.post(() -> {
+                if (picks.isEmpty()) {
+                    Toast.makeText(this, I18n.f(S.AI_FAILED, err != null ? err : "unexpected answer"), Toast.LENGTH_LONG).show();
+                    return;
+                }
+                TopView.extra.clear();
+                TopView.extra.putAll(whys);
+                searchText = "";
+                searchGenre = null;
+                if (shelf != null) shelf.showResults(t(S.AI_PICK), picks);
+            });
+        }, "ai-pick").start();
+    }
+
+    /** The library as DuoLauncher/catalog.tsv, written in the background. */
+    private void writeCatalog() {
+        Library l = lib;
+        if (l == null) return;
+        new Thread(() -> GameDb.writeCatalog(l, prefs), "catalog").start();
+    }
+
+    // ---- talking with the AI about what to play: say or type what you feel like, then narrow it down ----
+
+    private final List<String> chatLog = new ArrayList<>();
+
+    private void startChat() {
+        if (Ai.from(prefs) == null) { Toast.makeText(this, t(S.AI_NEEDED), Toast.LENGTH_LONG).show(); return; }
+        chatLog.clear();
+        chatAsk();
+    }
+
+    private void chatAsk() {
+        if (shelf == null) return;
+        ShelfView.Menu m = new ShelfView.Menu(t(S.AI_CHAT), t(S.AI_CHAT_HINT));
+        m.add(t(S.ASK_SPEAK), false, () -> { shelf.closeMenu(); listen(this::chatSay); });
+        m.add(t(S.ASK_TYPE), false, () -> askText(t(S.AI_CHAT), "", this::chatSay));
+        if (!chatLog.isEmpty()) m.add(t(S.CHAT_RESTART), false, () -> { chatLog.clear(); chatAsk(); });
+        shelf.showMenu(m);
+    }
+
+    private void chatSay(String text) {
+        Ai ai = Ai.from(prefs);
+        if (ai == null || lib == null) return;
+        if (shelf != null) shelf.closeMenu();
+        chatLog.add("User: " + text);
+        Toast.makeText(this, t(S.THINKING), Toast.LENGTH_LONG).show();
+        List<Library.Game> all = new ArrayList<>();
+        for (Library.Game g : lib.byKey.values()) if (g.pkg == null && g.path != null) all.add(g);
+        StringBuilder cat = new StringBuilder();
+        for (int i = 0; i < all.size(); i++) {
+            Library.Game g = all.get(i);
+            cat.append(i).append('|').append(g.title).append('|').append(platformName(g)).append('|').append(g.genre == null ? "" : g.genre)
+                    .append('|').append(prefs.getLong("time:" + g.key(), 0) / 60_000).append('|').append(prefs.getString("status:" + g.key(), "")).append('\n');
+        }
+        String convo = String.join("\n", chatLog), lang = I18n.name();
+        new Thread(() -> {
+            String a = ai.chat("You help the user choose what to play from their own game library, listed below. Read the "
+                    + "conversation and answer the latest message: reply in " + lang + " in one or two friendly sentences, and pick "
+                    + "up to 6 games from the library that fit what they asked for, each with a short reason. Prefer games they "
+                    + "have not finished or dropped. Answer only with JSON: {\"reply\": string, \"picks\": [{\"i\": index, \"why\": string}]}.",
+                    "Library (index|title|platform|genre|minutes played|status):\n" + cat + "\nConversation:\n" + convo, 1200);
+            String reply = null;
+            List<Library.Game> picks = new ArrayList<>();
+            java.util.Map<Library.Game, String> whys = new java.util.HashMap<>();
+            if (a != null) {
+                int x = a.indexOf('{'), y = a.lastIndexOf('}');
+                try {
+                    org.json.JSONObject o = new org.json.JSONObject(a.substring(x, y + 1));
+                    reply = o.optString("reply", "");
+                    org.json.JSONArray arr = o.optJSONArray("picks");
+                    for (int j = 0; arr != null && j < arr.length(); j++) {
+                        org.json.JSONObject p = arr.getJSONObject(j);
+                        int i = p.optInt("i", -1);
+                        if (i < 0 || i >= all.size() || picks.contains(all.get(i))) continue;
+                        picks.add(all.get(i));
+                        whys.put(all.get(i), p.optString("why", ""));
+                    }
+                } catch (Exception ignored) {
+                }
+            }
+            String said = reply, err = ai.error;
+            main.post(() -> {
+                if (said == null) {
+                    Toast.makeText(this, I18n.f(S.AI_FAILED, err != null ? err : "unexpected answer"), Toast.LENGTH_LONG).show();
+                    return;
+                }
+                StringBuilder log = new StringBuilder("AI: " + said);
+                StringBuilder msg = new StringBuilder(said);
+                for (int k = 0; k < picks.size(); k++) {
+                    Library.Game g = picks.get(k);
+                    log.append(k == 0 ? " Picked: " : "; ").append(g.title);
+                    msg.append("\n\n").append(k + 1).append(". ").append(g.title).append(" · ").append(platformName(g))
+                            .append("\n").append(whys.get(g));
+                }
+                chatLog.add(log.toString());
+                TopView.extra.clear();
+                TopView.extra.putAll(whys);
+                searchText = "";
+                searchGenre = null;
+                if (shelf != null && !picks.isEmpty()) shelf.showResults(t(S.AI_CHAT), picks);
+                showTextDialog(t(S.AI_CHAT), msg.toString(), t(S.CHAT_MORE), this::chatAsk);
+            });
+        }, "ai-chat").start();
+    }
+
+    // ---- storage: what takes the space, and deleting games ----
+
+    private final java.util.Map<Library.Game, Long> sizes = new java.util.HashMap<>();
+
+    private static long sizeOf(File f) {
+        if (f == null || !f.exists()) return 0;
+        if (f.isFile()) return f.length();
+        long s = 0;
+        File[] fs = f.listFiles();
+        if (fs != null) for (File x : fs) s += sizeOf(x);
+        return s;
+    }
+
+    /** Every file of a game: the file itself, its other discs, and what a .cue or .m3u names next to it. */
+    private static List<File> gameFiles(Library.Game g) {
+        java.util.LinkedHashSet<File> out = new java.util.LinkedHashSet<>();
+        File dir = g.path.getParentFile();
+        List<File> todo = new ArrayList<>();
+        todo.add(g.path);
+        for (String d : g.discs) todo.add(new File(dir, d));
+        for (int i = 0; i < todo.size() && i < 64; i++) {
+            File f = todo.get(i);
+            if (!out.add(f) || !f.isFile()) continue;
+            String n = f.getName().toLowerCase(java.util.Locale.ROOT);
+            if (!n.endsWith(".cue") && !n.endsWith(".m3u")) continue;
+            try (java.io.BufferedReader r = new java.io.BufferedReader(new java.io.InputStreamReader(new java.io.FileInputStream(f), java.nio.charset.StandardCharsets.UTF_8))) {
+                for (String line; (line = r.readLine()) != null; ) {
+                    String t = line.trim(), name = null;
+                    if (n.endsWith(".m3u")) { if (!t.isEmpty() && !t.startsWith("#")) name = t; }
+                    else if (t.regionMatches(true, 0, "FILE", 0, 4)) {
+                        int a = t.indexOf('"'), b = t.lastIndexOf('"');
+                        name = a >= 0 && b > a ? t.substring(a + 1, b) : t.substring(4).trim().replaceAll("\\s+\\S+$", "");
+                    }
+                    if (name == null || name.contains("..")) continue;
+                    File c = new File(f.getParentFile(), name.replace('\\', '/'));
+                    if (c.getParentFile() != null && c.getParentFile().getAbsolutePath().equals(f.getParentFile().getAbsolutePath())) todo.add(c);
+                }
+            } catch (IOException ignored) {
+            }
+        }
+        return new ArrayList<>(out);
+    }
+
+    private static long gameSize(Library.Game g) {
+        long s = 0;
+        for (File f : gameFiles(g)) s += sizeOf(f);
+        return s;
+    }
+
+    static String gb(long b) {
+        return b >= 1L << 30 ? String.format(java.util.Locale.ROOT, "%.1f GB", b / (double) (1L << 30))
+                : String.format(java.util.Locale.ROOT, "%d MB", Math.max(1, b >> 20));
+    }
+
+    private static String volumeOf(File f) {
+        String path = f.getAbsolutePath();
+        if (path.startsWith("/storage/emulated/0/")) return "/storage/emulated/0";
+        if (path.startsWith("/storage/")) {
+            int s = path.indexOf('/', 9);
+            return s < 0 ? path : path.substring(0, s);
+        }
+        return f.getParentFile().getAbsolutePath();
+    }
+
+    /** Installed 3DS titles live in the emulator's own folders: shown, but not deleted from here. */
+    private static boolean deletable(Library.Game g) {
+        return g.pkg == null && g.path != null && g.treeDir == null && !g.path.getName().endsWith(".app");
+    }
+
+    private void showStorage() {
+        if (lib == null) return;
+        Toast.makeText(this, t(S.COUNTING), Toast.LENGTH_SHORT).show();
+        List<Library.Game> gs = new ArrayList<>();
+        for (Library.Game g : lib.byKey.values()) if (g.pkg == null && g.path != null) gs.add(g);
+        new Thread(() -> {
+            java.util.Map<Library.Game, Long> m = new java.util.HashMap<>();
+            for (Library.Game g : gs) m.put(g, gameSize(g));
+            main.post(() -> {
+                sizes.clear();
+                sizes.putAll(m);
+                showStorageMenu();
+            });
+        }, "sizes").start();
+    }
+
+    private void showStorageMenu() {
+        if (shelf == null) return;
+        java.util.Set<String> vols = new java.util.LinkedHashSet<>();
+        for (Library.Game g : sizes.keySet()) vols.add(volumeOf(g.path));
+        StringBuilder hint = new StringBuilder();
+        for (String v : vols) {
+            try {
+                android.os.StatFs fs = new android.os.StatFs(v);
+                if (hint.length() > 0) hint.append("  ·  ");
+                hint.append(I18n.f(S.STORAGE_FREE, v.startsWith("/storage/emulated") ? t(S.INTERNAL_STORAGE) : t(S.CARD_STORAGE),
+                        gb(fs.getAvailableBytes()), gb(fs.getTotalBytes())));
+            } catch (Exception ignored) {
+            }
+        }
+        ShelfView.Menu m = new ShelfView.Menu(t(S.STORAGE), hint.toString());
+        m.parent = shelfState.menu;
+        List<Library.Game> unplayed = new ArrayList<>();
+        for (Library.Game g : sizes.keySet()) if (playedLine(g) == null) unplayed.add(g);
+        unplayed.sort((a, b) -> Long.compare(sizes.get(b), sizes.get(a)));
+        if (unplayed.size() > 40) unplayed.subList(40, unplayed.size()).clear();
+        m.add(t(S.BIG_UNPLAYED), false, () -> showSizeList(t(S.BIG_UNPLAYED), unplayed, m));
+        List<Library.Platform> ps = new ArrayList<>();
+        java.util.Map<Library.Platform, Long> totals = new java.util.HashMap<>();
+        for (Library.Platform p : lib.platforms) {
+            if (p.isCustom() || shelf.isPseudo(p)) continue;
+            long s = 0;
+            for (Library.Game g : p.games) s += sizes.getOrDefault(g, 0L);
+            if (s == 0) continue;
+            ps.add(p);
+            totals.put(p, s);
+        }
+        ps.sort((a, b) -> Long.compare(totals.get(b), totals.get(a)));
+        for (Library.Platform p : ps) {
+            List<Library.Game> gs = new ArrayList<>();
+            for (Library.Game g : p.games) if (sizes.containsKey(g)) gs.add(g);
+            gs.sort((a, b) -> Long.compare(sizes.get(b), sizes.get(a)));
+            m.add(p.title() + "  ·  " + gb(totals.get(p)) + "  ·  " + I18n.f(S.GAMES_COUNT, gs.size()), false, () -> showSizeList(p.title(), gs, m));
+        }
+        shelf.showMenu(m);
+    }
+
+    private void showSizeList(String title, List<Library.Game> gs, ShelfView.Menu parent) {
+        ShelfView.Menu m = new ShelfView.Menu(title, null);
+        m.parent = parent;
+        if (gs.isEmpty()) m.add(t(S.NONE_FOUND), false, null);
+        for (Library.Game g : gs) {
+            String played = playedLine(g);
+            m.add(g.title + "  ·  " + gb(sizes.getOrDefault(g, 0L)) + "  ·  " + (played == null ? t(S.NOT_PLAYED) : played), false,
+                    deletable(g) ? () -> confirmDeleteGame(g, gs, title, m) : null);
+        }
+        shelf.showMenu(m);
+    }
+
+    private void confirmDeleteGame(Library.Game g, List<Library.Game> list, String title, ShelfView.Menu parent) {
+        ShelfView.Menu m = new ShelfView.Menu(I18n.f(S.DELETE_GAME_Q, g.title), I18n.f(S.DELETE_GAME_HINT, gb(sizes.getOrDefault(g, 0L))));
+        m.parent = parent;
+        m.add(t(S.DELETE_GAME), false, () -> {
+            shelf.closeMenu();
+            new Thread(() -> {
+                boolean ok = true;
+                for (File f : gameFiles(g)) ok &= deleteTree(f);
+                boolean done = ok;
+                main.post(() -> {
+                    Toast.makeText(this, done ? I18n.f(S.GAME_DELETED, g.title) : t(S.DELETE_FAILED), Toast.LENGTH_SHORT).show();
+                    sizes.remove(g);
+                    list.remove(g);
+                    if (shelf != null) showSizeList(title, list, parent.parent);
+                    load();
+                });
+            }, "delete").start();
+        });
+        m.add(t(S.CANCEL), false, () -> shelf.showMenu(parent));
+        shelf.showMenu(m);
+    }
+
+    private static boolean deleteTree(File f) {
+        if (f.isDirectory()) {
+            File[] fs = f.listFiles();
+            if (fs != null) for (File x : fs) deleteTree(x);
+        }
+        return f.delete() || !f.exists();
+    }
+
+    // ---- speech: hold L while the keyboard is open, or after choosing to speak ----
+
+    private Voice voice;
+    /** Where the next spoken words go when the keyboard is not open. */
+    private java.util.function.Consumer<String> voiceTo;
+    private long voiceToAt;
+
+    private boolean voiceReady() {
+        if (AiImage.from(prefs) == null) { Toast.makeText(this, t(S.VOICE_NEEDS_KEY), Toast.LENGTH_LONG).show(); return false; }
+        if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{android.Manifest.permission.RECORD_AUDIO}, 7);
+            Toast.makeText(this, t(S.MIC_PERMISSION), Toast.LENGTH_LONG).show();
+            return false;
+        }
+        return true;
+    }
+
+    private void listen(java.util.function.Consumer<String> to) {
+        if (!voiceReady()) return;
+        voiceTo = to;
+        voiceToAt = SystemClock.uptimeMillis();
+        Toast.makeText(this, t(S.HOLD_L), Toast.LENGTH_LONG).show();
+    }
+
+    private void startVoice() {
+        if (voice != null || !voiceReady()) return;
+        Voice v = new Voice();
+        if (!v.start()) { Toast.makeText(this, I18n.f(S.VOICE_FAILED, String.valueOf(v.error)), Toast.LENGTH_LONG).show(); return; }
+        voice = v;
+        if (kb != null) kb.setStatus(t(S.LISTENING));
+        else Toast.makeText(this, t(S.LISTENING), Toast.LENGTH_SHORT).show();
+    }
+
+    private void stopVoice() {
+        Voice v = voice;
+        if (v == null) return;
+        voice = null;
+        byte[] wav = v.stop();
+        if (wav == null) { if (kb != null) kb.setStatus(null); return; }
+        if (kb != null) kb.setStatus(t(S.TRANSCRIBING));
+        else Toast.makeText(this, t(S.TRANSCRIBING), Toast.LENGTH_SHORT).show();
+        AiImage ai = AiImage.from(prefs);
+        PadKeyboard forKb = kb;
+        java.util.function.Consumer<String> to = voiceTo;
+        new Thread(() -> {
+            String heard = v.transcribe(ai, wav);
+            String text = heard == null ? null : heard.replaceAll("[。．.！!？?，,、\\s]+$", "");
+            main.post(() -> {
+                if (text == null || text.isEmpty()) {
+                    if (kb != null) kb.setStatus(null);
+                    Toast.makeText(this, I18n.f(S.VOICE_FAILED, String.valueOf(v.error)), Toast.LENGTH_LONG).show();
+                    return;
+                }
+                if (forKb != null && kb == forKb) kb.insert(text);
+                else if (to != null && voiceTo == to) {
+                    voiceTo = null;
+                    to.accept(text);
+                }
+            });
+        }, "voice").start();
+    }
+
+    // ---- merging console folders ----
+
+    private static boolean mergeable(Library.Platform p) {
+        return !p.isCustom() && !p.system.equals("ANDROID") && !p.system.equals("APPS") && !p.system.equals("GENRE");
+    }
+
+    /**
+     * Shows a console folder inside another one: the user's choice ("merge:" + name = target name), and two folders of
+     * the same name found in different places. The games keep their own platform for launching and the launcher's files.
+     */
+    /** Puts merged folders back on their own (their games are taken out of the folder they were shown in). */
+    private void unmerge() {
+        for (int i = 0; i < lib.platforms.size(); i++) {
+            Library.Platform p = lib.platforms.get(i);
+            if (p.mergedFrom.isEmpty()) continue;
+            p.games.removeIf(g -> g.platform != p);
+            lib.platforms.addAll(i + 1, p.mergedFrom);
+            p.mergedFrom.clear();
+        }
+    }
+
+    /** The folder a merge chain ends in (A → B → C gives C), or null. */
+    private String mergeTarget(String name) {
+        String to = prefs.getString("merge:" + name, null);
+        for (int hops = 0; to != null && hops < 8; hops++) {
+            String next = prefs.getString("merge:" + to, null);
+            if (next == null || next.equals(name)) break;
+            to = next;
+        }
+        return to == null || to.equals(name) ? null : to;
+    }
+
+    private void applyMerges() {
+        if (lib == null) return;
+        unmerge();
+        java.text.Collator col = java.text.Collator.getInstance(java.util.Locale.forLanguageTag(I18n.code()));
+        for (Library.Platform p : new ArrayList<>(lib.platforms)) {
+            if (!mergeable(p) || !lib.platforms.contains(p)) continue;
+            String to = mergeTarget(p.name);
+            Library.Platform target = null;
+            for (Library.Platform q : lib.platforms) {
+                if (q == p || !mergeable(q)) continue;
+                if (to != null ? q.name.equals(to) : q.name.equalsIgnoreCase(p.name) && lib.platforms.indexOf(q) < lib.platforms.indexOf(p)) {
+                    target = q;
+                    break;
+                }
+            }
+            if (target == null) continue;
+            target.games.addAll(p.games);
+            target.games.sort((a, b) -> col.compare(a.title, b.title));
+            target.mergedFrom.add(p);
+            lib.platforms.remove(p);
+        }
+    }
+
+    private void remerge() {
+        applyHiddenGames();
+        shelfState.current = null;
+        if (shelf != null) shelf.setLibrary(lib, recentGames());
+    }
+
+    @Override public void onMergePlatform(Library.Platform p, ShelfView.Menu parent) {
+        if (shelf == null || lib == null) return;
+        ShelfView.Menu m = new ShelfView.Menu(I18n.f(S.MERGE_INTO, p.title()), t(S.MERGE_HINT));
+        m.parent = parent;
+        for (Library.Platform q : lib.platforms) {
+            if (q == p || !mergeable(q) || shelf.isPseudo(q)) continue;
+            m.add(q.title() + "  ·  " + I18n.f(S.GAMES_COUNT, q.games.size()), false, () -> {
+                prefs.edit().putString("merge:" + p.name, q.name).apply();
+                shelf.closeMenu();
+                remerge();
+                Toast.makeText(this, I18n.f(S.MERGED, p.title(), q.title()), Toast.LENGTH_SHORT).show();
+            });
+        }
+        for (Library.Platform src : p.mergedFrom) {
+            if (!prefs.contains("merge:" + src.name)) continue;
+            m.add(I18n.f(S.UNMERGE, src.title()), false, () -> {
+                prefs.edit().remove("merge:" + src.name).apply();
+                shelf.closeMenu();
+                remerge();
+            });
+        }
+        shelf.showMenu(m);
+    }
+
+    // ---- genre folder pictures ----
+
+    @Override public void onEditGenre(Library.Platform p) {
+        if (shelf == null) return;
+        ShelfView.Menu m = new ShelfView.Menu(t(S.ICON), p.title());
+        m.add(t(S.AI_MAKE), false, () -> { shelf.closeMenu(); aiPicture(p, Theme.CONSOLE, () -> shelf.refresh()); });
+        m.add(t(S.PICK_IMAGE), false, () -> pickImage(p, Theme.CONSOLE));
+        if (Theme.isCustom(p.name, Theme.CONSOLE)) m.add(t(S.RESET_DEFAULT), false, () -> {
+            Theme.reset(p.name, Theme.CONSOLE);
+            Theme.forgetPlatform(p.name);
+            shelf.closeMenu();
+            shelf.refresh();
+        });
+        shelf.showMenu(m);
+    }
+
+    /** Settings → Tools: a clay icon for every genre folder that has no picture yet. */
+    private void confirmGenreIcons() {
+        if (AiImage.from(prefs) == null) { Toast.makeText(this, t(S.AI_IMAGES_NEEDED), Toast.LENGTH_LONG).show(); return; }
+        List<String> ids = new ArrayList<>();
+        for (Library.Platform g : shelfState.genres) if (!Theme.isCustom(g.name, Theme.CONSOLE)) ids.add(g.name.substring("genre-".length()));
+        ShelfView.Menu m = new ShelfView.Menu(t(S.AI_GENRE_ICONS), ids.isEmpty() ? null : I18n.f(S.AI_PICTURES_CONFIRM, ids.size(), Math.max(1, ids.size() / 2)));
+        m.parent = shelfState.menu;
+        if (!ids.isEmpty()) m.add(t(S.GO), false, () -> { shelf.closeMenu(); runGenreIcons(ids); });
+        // drawing them all again keeps one style across the set
+        List<String> all = new ArrayList<>();
+        for (Library.Platform g : shelfState.genres) all.add(g.name.substring("genre-".length()));
+        if (!all.isEmpty()) m.add(I18n.f(S.REDRAW_ALL, all.size()), false, () -> { shelf.closeMenu(); runGenreIcons(all); });
+        m.add(t(S.CANCEL), false, () -> shelf.showMenu(m.parent));
+        shelf.showMenu(m);
+    }
+
+    private void runGenreIcons(List<String> ids) {
+        AiImage ai = AiImage.from(prefs);
+        if (ai == null || imageJob != null) return;
+        java.util.concurrent.atomic.AtomicBoolean stop = new java.util.concurrent.atomic.AtomicBoolean();
+        imageJob = stop;
+        Toast.makeText(this, I18n.f(S.AI_PICTURES_PROGRESS, 0, ids.size()), Toast.LENGTH_SHORT).show();
+        new Thread(() -> {
+            int done = 0, failed = 0;
+            for (int i = 0; i < ids.size() && !stop.get(); i++) {
+                String name = "genre-" + ids.get(i);
+                android.graphics.Bitmap b = ai.generate(AiImage.iconPrompt(Genres.subject(ids.get(i))), "1024x1024");
+                boolean ok = false;
+                if (b != null) {
+                    try { ok = Theme.save(name, Theme.CONSOLE, new java.io.ByteArrayInputStream(AiImage.png(AiImage.cutOut(b)))); } catch (IOException ignored) { }
+                }
+                if (ok) done++; else failed++;
+                if (!ok && done == 0 && failed >= 2) break;
+                int n = i + 1;
+                main.post(() -> {
+                    Theme.forgetPlatform(name);
+                    if (shelf != null) shelf.refresh();
+                    Toast.makeText(this, I18n.f(S.AI_PICTURES_PROGRESS, n, ids.size()), Toast.LENGTH_SHORT).show();
+                });
+            }
+            int made = done;
+            String err = made < ids.size() && !stop.get() ? ai.error : null;
+            main.post(() -> {
+                imageJob = null;
+                Toast.makeText(this, I18n.f(S.AI_PICTURES_DONE, made) + (err != null ? "\n" + I18n.f(S.AI_FAILED, err) : ""), Toast.LENGTH_LONG).show();
+                if (shelf != null) shelf.refresh();
+            });
+        }, "genre-icons").start();
+    }
+
     private void runGameText(List<Library.Platform> ps, Ai ai, String lang) {
         shelf.closeMenu();
         int total = 0;
@@ -964,13 +2145,16 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         Toast.makeText(this, I18n.f(S.AI_GAME_TEXT_PROGRESS, 0, all), Toast.LENGTH_SHORT).show();
         new Thread(() -> {
             int done = 0;
+            outer:
             for (Library.Platform p : ps) {
-                List<Library.Game> gs = GameText.todo(p, lang);
-                int base = done;
-                int n = GameText.translate(ai, p, gs, lang, k -> main.post(() ->
-                        Toast.makeText(this, I18n.f(S.AI_GAME_TEXT_PROGRESS, base + k, all), Toast.LENGTH_SHORT).show()));
-                done += n;
-                if (n < gs.size() && ai.error != null) break;
+                for (java.util.Map.Entry<Library.Platform, List<Library.Game>> e : byPlatform(GameText.todo(p, lang)).entrySet()) {
+                    List<Library.Game> gs = e.getValue();
+                    int base = done;
+                    int n = GameText.translate(ai, e.getKey(), gs, lang, k -> main.post(() ->
+                            Toast.makeText(this, I18n.f(S.AI_GAME_TEXT_PROGRESS, base + k, all), Toast.LENGTH_SHORT).show()));
+                    done += n;
+                    if (n < gs.size() && ai.error != null) break outer;
+                }
             }
             int finished = done;
             String err = ai.error;
@@ -1020,7 +2204,24 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         return n;
     }
 
-    private long lastScanMs;
+    private long lastScanMs, lastScanAt;
+    private int cardRetries;
+
+    /** True when games of {@code prev} lived on a storage volume that is not there now (and the new scan has none from it). */
+    private static boolean volumeMissing(Library prev, Library now) {
+        java.util.Set<String> had = new HashSet<>(), have = new HashSet<>();
+        for (Library.Platform p : prev.platforms) for (Library.Game g : p.games) if (g.path != null) had.add(volumeOf(g.path));
+        for (Library.Platform p : now.platforms) for (Library.Game g : p.games) if (g.path != null) have.add(volumeOf(g.path));
+        for (String v : had) {
+            if (have.contains(v)) continue;
+            String[] list = new File(v).list();
+            if (list == null || list.length == 0) return true;
+        }
+        return false;
+    }
+    /** The next scan was not asked for: no "found N games" message. */
+    private boolean quietScan;
+    private static final long RESCAN_MS = 10 * 60_000;
 
     private void showButtonsMenu(int settingsRow) {
         ShelfView.Menu m = new ShelfView.Menu(t(S.BUTTONS), null);
@@ -1239,6 +2440,7 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         boolean ok = false;
         try (InputStream in = getContentResolver().openInputStream(data.getData())) {
             ok = in != null && Theme.save(pickPlatform, pickKind, in);
+            if (ok) Theme.forgetPlatform(pickPlatform);
         } catch (Exception ignored) {
         }
         Toast.makeText(this, ok ? t(S.SAVED) : t(S.IMAGE_FAILED), Toast.LENGTH_SHORT).show();
@@ -1269,10 +2471,56 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
     /** Platform the search is limited to (opened from inside a platform), or null for all platforms. */
     private Library.Platform searchScope;
 
+    /** The gamepad keyboard on the upper screen while searching, else null. */
+    private PadKeyboard kb;
+    /** What the search is for: typed text and a genre (either may be empty). */
+    private String searchText = "", searchGenre;
+
     @Override public void onSearch() {
-        if (lib == null) return;
+        if (lib == null || top == null) return;
+        TopView.extra.clear();
         Library.Platform cur = shelfState.current;
-        if (cur != shelfState.results) searchScope = cur == null || cur == shelfState.recent ? null : cur;
+        if (cur != shelfState.results) searchScope = cur == null || cur == shelfState.recent || shelf.isPseudo(cur) ? null : cur;
+        if (cur != shelfState.results) { searchText = ""; searchGenre = null; }
+        prepareSearchIndex();
+        java.util.Set<String> have = new HashSet<>();
+        for (Library.Game g : lib.byKey.values()) if (g.genre != null) have.add(g.genre);
+        List<String> genres = new ArrayList<>();
+        for (String id : Genres.IDS) if (have.contains(id)) genres.add(id);
+        kb = new PadKeyboard(this, searchText, searchGenre, searchHistory(), genres, new PadKeyboard.Host() {
+            @Override public void onQuery(String text, String genre) {
+                searchText = text;
+                searchGenre = genre;
+                search(text);
+            }
+            @Override public void onClose() { closeKeyboard(); }
+            @Override public void onSystemKeyboard(String text) {
+                closeKeyboard();
+                systemSearch();
+            }
+            @Override public void onCue(int cue) { MainActivity.this.onCue(cue); }
+            @Override public int resultCount() { return shelfState.results.games.size(); }
+        });
+        top.setOverlay(kb);
+        shelfState.typing = true;
+        if (shelf != null) shelf.invalidate();
+        if (!searchText.isEmpty() || searchGenre != null) search(searchText);
+    }
+
+    private void closeKeyboard() {
+        if (kb == null) return;
+        rememberSearch(searchText.trim());
+        kb = null;
+        shelfState.typing = false;
+        if (shelf != null) shelf.invalidate();
+        stopRepeat();
+        if (top != null) top.setOverlay(null);
+        if (shelf != null) onFocus(shelf.selected());
+    }
+
+    /** The system's own keyboard (for typing Chinese characters), in a dialog on the upper screen. */
+    private void systemSearch() {
+        if (lib == null) return;
         int theme = Palette.dark ? android.R.style.Theme_DeviceDefault_Dialog_Alert : android.R.style.Theme_DeviceDefault_Light_Dialog_Alert;
         android.content.Context dc = new android.view.ContextThemeWrapper(this, theme);
         EditText field = new EditText(dc);
@@ -1280,12 +2528,12 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         // keep the dialog visible above the keyboard instead of the full-screen landscape editor
         field.setImeOptions(EditorInfo.IME_FLAG_NO_EXTRACT_UI | EditorInfo.IME_FLAG_NO_FULLSCREEN | EditorInfo.IME_ACTION_DONE);
         field.setHint(t(S.SEARCH_HINT));
-        field.setText(shelfState.query);
+        field.setText(searchText);
         field.setSelection(field.getText().length());
         field.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int a, int b, int c) { }
             @Override public void onTextChanged(CharSequence s, int a, int b, int c) { }
-            @Override public void afterTextChanged(Editable s) { search(s.toString()); }
+            @Override public void afterTextChanged(Editable s) { searchText = s.toString(); search(searchText); }
         });
         // recent searches as one tappable row under the field
         android.widget.LinearLayout box = new android.widget.LinearLayout(dc);
@@ -1375,22 +2623,44 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
             for (Library.Game g : all) {
                 if (pinyin.containsKey(g)) continue;
                 String full = tr.transliterate(g.title);
-                StringBuilder ini = new StringBuilder(), joined = new StringBuilder();
+                StringBuilder ini = new StringBuilder(), joined = new StringBuilder(), words = new StringBuilder();
                 for (String w : full.split("[^a-z0-9]+")) {
                     if (w.isEmpty()) continue;
                     ini.append(w.charAt(0));
                     joined.append(w);
+                    words.append(w).append(' ');
                 }
-                pinyin.put(g, new String[]{joined.toString(), ini.toString()});
+                pinyin.put(g, new String[]{joined.toString(), ini.toString(), words.toString().trim()});
             }
-            main.post(() -> { indexing = false; if (shelfState.current == shelfState.results) search(shelfState.query); });
+            main.post(() -> { indexing = false; if (shelfState.current == shelfState.results && shelfState.listTitle == null
+                    && (!searchText.isEmpty() || searchGenre != null)) search(searchText); });   // an AI pick is no search: kept
         }, "pinyin").start();
+    }
+
+    /** True when q is the beginnings of consecutive syllables (or words): "mlao", "malao", "mla" all find "ma li ao". */
+    private static boolean syllablePrefixes(String q, String[] syl) {
+        for (int start = 0; start < syl.length; start++) if (prefixesFrom(q, 0, syl, start)) return true;
+        return false;
+    }
+
+    private static boolean prefixesFrom(String q, int qi, String[] syl, int si) {
+        if (qi == q.length()) return true;
+        if (si >= syl.length) return false;
+        String s = syl[si];
+        for (int len = Math.min(s.length(), q.length() - qi); len >= 1; len--)
+            if (s.regionMatches(0, q, qi, len) && prefixesFrom(q, qi + len, syl, si + 1)) return true;
+        return false;
     }
 
     private void search(String q) {
         if (shelf == null || lib == null) return;
         String needle = q.trim().toLowerCase(Locale.ROOT);
-        if (needle.isEmpty()) return;
+        String genre = searchGenre;
+        String label = genre == null ? q.trim() : Genres.name(genre) + (needle.isEmpty() ? "" : " · " + q.trim());
+        if (needle.isEmpty() && genre == null) {
+            shelf.showResults("", new ArrayList<>());
+            return;
+        }
         String compact = needle.replaceAll("[^a-z0-9]", "");
         boolean latin = compact.length() == needle.replace(" ", "").length();
         java.util.LinkedHashSet<Library.Game> hits = new java.util.LinkedHashSet<>();
@@ -1398,12 +2668,16 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         if (searchScope != null) where.add(searchScope); else where.addAll(lib.platforms);
         for (Library.Platform p : where)
             for (Library.Game g : p.games) {
-                if (g.title.toLowerCase(Locale.ROOT).contains(needle) || g.file.toLowerCase(Locale.ROOT).contains(needle)) { hits.add(g); continue; }
+                if (genre != null && !genre.equals(g.genre)) continue;
+                if (needle.isEmpty()) { hits.add(g); continue; }
+                if (g.title.toLowerCase(Locale.ROOT).contains(needle) || g.file.toLowerCase(Locale.ROOT).contains(needle)
+                        || g.original != null && g.original.toLowerCase(Locale.ROOT).contains(needle)) { hits.add(g); continue; }
                 // Latin letters also match Chinese titles by pinyin: "kdyg" or "koudai" finds 口袋妖怪
                 String[] py = latin && !compact.isEmpty() ? pinyin.get(g) : null;
-                if (py != null && (py[1].startsWith(compact) || py[1].contains(compact) && compact.length() >= 2 || py[0].contains(compact))) hits.add(g);
+                if (py != null && (py[1].startsWith(compact) || py[1].contains(compact) && compact.length() >= 2 || py[0].contains(compact)
+                        || compact.length() >= 2 && syllablePrefixes(compact, py[2].split(" ")))) hits.add(g);
             }
-        shelf.showResults(q.trim(), new ArrayList<>(hits));
+        shelf.showResults(label, new ArrayList<>(hits));
     }
 
     // ---- custom folders: stored as cf.ids = "id,id" and cf.<id>.name|color|art|bg|items ----
@@ -1443,7 +2717,9 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
             p.color = prefs.getInt(fk(id, "color"), FOLDER_COLORS[0]);
             p.art = prefs.getString(fk(id, "art"), "custom");
             p.bgArt = prefs.getString(fk(id, "bg"), "custom");
-            for (String k : folderItems(id)) {
+            p.smart = prefs.getString(fk(id, "smart"), null);
+            if (p.smart != null) p.games.addAll(smartGames(p.smart));
+            else for (String k : folderItems(id)) {
                 Library.Game g = lib.byKey.get(k);
                 if (g != null && !hiddenGames.contains(k)) p.games.add(g);
             }
@@ -1495,6 +2771,116 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
     }
 
     @Override public void onAddFolder() {
+        if (shelf == null) return;
+        ShelfView.Menu m = new ShelfView.Menu(t(S.NEW_FOLDER), t(S.SMART_HINT));
+        m.add(t(S.PLAIN_FOLDER), false, this::addPlainFolder);
+        String[] kinds = {"new", "unplayed", "most", "playing", "wish", "done", "top"};
+        for (String k : kinds) m.add(smartName(k), false, () -> {
+            String id = createFolder(smartName(k));
+            prefs.edit().putString(fk(id, "smart"), k).putString(fk(id, "art"), k.equals("most") ? "recent" : "custom").apply();
+            shelf.closeMenu();
+            foldersChanged();
+            Library.Platform p = folder(id);
+            if (p != null) shelf.select(p);
+        });
+        shelf.showMenu(m);
+    }
+
+    private static String smartName(String kind) {
+        switch (kind) {
+            case "new": return t(S.SMART_NEW);
+            case "unplayed": return t(S.SMART_UNPLAYED);
+            case "playing": return t(S.STATUS_PLAYING);
+            case "wish": return t(S.STATUS_WISH);
+            case "done": return t(S.STATUS_DONE);
+            case "top": return t(S.SMART_TOP);
+            default: return t(S.SMART_MOST);
+        }
+    }
+
+    /** Games for a smart folder: added in the last 30 days, never played, or the most played. */
+    private List<Library.Game> smartGames(String kind) {
+        List<Library.Game> out = new ArrayList<>();
+        java.util.Set<Library.Game> seen = new HashSet<>();
+        for (Library.Platform p : lib.platforms) {
+            if (p.isCustom()) continue;
+            for (Library.Game g : p.games) if (g.pkg == null && seen.add(g)) out.add(g);
+        }
+        long now = System.currentTimeMillis();
+        switch (kind) {
+            case "new": {
+                java.util.Map<String, Long> first = firstSeen();
+                out.removeIf(g -> { Long t0 = first.get(g.key()); return t0 == null || now - t0 > 30L * 86_400_000L; });
+                out.sort((a, b) -> Long.compare(first.get(b.key()), first.get(a.key())));
+                break;
+            }
+            case "unplayed":
+                out.removeIf(g -> prefs.getLong("time:" + g.key(), 0) > 0 || prefs.getLong("last:" + g.key(), 0) > 0);
+                break;
+            case "playing":
+            case "wish":
+            case "done":
+                out.removeIf(g -> !kind.equals(prefs.getString("status:" + g.key(), "")));
+                out.sort((a, b) -> Long.compare(prefs.getLong("last:" + b.key(), 0), prefs.getLong("last:" + a.key(), 0)));
+                break;
+            case "top":
+                out.removeIf(g -> prefs.getInt("rating:" + g.key(), 0) < 4);
+                out.sort((a, b) -> Integer.compare(prefs.getInt("rating:" + b.key(), 0), prefs.getInt("rating:" + a.key(), 0)));
+                break;
+            default:
+                out.removeIf(g -> prefs.getLong("time:" + g.key(), 0) < 60_000);
+                out.sort((a, b) -> Long.compare(prefs.getLong("time:" + b.key(), 0), prefs.getLong("time:" + a.key(), 0)));
+                while (out.size() > 30) out.remove(out.size() - 1);
+        }
+        return out;
+    }
+
+    // ---- when each game was first seen, for "recently added" ----
+
+    private java.util.Map<String, Long> firstSeenCache;
+
+    private java.util.Map<String, Long> firstSeen() {
+        if (firstSeenCache != null) return firstSeenCache;
+        java.util.Map<String, Long> m = new java.util.HashMap<>();
+        File f = new File(getFilesDir(), "firstseen.txt");
+        if (f.isFile()) {
+            try (java.io.BufferedReader r = new java.io.BufferedReader(new java.io.InputStreamReader(new java.io.FileInputStream(f), java.nio.charset.StandardCharsets.UTF_8))) {
+                for (String line; (line = r.readLine()) != null; ) {
+                    int tab = line.lastIndexOf('\t');
+                    if (tab > 0) try { m.put(line.substring(0, tab), Long.parseLong(line.substring(tab + 1))); } catch (NumberFormatException ignored) { }
+                }
+            } catch (java.io.IOException ignored) {
+            }
+        }
+        return firstSeenCache = m;
+    }
+
+    /** Notes games the launcher has not seen before: now, or on the very first run the file's own date. */
+    private void noteNewGames() {
+        if (lib == null) return;
+        java.util.Map<String, Long> m = firstSeen();
+        boolean firstRun = m.isEmpty();
+        long now = System.currentTimeMillis();
+        StringBuilder add = new StringBuilder();
+        for (Library.Game g : lib.byKey.values()) {
+            if (g.pkg != null) continue;
+            Long seen = m.get(g.key());
+            if (seen != null) { g.added = seen; continue; }
+            long t0 = now;
+            if (firstRun) t0 = g.path != null && g.path.lastModified() > 0 ? Math.min(now, g.path.lastModified()) : 0;
+            m.put(g.key(), t0);
+            g.added = t0;
+            if (!firstRun) newGames.add(g);
+            add.append(g.key()).append('\t').append(t0).append('\n');
+        }
+        if (add.length() == 0) return;
+        try (java.io.Writer w = new java.io.OutputStreamWriter(new java.io.FileOutputStream(new File(getFilesDir(), "firstseen.txt"), true), java.nio.charset.StandardCharsets.UTF_8)) {
+            w.write(add.toString());
+        } catch (java.io.IOException ignored) {
+        }
+    }
+
+    private void addPlainFolder() {
         askText(t(S.NEW_FOLDER), t(S.MY_FOLDER), name -> {
             String id = createFolder(name);
             foldersChanged();
@@ -1510,6 +2896,7 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         if (shelf == null) return;
         String id = idOf(pl);
         ShelfView.Menu m = new ShelfView.Menu(t(S.EDIT_FOLDER), pl.title());
+        if (pl.smart != null) m.add(t(S.SMART_RULE) + "  ·  " + smartName(pl.smart), false, null);
         m.add(t(S.RENAME), false, () -> askText(t(S.FOLDER_NAME), pl.title(), name -> {
             prefs.edit().putString(fk(id, "name"), name).apply();
             foldersChanged();
@@ -1526,7 +2913,7 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
                 List<String> ids = folderIds();
                 ids.remove(id);
                 SharedPreferences.Editor e = prefs.edit().putString("cf.ids", String.join(",", ids));
-                for (String k : new String[]{"name", "color", "art", "bg", "items"}) e.remove(fk(id, k));
+                for (String k : new String[]{"name", "color", "art", "bg", "items", "smart"}) e.remove(fk(id, k));
                 e.apply();
                 Theme.reset(pl.name, Theme.CONSOLE);
                 Theme.reset(pl.name, Theme.BACKGROUND);
@@ -1577,7 +2964,7 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         ShelfView.Menu m = new ShelfView.Menu(icon ? t(S.ICON) : t(S.BACKGROUND_IMAGE), pl.title());
         m.parent = parent;
         m.add(t(S.PICK_IMAGE), own, () -> pickImage(pl, kind));
-        m.add("✦ " + t(S.AI_MAKE), false, () -> aiPicture(pl, kind, () -> { foldersChanged(); showFolderArt(parent, id, icon, 0); }));
+        m.add(t(S.AI_MAKE), false, () -> aiPicture(pl, kind, () -> { foldersChanged(); showFolderArt(parent, id, icon, 0); }));
         if (own) m.add(t(S.RESET_DEFAULT), false, () -> {
             Theme.reset(pl.name, kind);
             foldersChanged();
@@ -1604,6 +2991,7 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         ShelfView.Menu m = new ShelfView.Menu(t(S.ADD_TO_FOLDER), g.title);
         m.parent = parent;
         for (String id : folderIds()) {
+            if (prefs.contains(fk(id, "smart"))) continue;
             List<String> items = folderItems(id);
             boolean in = items.contains(g.key());
             m.add(prefs.getString(fk(id, "name"), t(S.MY_FOLDER)), in, prefs.getInt(fk(id, "color"), FOLDER_COLORS[0]), null, () -> {
@@ -1617,7 +3005,7 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
                 onAddToFolder(g, parent);
             });
         }
-        m.add("＋ " + t(S.NEW_FOLDER), false, () -> askText(t(S.NEW_FOLDER), t(S.MY_FOLDER), name -> {
+        m.add(t(S.NEW_FOLDER), false, () -> askText(t(S.NEW_FOLDER), t(S.MY_FOLDER), name -> {
             String id = createFolder(name);
             prefs.edit().putString(fk(id, "items"), g.key()).apply();
             Toast.makeText(this, I18n.f(S.ADDED_TO, name), Toast.LENGTH_SHORT).show();
@@ -1791,9 +3179,11 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
             Library.Game g = (Library.Game) item;
             String emu = g.pkg != null ? null : Library.emulatorLabel(effectiveCmd(g));
             top.showGame(g, emu, playedTags(g));
+            lookUpLastShot(g);
         } else if (item instanceof Library.Platform) {
             Library.Platform p = (Library.Platform) item;
-            top.showPlatform(p, Library.emulatorLabel(platformCmd(p)),
+            if (ShelfView.isGenre(p)) top.showPlatform(p, playTimeOf(p.games), "genre");
+            else top.showPlatform(p, Library.emulatorLabel(platformCmd(p)),
                     p == shelfState.recent ? "recent" : p == shelfState.favorites ? "favorites" : p == shelfState.results ? "search" : null);
         }
     }
@@ -1813,14 +3203,30 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
                     Toast.makeText(this, t(S.NO_EMULATOR), Toast.LENGTH_LONG).show();
                     return;
                 }
+                if (g.path != null && !g.path.exists()) {
+                    Toast.makeText(this, I18n.f(S.FILE_MISSING, g.path.getAbsolutePath()), Toast.LENGTH_LONG).show();
+                    return;
+                }
                 it = Launch.build(cmd, g);
-                pkg = it.getComponent() != null ? it.getComponent().getPackageName() : "";
+                pkg = it.getComponent() != null ? it.getComponent().getPackageName() : it.getPackage() != null ? it.getPackage() : "";
+                if (!pkg.isEmpty()) {
+                    try {
+                        getPackageManager().getPackageInfo(pkg, 0);
+                    } catch (android.content.pm.PackageManager.NameNotFoundException nf) {
+                        Toast.makeText(this, I18n.f(S.EMULATOR_MISSING, Library.emulatorLabel(cmd), pkg), Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                }
             }
             addRecent(g);
             prefs.edit().putString("running", g.key() + "\n" + System.currentTimeMillis() + "\n" + pkg).apply();
             ActivityOptions o = ActivityOptions.makeBasic().setLaunchDisplayId(Display.DEFAULT_DISPLAY);
             startActivity(it, o.toBundle());
+        } catch (android.content.ActivityNotFoundException e) {
+            prefs.edit().remove("running").apply();
+            Toast.makeText(this, t(S.EMULATOR_CANT_OPEN), Toast.LENGTH_LONG).show();
         } catch (Exception e) {
+            prefs.edit().remove("running").apply();
             Toast.makeText(this, I18n.f(S.LAUNCH_FAILED, e.getMessage()), Toast.LENGTH_LONG).show();
         }
     }
@@ -1922,6 +3328,49 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         prefs.edit().putString("homeOrder", order).apply();
     }
 
+    @Override public void onHomeMode(int mode) {
+        prefs.edit().putInt("homeMode", mode).remove("homeByGenre").apply();
+        if (mode == 0) { Toast.makeText(this, t(S.HOME_BY_PLATFORM), Toast.LENGTH_SHORT).show(); return; }
+        boolean any = mode == 1 ? !shelfState.genres.isEmpty() && lib != null && hasGenres() : !shelfState.series.isEmpty();
+        Toast.makeText(this, any ? t(mode == 1 ? S.HOME_BY_GENRE : S.HOME_BY_SERIES) : t(mode == 1 ? S.GENRES_EMPTY : S.SERIES_EMPTY),
+                any ? Toast.LENGTH_SHORT : Toast.LENGTH_LONG).show();
+    }
+
+    private boolean hasGenres() {
+        for (Library.Game g : lib.byKey.values()) if (g.genre != null) return true;
+        return false;
+    }
+
+    /** Y → Genre on a game: pick one of the genres by hand. */
+    @Override public void onPickGenre(Library.Game g, ShelfView.Menu parent) {
+        if (shelf == null) return;
+        ShelfView.Menu m = new ShelfView.Menu(t(S.GENRE), g.title);
+        m.parent = parent;
+        List<String> ids = new ArrayList<>(java.util.Arrays.asList(Genres.IDS));
+        ids.add(null);
+        for (String id : ids) {
+            m.add(Genres.name(id), java.util.Objects.equals(id, g.genre), Genres.color(id), null, () -> {
+                if (!Genres.set(g, id)) {
+                    Toast.makeText(this, t(S.IMAGE_FAILED), Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                shelf.closeMenu();
+                shelf.refresh();
+                Toast.makeText(this, t(S.GENRE) + " · " + Genres.name(id), Toast.LENGTH_SHORT).show();
+            });
+        }
+        shelf.showMenu(m);
+    }
+
+    /** Total play time of these games ("played 12 h 5 min"), or null when none was played. */
+    private String playTimeOf(List<Library.Game> games) {
+        long ms = 0;
+        for (Library.Game g : games) ms += prefs.getLong("time:" + g.key(), 0);
+        if (ms < 60_000) return null;
+        long min = ms / 60_000;
+        return min >= 60 ? I18n.f(S.PLAYED_HM, min / 60, min % 60) : I18n.f(S.PLAYED_M, min);
+    }
+
     @Override public void onStats() {
         if (shelf == null || lib == null) return;
         List<Library.Game> played = new ArrayList<>();
@@ -1971,12 +3420,14 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
 
     private void applyHiddenGames() {
         if (lib == null) return;
+        unmerge();
         for (Library.Platform p : lib.platforms) {
             if (p.isCustom()) continue;
             List<Library.Game> all = fullLists.computeIfAbsent(p, k -> new ArrayList<>(k.games));
             p.games.clear();
             for (Library.Game g : all) if (!hiddenGames.contains(g.key())) p.games.add(g);
         }
+        applyMerges();
     }
 
     private void hiddenGamesChanged() {
@@ -2075,18 +3526,18 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
                 showCheats(g, st, fresh, parent, 0);
             };
         }));
-        if (!list.isEmpty()) m.add("✎ " + t(S.EDIT_CHEATS), false, () -> showCheatEditor(g, st, list, parent, 0));
-        m.add("＋ " + t(S.NEW_CHEAT), false, () -> askText(t(S.CHEAT_NAME), "", name -> askCodes(st.strictCodes(), codes -> {
+        if (!list.isEmpty()) m.add(t(S.EDIT_CHEATS), false, () -> showCheatEditor(g, st, list, parent, 0));
+        m.add(t(S.NEW_CHEAT), false, () -> askText(t(S.CHEAT_NAME), "", name -> askCodes(st.strictCodes(), codes -> {
             Cheats.Cheat c = st.newCheat(name, codes);
             list.add(c);
             st.save(list);
             showCheats(g, st, list, parent, list.size() - 1);
         })));
-        if (!list.isEmpty()) m.add("－ " + t(S.DELETE_ALL_CHEATS), false, () -> {
+        if (!list.isEmpty()) m.add(t(S.DELETE_ALL_CHEATS), false, () -> {
             ShelfView.Menu sure = new ShelfView.Menu(I18n.f(S.DELETE_ALL_SURE, list.size()), g.title);
             sure.parent = shelfState.menu;
             sure.add(t(S.CANCEL), false, () -> showCheats(g, st, list, parent, 0));
-            sure.add("－ " + t(S.DELETE_ALL_CHEATS), false, () -> {
+            sure.add(t(S.DELETE_ALL_CHEATS), false, () -> {
                 st.save(new ArrayList<>());
                 Toast.makeText(this, t(S.DELETED), Toast.LENGTH_SHORT).show();
                 showCheats(g, st, st.load(), parent, 0);
@@ -2110,7 +3561,7 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
             CheatPick pick = new CheatPick(g, st, before, found, parent);
             return () -> { showCheatPick(pick, 0); translatePick(pick); };
         }));
-        if (!st.strictCodes()) m.add("ⓘ " + t(S.RETROARCH_CHEAT_HINT), false, null);
+        if (!st.strictCodes()) m.add(t(S.RETROARCH_CHEAT_HINT), false, null);
         m.sel = Math.max(0, Math.min(sel, m.labels.size() - 1));
         shelf.showMenu(m);
     }
@@ -2231,7 +3682,7 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
                     st.save(list);
                     showCheatEditor(g, st, list, parent, row);
                 }));
-                one.add("－ " + t(S.DELETE_CHEAT), false, () -> {
+                one.add(t(S.DELETE_CHEAT), false, () -> {
                     list.remove(c);
                     st.save(list);
                     showCheatEditor(g, st, list, parent, Math.max(0, row - 1));
@@ -2344,6 +3795,11 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         long start, now = System.currentTimeMillis();
         try { start = Long.parseLong(parts[1]); } catch (NumberFormatException e) { return; }
         long spent = now - start;
+        Library.Game ran = lib != null ? lib.byKey.get(parts[0]) : null;
+        if (spent < 6000 && spent >= 0 && ran != null && ran.pkg == null) {
+            // back within a few seconds: the emulator most likely could not open the game
+            Toast.makeText(this, t(S.QUIT_AT_ONCE), Toast.LENGTH_LONG).show();
+        }
         if (hasUsageAccess() && !parts[2].isEmpty()) {
             try { spent = foregroundTime(parts[2], start, now); } catch (Exception ignored) { }
         }
@@ -2359,6 +3815,83 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         ses.add(start + "-" + now);
         while (ses.size() > 40) ses.remove(0);
         prefs.edit().putString("sessions:" + key, String.join(",", ses)).apply();
+        int restHours = prefs.getInt("restHours", 2);
+        if (restHours > 0 && spent >= restHours * 3_600_000L) {
+            long min = spent / 60_000;
+            Toast.makeText(this, I18n.f(S.REST_REMIND, min / 60, min % 60), Toast.LENGTH_LONG).show();
+        }
+        lastShots.remove(parts[0]);
+        // play time since the last save backup, for the reminder
+        long unbacked = prefs.getLong("unbackedPlay", 0) + spent;
+        prefs.edit().putLong("unbackedPlay", unbacked).apply();
+        if (unbacked >= BACKUP_REMIND_MS && spent > 0) {
+            String mode = prefs.getString("backupRemind", "ask");
+            if (mode.equals("auto")) autoBackup();
+            else if (mode.equals("ask")) askBackup = true;
+        }
+        playedCache.clear();
+        if (lib != null) applyCustomFolders();   // smart folders: played / most played changed
+    }
+
+    // ---- save backup reminder: after some hours of play without a backup, offer one (or make it) ----
+
+    private static final long BACKUP_REMIND_MS = 3 * 3_600_000L;
+    private boolean askBackup;
+
+    private void autoBackup() {
+        List<File> roots = volumeRoots();
+        new Thread(() -> {
+            try {
+                File dir = Backups.folder(roots);
+                Backups.backup(dir, Backups.AUTO);
+                // automatic backups keep the newest ten of their own; backups made by hand are never removed here
+                List<File> all = Backups.list(dir);
+                all.removeIf(f -> !f.getName().startsWith(Backups.AUTO));
+                for (int i = 10; i < all.size(); i++) all.get(i).delete();
+                prefs.edit().putLong("unbackedPlay", 0).apply();
+                main.post(() -> Toast.makeText(this, t(S.AUTO_BACKUP_DONE), Toast.LENGTH_SHORT).show());
+            } catch (Exception e) {
+                main.post(() -> Toast.makeText(this, I18n.f(S.AI_FAILED, String.valueOf(e.getMessage())), Toast.LENGTH_LONG).show());
+            }
+        }, "backup").start();
+    }
+
+    private void showBackupReminder() {
+        askBackup = false;
+        if (shelf == null) return;
+        long h = prefs.getLong("unbackedPlay", 0) / 3_600_000L;
+        ShelfView.Menu m = new ShelfView.Menu(t(S.BACKUP_SAVES), I18n.f(S.BACKUP_REMIND, h));
+        m.add(t(S.BACKUP_NOW), false, () -> { shelf.closeMenu(); autoBackup(); });
+        m.add(t(S.BACKUP_ALWAYS), false, () -> {
+            prefs.edit().putString("backupRemind", "auto").apply();
+            shelf.closeMenu();
+            autoBackup();
+        });
+        m.add(t(S.BACKUP_LATER), false, () -> { prefs.edit().putLong("unbackedPlay", 0).apply(); shelf.closeMenu(); });
+        m.add(t(S.BACKUP_NEVER), false, () -> { prefs.edit().putString("backupRemind", "off").apply(); shelf.closeMenu(); });
+        shelf.showMenu(m);
+    }
+
+    private String backupRemindLabel() {
+        String mode = prefs.getString("backupRemind", "ask");
+        return t(mode.equals("auto") ? S.BACKUP_AUTO : mode.equals("off") ? S.OFF : S.BACKUP_ASK);
+    }
+
+    private void showBackupRemindMenu(ShelfView.Menu tools) {
+        String mode = prefs.getString("backupRemind", "ask");
+        ShelfView.Menu m = new ShelfView.Menu(t(S.BACKUP_REMINDER), t(S.BACKUP_REMINDER_HINT));
+        m.parent = tools;
+        String[] modes = {"ask", "auto", "off"};
+        S[] names = {S.BACKUP_ASK, S.BACKUP_AUTO, S.OFF};
+        for (int i = 0; i < modes.length; i++) {
+            String md = modes[i];
+            m.add(t(names[i]), md.equals(mode), () -> {
+                prefs.edit().putString("backupRemind", md).apply();
+                Toast.makeText(this, t(S.SAVED), Toast.LENGTH_SHORT).show();
+                shelf.closeMenu();
+            });
+        }
+        shelf.showMenu(m);
     }
 
     // ---- game details and screenshots ----
@@ -2413,17 +3946,17 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         m.add(t(S.LOCATION) + "  ·  " + g.path.getParent(), false, null);
         m.add(t(S.EMULATOR) + "  ·  " + Library.emulatorLabel(effectiveCmd(g)), false, null);
         for (String s : playedTags(g)) if (s != null) m.add(s, false, null);
-        m.add("✦ " + t(S.AI_COVER), false, () -> aiCover(g));
+        m.add(t(S.AI_COVER), false, () -> aiCover(g));
         int shotRow = m.labels.size();
-        m.add("▧ " + t(S.SCREENSHOTS) + "  ·  …", false, null);
+        m.add(t(S.SCREENSHOTS) + "  ·  …", false, null);
         shelf.showMenu(m);
         new Thread(() -> {
             List<File> shots = screenshots(g);
             main.post(() -> {
                 if (shelfState.menu != m) return;
-                m.labels.set(shotRow, "▧ " + t(S.SCREENSHOTS) + "  ·  " + shots.size());
+                m.labels.set(shotRow, t(S.SCREENSHOTS) + "  ·  " + shots.size());
                 if (!shots.isEmpty()) m.actions.set(shotRow, () -> showScreenshots(g, shots, m, 0));
-                shelf.invalidate();
+                if (shelf != null) shelf.invalidate();
             });
         }, "shots").start();
     }
@@ -2440,7 +3973,19 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         m.onSelect.accept(sel);
     }
 
+    /** Play time and last-played text per game, worked out at most once a minute (list rows ask on every frame). */
+    private final java.util.Map<String, String[]> playedCache = new java.util.HashMap<>();
+    private long playedCacheAt;
+
     private String[] playedTags(Library.Game g) {
+        long now = SystemClock.uptimeMillis();
+        if (now - playedCacheAt > 60_000) { playedCache.clear(); playedCacheAt = now; }
+        String[] t = playedCache.get(g.key());
+        if (t == null) playedCache.put(g.key(), t = computePlayedTags(g));
+        return t;
+    }
+
+    private String[] computePlayedTags(Library.Game g) {
         long ms = prefs.getLong("time:" + g.key(), 0), last = prefs.getLong("last:" + g.key(), 0);
         String played = null, when = null;
         if (ms >= 60_000) {
@@ -2453,7 +3998,7 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         }
         Achievements.Game a = Achievements.find(prefs, g);
         String trophies = a != null && a.total > 0 ? "🏆 " + a.got + " / " + a.total : null;
-        return new String[]{played, when, trophies};
+        return new String[]{played, when, trophies, statusTag(g)};
     }
 
     // ---- input: gamepad keys and the left stick drive the lower-screen shelf, whichever window has focus ----
@@ -2472,17 +4017,30 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         if (code == KeyEvent.KEYCODE_VOLUME_UP || code == KeyEvent.KEYCODE_VOLUME_DOWN || code == KeyEvent.KEYCODE_HOME) return false;
         if (noteActivity(e)) return true; // the key only woke the screensaver
         code = remap(code);
+        if (voiceTo != null && voice == null && SystemClock.uptimeMillis() - voiceToAt > 30_000) voiceTo = null;
+        if (code == KeyEvent.KEYCODE_BUTTON_L1 && (kb != null || voiceTo != null)) {
+            if (e.getAction() == KeyEvent.ACTION_DOWN && e.getRepeatCount() == 0) startVoice();
+            else if (e.getAction() == KeyEvent.ACTION_UP) stopVoice();
+            return true;
+        }
         if (e.getAction() == KeyEvent.ACTION_DOWN) {
             if (e.getRepeatCount() > 0 && shelf.holdingA()) return true;   // holding A to lift a home tile
             if (isDirection(code)) {
                 if (e.getRepeatCount() > 0) return true;   // our own repeat runs instead, at a steady pace
                 startRepeat(code);
             }
-            return shelf.onKey(code);
+            return nav(code);
         }
         if (e.getAction() == KeyEvent.ACTION_UP && isDirection(code) && code == repeatCode) stopRepeat();
+        if (e.getAction() == KeyEvent.ACTION_UP && kb != null) return true;
         if (e.getAction() == KeyEvent.ACTION_UP && shelf.onKeyUp(code)) return true;
         return e.getAction() == KeyEvent.ACTION_UP && code != KeyEvent.KEYCODE_POWER;
+    }
+
+    /** A key goes to the gamepad keyboard while it is open, else to the lower screen. */
+    private boolean nav(int code) {
+        if (kb != null) return kb.onKey(code);
+        return shelf != null && shelf.onKey(code);
     }
 
     /** Button layout from Settings → Buttons: A/B and X/Y can be swapped (e.g. for a Japanese-style confirm). */
@@ -2571,15 +4129,23 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         if (x != 0 || y != 0) lastInput = SystemClock.uptimeMillis();   // resting stick noise is not activity
         if (x != stickX && x != 0) {
             int k = x < 0 ? KeyEvent.KEYCODE_DPAD_LEFT : KeyEvent.KEYCODE_DPAD_RIGHT;
-            shelf.onKey(k);
+            nav(k);
             startRepeat(k);
         }
         if (y != stickY && y != 0) {
             int k = y < 0 ? KeyEvent.KEYCODE_DPAD_UP : KeyEvent.KEYCODE_DPAD_DOWN;
-            shelf.onKey(k);
+            nav(k);
             startRepeat(k);
         }
         if (x == 0 && y == 0 && (stickX != 0 || stickY != 0)) stopRepeat();
+        else if ((stickX != 0 || stickY != 0) && repeatCode != 0) {
+            boolean vert = repeatCode == KeyEvent.KEYCODE_DPAD_UP || repeatCode == KeyEvent.KEYCODE_DPAD_DOWN;
+            if (vert ? y == 0 : x == 0) {
+                stopRepeat();
+                if (vert && x != 0) startRepeat(x < 0 ? KeyEvent.KEYCODE_DPAD_LEFT : KeyEvent.KEYCODE_DPAD_RIGHT);
+                else if (!vert && y != 0) startRepeat(y < 0 ? KeyEvent.KEYCODE_DPAD_UP : KeyEvent.KEYCODE_DPAD_DOWN);
+            }
+        }
         stickX = x;
         stickY = y;
         return true;
@@ -2600,7 +4166,7 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         @Override public void run() {
             if (repeatCode == 0 || shelf == null) return;
             lastInput = SystemClock.uptimeMillis();
-            shelf.onKey(repeatCode);
+            nav(repeatCode);
             boolean fast = SystemClock.uptimeMillis() - repeatStart > 1500;   // after a while, faster
             main.postDelayed(this, fast ? REPEAT_FAST : REPEAT_STEP);
         }

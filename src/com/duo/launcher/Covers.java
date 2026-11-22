@@ -155,7 +155,111 @@ final class Covers {
             } catch (IOException ignored) {
             }
         }
+        added += fetchByName(lib);
         progress.accept(100);
+        return added;
+    }
+
+    // ---- box art by name, for platforms without a game-code table (PlayStation, Nintendo 64, GameCube…) ----
+
+    private static final String TREE = "https://api.github.com/repos/libretro-thumbnails/%s/git/trees/master?recursive=1";
+
+    private static String repoName(String sys) {
+        switch (sys) {
+            case "PS1": return "Sony - PlayStation";
+            case "PS2": return "Sony - PlayStation 2";
+            case "PSP": return "Sony - PlayStation Portable";
+            case "N64": return "Nintendo - Nintendo 64";
+            case "NGC": case "GC": case "GAMECUBE": return "Nintendo - GameCube";
+            case "WII": return "Nintendo - Wii";
+            case "3DS": return "Nintendo - Nintendo 3DS";
+            case "NDS": return "Nintendo - Nintendo DS";
+            case "GBA": return "Nintendo - Game Boy Advance";
+            case "GBC": return "Nintendo - Game Boy Color";
+            case "GB": return "Nintendo - Game Boy";
+            case "SNES": return "Nintendo - Super Nintendo Entertainment System";
+            case "NES": return "Nintendo - Nintendo Entertainment System";
+            case "MD": return "Sega - Mega Drive - Genesis";
+            default: return null;
+        }
+    }
+
+    /** "Final Fantasy X (USA) (Disc 1)" → "finalfantasyx": what names are matched by. */
+    static String nameKey(String s) {
+        String t = s.toLowerCase(Locale.ROOT).replaceAll("\\([^)]*\\)|\\[[^\\]]*\\]", " ").replace("&amp;", "and").replace("&", "and");
+        t = t.replaceAll("^the\\s+|,\\s*the\\b", " ");
+        return t.replaceAll("[^a-z0-9]+", "");
+    }
+
+    /** The GitHub repository of a thumbnail set: "Sony - PlayStation 2" → Sony_-_PlayStation_2. */
+    private static String repoId(String repo) { return repo.replace(' ', '_'); }
+
+    /** Every box-art file name of one libretro thumbnail set (from the repository's file list), or empty. */
+    private static List<String> listing(String repo) {
+        List<String> out = new ArrayList<>();
+        HttpURLConnection con = null;
+        try {
+            con = (HttpURLConnection) new URL(String.format(Locale.ROOT, TREE, repoId(repo))).openConnection();
+            con.setConnectTimeout(15000);
+            con.setReadTimeout(90000);
+            con.setRequestProperty("User-Agent", "DuoLauncher");
+            con.setRequestProperty("Accept", "application/vnd.github+json");
+            if (con.getResponseCode() != 200) return out;
+            java.util.regex.Pattern path = java.util.regex.Pattern.compile("\"path\"\\s*:\\s*\"Named_Boxarts/([^\"]+\\.png)\"");
+            try (BufferedReader r = new BufferedReader(new InputStreamReader(con.getInputStream(), StandardCharsets.UTF_8))) {
+                StringBuilder all = new StringBuilder();
+                char[] buf = new char[65536];
+                for (int n; (n = r.read(buf)) > 0; ) all.append(buf, 0, n);
+                java.util.regex.Matcher m = path.matcher(all);
+                while (m.find()) out.add(m.group(1));
+            }
+        } catch (IOException | RuntimeException ignored) {
+        } finally {
+            if (con != null) con.disconnect();
+        }
+        return out;
+    }
+
+    /** The best box-art file for a name: the same title, USA first, then Europe, then any. */
+    private static String pick(Map<String, List<String>> byKey, String name) {
+        if (name == null) return null;
+        List<String> hits = byKey.get(nameKey(name));
+        if (hits == null || hits.isEmpty()) return null;
+        for (String region : new String[]{"(USA", "(World", "(Europe", "(Japan"})
+            for (String h : hits) if (h.contains(region) && !h.contains("(Beta") && !h.contains("(Demo")) return h;
+        return hits.get(0);
+    }
+
+    /** Box art for games still without any picture, matched by their English title or an English file name. */
+    private static int fetchByName(Library lib) {
+        Map<String, Map<String, List<String>>> sets = new HashMap<>();
+        int added = 0;
+        for (Library.Game g : missing(lib)) {
+            String sys = (g.platform.system.isEmpty() ? g.platform.name : g.platform.system).toUpperCase(Locale.ROOT);
+            String repo = repoName(sys);
+            if (repo == null) continue;
+            Map<String, List<String>> byKey = sets.get(repo);
+            if (byKey == null) {
+                byKey = new HashMap<>();
+                for (String f : listing(repo)) {
+                    String n = f.substring(0, f.length() - 4);
+                    byKey.computeIfAbsent(nameKey(n), k -> new ArrayList<>()).add(n);
+                }
+                sets.put(repo, byKey);
+            }
+            if (byKey.isEmpty()) continue;
+            String base = new File(g.baseName()).getName();
+            String hit = pick(byKey, g.original);
+            if (hit == null && base.matches("[\\x20-\\x7E]+")) hit = pick(byKey, base);
+            if (hit == null && g.title.matches("[\\x20-\\x7E]+")) hit = pick(byKey, g.title);
+            if (hit == null) continue;
+            File dir = new File(ownRoot(g), g.platform.name + "/media/" + base);
+            try {
+                String url = RAW + repoId(repo) + "/master/Named_Boxarts/" + URLEncoder.encode(hit + ".png", "UTF-8").replace("+", "%20");
+                if (download(url, new File(dir, "cover.png"))) added++;
+            } catch (IOException ignored) {
+            }
+        }
         return added;
     }
 }

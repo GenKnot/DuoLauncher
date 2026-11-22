@@ -49,7 +49,10 @@ final class GameText {
         List<Library.Game> out = new ArrayList<>();
         for (Library.Game g : p.games) {
             if (g.pkg != null || g.path == null) continue;
-            if (foreign(g.title, lang) || foreign(g.description, lang) || (g.description.isEmpty() && foreign(g.title, lang)))
+            // a game without any description gets a short one too, and one without its official English title,
+            // which covers, cheats and the AI use to find it
+            if (foreign(g.title, lang) || foreign(g.description, lang) || g.description.trim().isEmpty()
+                    || g.original == null || g.original.trim().isEmpty())
                 out.add(g);
         }
         return out;
@@ -111,8 +114,13 @@ final class GameText {
                     sb.append("\ngame: ").append(clean(g.title)).append('\n');
                     if (g.titleId != null && g.path.getName().endsWith(".app")) sb.append("titleid: ").append(g.titleId).append('\n');
                     else sb.append("file: ").append(g.path.getName()).append('\n');
-                    sb.append("name.").append(key).append(": ").append(title).append('\n');
-                    if (!desc.isEmpty()) sb.append("description.").append(key).append(": ").append(desc).append('\n');
+                    // a game whose name and description already read well only gets its English title: the
+                    // description it has (often long, from the ROM set) is kept rather than replaced by a summary
+                    boolean onlyOriginal = !foreign(g.title, lang) && !foreign(g.description, lang) && !g.description.trim().isEmpty();
+                    if (!onlyOriginal) {
+                        sb.append("name.").append(key).append(": ").append(title).append('\n');
+                        if (!desc.isEmpty()) sb.append("description.").append(key).append(": ").append(desc).append('\n');
+                    }
                     if (!orig.isEmpty()) sb.append("original: ").append(orig).append('\n');
                     done++;
                 }

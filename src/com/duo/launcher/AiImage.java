@@ -80,7 +80,8 @@ final class AiImage {
     static String iconPrompt(String subject) {
         return "A single app icon object in a cute glossy 3D clay / vinyl-toy style, soft studio lighting, gentle shadow under it, "
                 + "slightly exaggerated rounded proportions, three-quarter view from slightly above, centred with a small margin, "
-                + "representing: " + subject + ". Plain pure white background. No text, no letters, no logos. Square image.";
+                + "representing: " + subject + ". The objects stand on their own: no app-icon plate, no rounded square, no tile "
+                + "or badge behind them. Plain pure white background. No text, no letters, no logos. Square image.";
     }
 
     static String backdropPrompt(String subject) {
@@ -96,6 +97,19 @@ final class AiImage {
         return "Portrait game cover illustration for the video game \"" + name + "\" on " + platform + ": a vivid, polished key-art "
                 + "style painting of its world, mood and main theme, as on a game box. No text, no title lettering, no logos, "
                 + "no rating labels, no platform banner. 2:3 portrait.";
+    }
+
+    static String gameBackdropPrompt(String title, String original, String platform) {
+        String name = original != null && !original.isEmpty() ? original + " (" + title + ")" : title;
+        return "Wide 3:2 landscape background art for the video game \"" + name + "\" on " + platform + ": a calm, atmospheric "
+                + "painted scene of a typical place from its world, rich colour and soft light, with no characters in the foreground. "
+                + "No text, no letters, no logos, no interface. Landscape image.";
+    }
+
+    static String logoPrompt(String original) {
+        return "A video game title logo that spells exactly \"" + original + "\", in an original bold, stylised and colourful "
+                + "lettering design with depth, outline and a little shine, as on a game's title screen. Only the title words, "
+                + "spelled correctly, centred, nothing else. Plain pure white background. Wide image.";
     }
 
     // ---- the request ----

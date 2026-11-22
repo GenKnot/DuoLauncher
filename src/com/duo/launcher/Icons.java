@@ -92,7 +92,7 @@ final class Icons {
         if (f == null) f = g.asset("background");
         if (f != null) {
             Bitmap s = decode(f, 360);
-            if (s != null) return centerCropSquare(s, 256);
+            if (s != null) return centerCropSquare(trimBorder(s), 256);
         }
         return null;
     }
@@ -135,6 +135,38 @@ final class Icons {
         o = new BitmapFactory.Options();
         o.inSampleSize = s;
         return BitmapFactory.decodeFile(f.getPath(), o);
+    }
+
+    /**
+     * Cuts off a plain white (or transparent) frame baked into a cover picture, at most a quarter from each side, so
+     * that every cover can fill its tile the same way.
+     */
+    static Bitmap trimBorder(Bitmap s) {
+        int w = s.getWidth(), h = s.getHeight();
+        int top = 0, bottom = h - 1, left = 0, right = w - 1;
+        while (top < h / 4 && plainRow(s, top)) top++;
+        while (bottom > h * 3 / 4 && plainRow(s, bottom)) bottom--;
+        while (left < w / 4 && plainCol(s, left, top, bottom)) left++;
+        while (right > w * 3 / 4 && plainCol(s, right, top, bottom)) right--;
+        if (top == 0 && left == 0 && bottom == h - 1 && right == w - 1) return s;
+        return Bitmap.createBitmap(s, left, top, right - left + 1, bottom - top + 1);
+    }
+
+    private static boolean blank(int c) {
+        if ((c >>> 24) < 16) return true;
+        return ((c >> 16) & 255) > 236 && ((c >> 8) & 255) > 236 && (c & 255) > 236;
+    }
+
+    private static boolean plainRow(Bitmap s, int y) {
+        int w = s.getWidth(), step = Math.max(1, w / 48);
+        for (int x = 0; x < w; x += step) if (!blank(s.getPixel(x, y))) return false;
+        return true;
+    }
+
+    private static boolean plainCol(Bitmap s, int x, int y0, int y1) {
+        int step = Math.max(1, (y1 - y0) / 48);
+        for (int y = y0; y <= y1; y += step) if (!blank(s.getPixel(x, y))) return false;
+        return true;
     }
 
     static Bitmap centerCropSquare(Bitmap s, int size) {

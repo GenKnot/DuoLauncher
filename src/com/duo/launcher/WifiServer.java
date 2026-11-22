@@ -58,7 +58,15 @@ final class WifiServer {
 
     boolean running() { return server != null && !server.isClosed(); }
 
+    /** Only one password guess at a time, each one slow: a 6-digit password cannot be tried out in parallel. */
+    private final Object guessLock = new Object();
+
     void start() throws IOException {
+        // uploads cut off last time leave hidden ".name.part" files behind
+        for (File dir : targets.values()) {
+            File[] parts = dir.listFiles((d, n) -> n.startsWith(".") && n.endsWith(".part"));
+            if (parts != null) for (File f : parts) f.delete();
+        }
         server = new ServerSocket(PORT);
         Thread t = new Thread(() -> {
             while (running()) {
@@ -102,6 +110,7 @@ final class WifiServer {
 
     private void handle(Socket s) {
         try (Socket sock = s; InputStream in = sock.getInputStream(); OutputStream out = new BufferedOutputStream(sock.getOutputStream())) {
+            sock.setSoTimeout(60_000);   // a client that stops sending does not hold a thread forever
             String req = readLine(in);
             if (req == null) return;
             String[] parts = req.split(" ");
@@ -127,12 +136,13 @@ final class WifiServer {
                 Map<String, String> f = query(new String(body, 0, got, StandardCharsets.UTF_8).replace("+", "%20"));
                 if (path.equals("/login")) {
                     String pw = ai.password();
-                    if (pw != null && !pw.isEmpty() && pw.equals(f.getOrDefault("pw", "").trim())) {
-                        reply(out, "200 OK", "text/html; charset=utf-8", page(true, null), "Set-Cookie: duo=" + token + "; Path=/; HttpOnly; SameSite=Strict");
-                    } else {
-                        Thread.sleep(1500);   // slows down guessing
-                        reply(out, "200 OK", "text/html; charset=utf-8", page(false, "Wrong password · 密码不对"));
+                    boolean ok;
+                    synchronized (guessLock) {
+                        ok = pw != null && !pw.isEmpty() && pw.equals(f.getOrDefault("pw", "").trim());
+                        if (!ok) Thread.sleep(1500);   // slows down guessing, one guess at a time
                     }
+                    if (ok) reply(out, "200 OK", "text/html; charset=utf-8", page(true, null), "Set-Cookie: duo=" + token + "; Path=/; HttpOnly; SameSite=Strict");
+                    else reply(out, "200 OK", "text/html; charset=utf-8", page(false, "Wrong password · 密码不对"));
                     return;
                 }
                 if (!admin) {
@@ -150,6 +160,11 @@ final class WifiServer {
                 return;
             }
             if (method.equals("PUT") && path.startsWith("/upload?")) {
+                // uploads need the password shown on the handheld, like the settings
+                if (ai != null && !admin) {
+                    reply(out, "403 Forbidden", "text/plain", "enter the password first");
+                    return;
+                }
                 Map<String, String> q = query(path.substring(path.indexOf('?') + 1));
                 File dir = null;
                 int i = 0;
@@ -247,6 +262,18 @@ final class WifiServer {
     }
 
     private String page(boolean admin, String note) {
+        if (ai != null && !admin) {
+            // locked: only the password form, which unlocks both uploads and settings
+            return "<!doctype html><html><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'>"
+                    + "<title>Duo Launcher</title><style>"
+                    + "body{font-family:system-ui,sans-serif;background:#eef3f7;color:#1f2a36;margin:0;padding:24px}"
+                    + ".card{max-width:560px;margin:auto;background:#fff;border-radius:20px;padding:24px;box-shadow:0 6px 24px #0001}"
+                    + "h1{font-size:22px;margin:0 0 16px}button,input{font-size:16px;padding:10px;border-radius:12px;border:1px solid #cdd6df;width:100%;box-sizing:border-box}"
+                    + "</style></head><body><div class=card><h1>Duo Launcher · Wi-Fi</h1>"
+                    + "<p style='font-size:14px;color:#5c6b7a'>Uploading files and changing settings need the password shown on the "
+                    + "handheld. 上传文件和修改设置都要先输入掌机上显示的密码。</p></div>"
+                    + settings(false, note) + "</body></html>";
+        }
         StringBuilder opts = new StringBuilder();
         int i = 0;
         for (String label : targets.keySet()) opts.append("<option value=\"").append(i++).append("\">").append(esc(label)).append("</option>");

@@ -46,6 +46,12 @@ final class Library {
         // user-made folders: own name, colour, icon art and backdrop art
         String label, art, bgArt;
         int color;
+        /** For a smart folder, its rule ("new", "unplayed", "most"); its games are chosen, not added. */
+        String smart;
+        /** A genre folder with its own picture, drawn as a folder instead of fanned covers. */
+        boolean ownIcon;
+        /** Console folders shown inside this one; their games keep their own platform. */
+        final List<Platform> mergedFrom = new ArrayList<>();
 
         String title() { return label != null ? label : platformTitle(name); }
         String type() { return art != null ? art : consoleType(system.isEmpty() ? name : system); }
@@ -65,6 +71,12 @@ final class Library {
         final List<String> discs = new ArrayList<>();
         /** Official English title, when the launcher's own metadata knows it ("original:"). */
         String original;
+        /** One of {@link Genres#IDS}, or null when not sorted yet. */
+        String genre;
+        /** Series (English and Chinese name, or Series.NONE for both), or null when not looked at yet. */
+        String series, seriesZh;
+        /** When the launcher first saw the game (ms), 0 when unknown. */
+        long added;
         /** Name of the game without the disc tag, for its media folder ("Tales DiscA" → "Tales"). */
         String mediaBase;
         File ownMedia;               // DuoLauncher/<platform>/media/<name>/, looked at before anything else
@@ -174,22 +186,23 @@ final class Library {
     // ---- artwork from other frontends ----
 
     /** ES-DE folders (with gamelists/ and downloaded_media/) and RetroArch thumbnail folders. */
-    private static final List<File> esdeRoots = new ArrayList<>(), raThumbRoots = new ArrayList<>();
+    private static volatile List<File> esdeRoots = new ArrayList<>(), raThumbRoots = new ArrayList<>();
 
     private static void findFrontendFolders(Context ctx) {
-        esdeRoots.clear();
-        raThumbRoots.clear();
+        List<File> esde = new ArrayList<>(), ra = new ArrayList<>();
         List<File> volumes = new ArrayList<>();
         StorageManager sm = ctx.getSystemService(StorageManager.class);
         for (StorageVolume v : sm.getStorageVolumes()) if (v.getDirectory() != null) volumes.add(v.getDirectory());
         for (File vol : volumes) {
             for (String n : new String[]{"ES-DE", "ES-DE/ES-DE", "EmulationStation"}) {
                 File d = new File(vol, n);
-                if (new File(d, "downloaded_media").isDirectory() || new File(d, "gamelists").isDirectory()) esdeRoots.add(d);
+                if (new File(d, "downloaded_media").isDirectory() || new File(d, "gamelists").isDirectory()) esde.add(d);
             }
             File t = new File(vol, "RetroArch/thumbnails");
-            if (t.isDirectory()) raThumbRoots.add(t);
+            if (t.isDirectory()) ra.add(t);
         }
+        esdeRoots = esde;
+        raThumbRoots = ra;
     }
 
     /** RetroArch playlist (and thumbnail folder) name for a system. */
@@ -358,6 +371,7 @@ final class Library {
         addAndroid(ctx, lib, shownApps, col);
         for (Platform p : lib.platforms) mergeDiscs(p);
         applyOwnMetadata(ctx, lib);
+        GameDb.apply(ctx, lib);
         for (Platform p : lib.platforms) for (Game g : p.games) lib.byKey.put(g.key(), g);
         lib.signature = lib.computeSignature();
         return lib;
@@ -406,7 +420,7 @@ final class Library {
 
     /** Changes whenever a game, its name, description or pictures change; compared to skip needless redraws. */
     String signature = "";
-    private static final int CACHE_VERSION = 2;
+    private static final int CACHE_VERSION = 4;
 
     private String computeSignature() {
         long h = 1125899906842597L;
@@ -414,7 +428,7 @@ final class Library {
             h = 31 * h + p.name.hashCode() + p.launch.hashCode();
             for (Game g : p.games) {
                 h = 31 * h + g.key().hashCode();
-                h = 31 * h + (g.title + "\u0001" + g.description + "\u0001" + g.assets + "\u0001" + g.ownMedia + "\u0001" + g.launch + "\u0001" + g.discs).hashCode();
+                h = 31 * h + (g.title + "\u0001" + g.description + "\u0001" + g.assets + "\u0001" + g.ownMedia + "\u0001" + g.launch + "\u0001" + g.discs + "\u0001" + g.genre + "\u0001" + g.series).hashCode();
             }
         }
         return Long.toHexString(h);
@@ -451,6 +465,7 @@ final class Library {
                     str(o, g.volumeId); str(o, g.relDir); str(o, g.treeDir); str(o, g.titleId);
                     o.writeBoolean(g.scanned);
                     str(o, g.mediaBase);
+                    str(o, g.original); str(o, g.genre); str(o, g.series); str(o, g.seriesZh);
                     o.writeInt(g.discs.size());
                     for (String d : g.discs) str(o, d);
                     o.writeInt(g.assets.size());
@@ -482,6 +497,7 @@ final class Library {
                     g.volumeId = str(d); g.relDir = str(d); g.treeDir = str(d); g.titleId = str(d);
                     g.scanned = d.readBoolean();
                     g.mediaBase = str(d);
+                    g.original = str(d); g.genre = str(d); g.series = str(d); g.seriesZh = str(d);
                     for (int k = d.readInt(); k > 0; k--) g.discs.add(str(d));
                     for (int k = d.readInt(); k > 0; k--) g.assets.put(str(d), str(d));
                     g.platform = p;
@@ -527,6 +543,17 @@ final class Library {
                         if (m.isDirectory()) { g.ownMedia = m; g.resolved.clear(); }
                     }
                 }
+                Map<String, String> genres = Genres.read(dir);
+                for (Game g : p.games) {
+                    String k = Genres.key(g), id = k == null ? null : genres.get(k);
+                    if (id != null) g.genre = id;
+                }
+                Map<String, String[]> series = Series.read(dir);
+                for (Game g : p.games) {
+                    String k = Genres.key(g);
+                    String[] s = k == null ? null : series.get(k);
+                    if (s != null) { g.series = s[0]; g.seriesZh = s[1]; }
+                }
                 File meta = new File(dir, "metadata.txt");
                 if (!meta.isFile()) continue;
                 try {
@@ -538,6 +565,7 @@ final class Library {
                         if (!e.description.isEmpty()) g.description = e.description;
                         if (!e.developer.isEmpty()) g.developer = e.developer;
                         if (e.original != null) g.original = e.original;
+                        if (e.genre != null && g.genre == null) g.genre = e.genre;
                         for (Map.Entry<String, String> a : e.assets.entrySet())
                             g.assets.put(a.getKey(), new File(dir, a.getValue()).getAbsolutePath());
                         if (!e.assets.isEmpty()) g.resolved.clear();
@@ -690,7 +718,10 @@ final class Library {
             try {
                 Platform p = parsePegasus(meta);
                 p.system = hint != null ? hint : systemFromGames(p);
-                for (Game g : p.games) place(g, dir);
+                for (Game g : p.games) {
+                    place(g, dir);
+                    useExistingFile(g, dir);
+                }
                 p.games.removeIf(g -> g.file == null || !g.path.isFile());
                 // games copied in later without a metadata entry still show up
                 Set<String> listed = new HashSet<>(p.listedFiles);
@@ -749,6 +780,18 @@ final class Library {
             here.add(g);
         }
         applyGamelists(dir, here);
+    }
+
+    /**
+     * A Pegasus "files:" list may name the same game in several formats ("x.iso" and "x.cso") of which only one was
+     * copied: the first file that exists is used, and listed files that are not there are no extra discs.
+     */
+    private static void useExistingFile(Game g, File dir) {
+        if (g.file == null || g.discs.isEmpty()) return;
+        g.discs.removeIf(d -> !new File(dir, d).isFile());
+        if (g.path.isFile() || g.discs.isEmpty()) return;
+        g.file = g.discs.remove(0);
+        g.path = new File(dir, g.file);
     }
 
     /** Ties a game to the folder it lives in (for relative paths and content URIs). */
@@ -853,6 +896,10 @@ final class Library {
                     break;
                 case "original":
                     if (g != null) g.original = v.trim();
+                    break;
+                case "genre":
+                case "genres":
+                    if (g != null && g.genre == null) g.genre = Genres.fromText(firstLine(v));
                     break;
                 case "developer":
                 case "developers":

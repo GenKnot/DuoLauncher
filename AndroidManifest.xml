@@ -8,6 +8,7 @@
     <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" />
     <!-- Wi-Fi transfer page and fetching missing covers -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <!-- emulators offered in the emulator menu (only listed when installed) -->

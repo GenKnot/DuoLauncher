@@ -121,7 +121,11 @@ final class Theme {
                 if (base != null) {
                     Map<String, String> own = new HashMap<>(props);
                     int accent = color("accent", 0xFF2F8BFF);
-                    derive(accent, (int) Long.parseLong("FF" + base.replace("#", "").substring(0, 6), 16));
+                    try {
+                        derive(accent, (int) Long.parseLong("FF" + base.replace("#", "").substring(0, 6), 16));
+                    } catch (RuntimeException badColour) {
+                        // "base-color: blue" or "#fff": keep the pack's other colours
+                    }
                     props.putAll(own);
                 }
             } catch (IOException ignored) {
@@ -146,7 +150,11 @@ final class Theme {
             File[] zips = themes == null ? null : themes.listFiles((d, n) -> n.toLowerCase(java.util.Locale.ROOT).endsWith(".zip"));
             if (zips != null) for (File z : zips) {
                 File dest = new File(themes, z.getName().substring(0, z.getName().length() - 4));
-                if (!dest.exists()) unzip(z, dest);
+                if (dest.exists() || z.length() > 64L << 20) continue;
+                File tmp = new File(themes, "." + dest.getName() + ".unpacking");
+                deleteTree(tmp);
+                if (unzip(z, tmp) && !tmp.renameTo(dest)) deleteTree(tmp);
+                else deleteTree(tmp);
             }
             File[] fs = themes == null ? null : themes.listFiles();
             if (fs == null) continue;
@@ -159,21 +167,29 @@ final class Theme {
     static File packDir() { return pack; }
 
     /** Unpacks a theme zip; a zip holding a single top folder is flattened into {@code dest}. */
-    private static void unzip(File zip, File dest) {
-        String root = dest.getAbsolutePath() + File.separator;
+    private static void deleteTree(File f) {
+        File[] fs = f.listFiles();
+        if (fs != null) for (File x : fs) deleteTree(x);
+        f.delete();
+    }
+
+    private static boolean unzip(File zip, File dest) {
         try (java.util.zip.ZipFile z = new java.util.zip.ZipFile(zip)) {
+            String root = dest.getCanonicalPath() + File.separator;
             String strip = null;
             java.util.List<? extends java.util.zip.ZipEntry> es = java.util.Collections.list(z.entries());
             for (java.util.zip.ZipEntry e : es) if (e.getName().endsWith("theme.txt")) strip = e.getName().substring(0, e.getName().length() - 9);
-            if (strip == null) return; // not a theme
+            if (strip == null) return false; // not a theme
             for (java.util.zip.ZipEntry e : es) {
                 if (e.isDirectory() || !e.getName().startsWith(strip)) continue;
                 File out = new File(dest, e.getName().substring(strip.length()));
-                if (!out.getCanonicalPath().startsWith(new File(root).getCanonicalPath())) continue;
+                if (!out.getCanonicalPath().startsWith(root)) continue;
                 out.getParentFile().mkdirs();
                 try (InputStream in = z.getInputStream(e); java.io.OutputStream o = new FileOutputStream(out)) { Backups.copy(in, o); }
             }
+            return true;
         } catch (IOException ignored) {
+            return false;
         }
     }
 
@@ -186,6 +202,8 @@ final class Theme {
         String name = pack != null ? pack.getName() : "my-colours";
         File out = new File(dir, name + ".zip");
         try (java.util.zip.ZipOutputStream z = new java.util.zip.ZipOutputStream(new FileOutputStream(out))) {
+            // the user's own pictures (console and folder icons, backdrops, tool icons) go along under own/
+            if (Theme.dir != null && Theme.dir.isDirectory()) addTree(z, Theme.dir, name + "/own/");
             if (pack != null) {
                 addTree(z, pack, name + "/");
             } else {
@@ -282,7 +300,19 @@ final class Theme {
     }
 
     /** Icon and backdrop of a home-page tool such as "search", "settings" or "recent". */
-    static Bitmap toolIcon(String name) { return asset("consoles/" + name + ".png"); }
+    static Bitmap toolIcon(String name) {
+        // the user's own picture for a home tool ("tool-random"), else the theme's or the bundled one
+        String key = "tool-" + name + "/" + CONSOLE;
+        Bitmap b = cache.get(key);
+        if (b != null) return b;
+        if (!absent.containsKey(key)) {
+            File f = file("tool-" + name, CONSOLE);
+            if (f.isFile()) b = BitmapFactory.decodeFile(f.getPath());
+            if (b != null) { cache.put(key, b); return b; }
+            absent.put(key, true);
+        }
+        return asset("consoles/" + name + ".png");
+    }
 
     /**
      * Backdrops come in two cuts: the light one may be shaded, while dark mode prefers a pure
