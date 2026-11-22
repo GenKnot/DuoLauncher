@@ -14,7 +14,9 @@ import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -22,7 +24,9 @@ import java.util.Map;
  * Translates short English cheat names into the interface language. Common cheat phrases come from a small
  * built-in glossary (instant, offline, consistent wording); anything else goes to the free MyMemory API
  * (api.mymemory.translated.net, no key, a few thousand characters a day per address), with Google's free web
- * endpoint as a second try when MyMemory gives the English back. Results are cached in a file.
+ * endpoint as a second try when MyMemory gives the English back. With an AI service set up ({@link Ai}), a
+ * game's names go to it together instead, and the free services are only the fallback. Results are cached in a file
+ * (AI answers under "ai:<language>", so they replace the free ones).
  */
 final class Translate {
     private static final String API = "https://api.mymemory.translated.net/get?q=";
@@ -81,16 +85,24 @@ final class Translate {
 
     private final File cacheFile;
     private final Map<String, String> cache = new HashMap<>();
+    private final Map<String, String> aiCache = new HashMap<>();
     private final String to;
-    private boolean outOfQuota;
+    private final Ai ai;
+    private boolean outOfQuota, aiFailed;
+    /** Game name sent along to the AI as context. */
+    String context;
 
-    Translate(File cacheFile, String to) {
+    Translate(File cacheFile, String to) { this(cacheFile, to, null); }
+
+    Translate(File cacheFile, String to, Ai ai) {
         this.cacheFile = cacheFile;
         this.to = to;
+        this.ai = ai;
         try {
             for (String line : new String(Files.readAllBytes(cacheFile.toPath()), StandardCharsets.UTF_8).split("\n")) {
                 String[] f = line.split("\t");
                 if (f.length == 3 && f[0].equals(to)) cache.put(f[1], f[2]);
+                else if (f.length == 3 && f[0].equals("ai:" + to)) aiCache.put(f[1], f[2]);
             }
         } catch (IOException ignored) {
         }
@@ -100,21 +112,65 @@ final class Translate {
     private static final java.util.regex.Pattern PARTS = java.util.regex.Pattern.compile(
             "^((?:[(（\\[][A-Z0-9+/ ,.&-]+[)）\\]]\\s*)*)(.*?)((?:\\s*[(（]?v\\d+(?:\\.\\d+)*[a-z]?(?:\\s*[&/,]\\s*v?\\d+(?:\\.\\d+)*)*[)）]?)?)$");
 
+    /** {head, core, tail}: button hints and version tags split off the part to translate. */
+    private static String[] split(String text) {
+        java.util.regex.Matcher m = PARTS.matcher(text.trim());
+        if (m.matches() && !m.group(2).trim().isEmpty()) return new String[]{m.group(1), m.group(2).trim(), m.group(3)};
+        return new String[]{"", text.trim(), ""};
+    }
+
+    boolean usesAi() { return ai != null && !aiFailed; }
+
+    /** The AI's last error, or null. */
+    String aiError() { return ai == null ? null : ai.error; }
+
+    /**
+     * Sends the names that have no AI answer yet to the AI, in batches, so that the following {@link #translate}
+     * calls find them cached. After a failed request the AI is left alone for the rest of this run.
+     */
+    void prefetch(java.util.Collection<String> texts) {
+        if (!usesAi()) return;
+        java.util.LinkedHashMap<String, String> todo = new java.util.LinkedHashMap<>();   // key -> core text
+        for (String t : texts) {
+            String core = split(t)[1];
+            String k = key(core);
+            if (needs(core) && !aiCache.containsKey(k)) todo.put(k, core);
+        }
+        List<String> keys = new ArrayList<>(todo.keySet());
+        for (int i = 0; i < keys.size() && !aiFailed; i += 60) {
+            List<String> part = keys.subList(i, Math.min(keys.size(), i + 60));
+            List<String> src = new ArrayList<>();
+            for (String k : part) src.add(todo.get(k));
+            List<String> out = ai.translate(src, to, context);
+            if (out == null) { aiFailed = true; break; }
+            for (int j = 0; j < part.size(); j++) if (!out.get(j).isEmpty()) remember("ai:" + to, aiCache, part.get(j), out.get(j));
+        }
+    }
+
+    private void remember(String lang, Map<String, String> map, String k, String v) {
+        map.put(k, v);
+        try (Writer w = new OutputStreamWriter(new FileOutputStream(cacheFile, true), StandardCharsets.UTF_8)) {
+            w.write(lang + "\t" + k + "\t" + v.replace('\t', ' ').replace('\n', ' ') + "\n");
+        } catch (IOException ignored) {
+        }
+    }
+
     /** The translation, or null when it cannot be translated now (offline, daily limit reached). */
     String translate(String text) {
-        java.util.regex.Matcher m = PARTS.matcher(text.trim());
-        String head = "", core = text.trim(), tail = "";
-        if (m.matches() && !m.group(2).trim().isEmpty()) {
-            head = m.group(1);
-            core = m.group(2).trim();
-            tail = m.group(3);
-        }
-        String t = translateCore(core);
-        return t == null ? null : head + t + tail;
+        String[] p = split(text);
+        String t = translateCore(p[1]);
+        return t == null ? null : p[0] + t + p[2];
     }
 
     private String translateCore(String text) {
         String k = key(text);
+        if (ai != null) {
+            if (aiCache.containsKey(k)) return aiCache.get(k);
+            if (usesAi() && needs(text)) {
+                prefetch(java.util.Collections.singletonList(text));
+                if (aiCache.containsKey(k)) return aiCache.get(k);
+            }
+        }
         if (to.equals("zh-CN") && ZH.containsKey(k)) return ZH.get(k);   // the glossary is Simplified Chinese
         if (cache.containsKey(k) && latin(cache.get(k)) == 0) return cache.get(k);   // older answers with English left get another try
         if (!needs(text)) return text;                                  // nothing left to translate (numbers, buttons)
@@ -125,13 +181,7 @@ final class Translate {
             String b = google(text);
             if (b != null && (a == null || latin(b) < latin(a))) out = b;
         }
-        if (out != null) {
-            cache.put(k, out);
-            try (Writer w = new OutputStreamWriter(new FileOutputStream(cacheFile, true), StandardCharsets.UTF_8)) {
-                w.write(to + "\t" + k + "\t" + out.replace('\t', ' ').replace('\n', ' ') + "\n");
-            } catch (IOException ignored) {
-            }
-        }
+        if (out != null) remember(to, cache, k, out);
         return out;
     }
 

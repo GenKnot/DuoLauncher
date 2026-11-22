@@ -10,11 +10,12 @@ Point it at your ROM folders and it finds the games, shows them on the lower scr
 ## Highlights · 亮点
 
 - **Two screens, one launcher** – pick on the lower screen, see logos, cover art, video previews, play time and descriptions on the upper one. 下屏选、上屏看：Logo、封面、视频预览、游玩时间、简介。
-- **One place for every emulator** – 3DS, NDS, GBA, GB/GBC, NES, SNES, N64, Mega Drive, PS1, PS2, PSP, PS Vita and Switch, with the emulator chosen per platform or per game. 一个入口管所有模拟器，每个平台、每个游戏都能单独选模拟器。
+- **One place for every emulator** – 3DS, NDS, GBA, GB/GBC, NES, SNES, N64, GameCube, Wii, Mega Drive, PS1, PS2, PSP, PS Vita and Switch, with the emulator chosen per platform or per game; multi-disc games show as one. 一个入口管所有模拟器，每个平台、每个游戏都能单独选模拟器；多碟游戏自动合并。
+- **AI with your own key** – cheat names, game names and descriptions translated in context by DeepSeek, Qwen, OpenAI, Claude or Gemini; covers, console pictures and backdrops drawn by an image model. Keys stay on the handheld and can be typed on a phone over Wi-Fi. 用你自己的密钥接入 AI：按游戏语境翻译金手指、游戏名和简介，自动画封面、主机图和背景；密钥只存在掌机上，可以用手机通过 Wi-Fi 填。
 - **Cheats, managed for you** – thousands of ready-made cheats (3DS, NDS, PSP, GBA and every RetroArch system), downloaded from public databases or taken from the Chinese packs already on the device, translated into your language in one tap, editable, and shared between emulators. 金手指一站式管理：联网下载、自带中文库、一键翻译成界面语言、可改名可自建，不同模拟器通用。
 - **Fills in what is missing** – box art and title screens for NDS/GBA games, matched by the game code in the ROM; your own names and descriptions in any language. 自动补全封面，游戏资料可按语言自己写。
-- **Made for handhelds** – OLED-safe screensaver, Wi-Fi transfer from a browser, save backups, play statistics, quick start-up, and controls that work with the gamepad or touch. 为掌机设计：防烧屏屏保、Wi-Fi 传文件、存档备份、游玩统计、秒开。
-- **Yours to change** – colour themes and theme packs, light and dark mode, text size, every home tile renamed, recoloured or hidden, 11 languages. 随你定制：主题、深浅色、字体大小、主页每个磁贴都能改，11 种语言。
+- **Made for handhelds** – OLED-safe screensaver, Wi-Fi transfer from a browser, save backups, play statistics, RetroAchievements progress, screenshots per game, quick start-up, held-down directions that keep scrolling, and controls that work with the gamepad or touch. 为掌机设计：防烧屏屏保、Wi-Fi 传文件、存档备份、游玩统计、成就进度、按游戏看截图、按住方向键连续移动、秒开。
+- **Yours to change** – colour themes and theme packs, light and dark mode, text size, every home tile renamed, recoloured, hidden or moved (hold A, or long-press), 11 languages. 随你定制：主题、深浅色、字体大小、主页每个格子都能改名、换色、隐藏或按住 A 拖动排序，11 种语言。
 
 ## Screenshots
 
@@ -60,6 +61,22 @@ Point it at your ROM folders and it finds the games, shows them on the lower scr
   <tr>
     <td><img src="docs/screenshots/en_wifi.png" alt="Wi-Fi transfer"></td>
     <td><img src="docs/screenshots/en_tools.png" alt="Tools"></td>
+  </tr>
+  <tr>
+    <th>GameCube, with Dolphin · GameCube（Dolphin）</th>
+    <th>Hold A to move a folder · 按住 A 拖动文件夹</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/zh_gamecube.png" alt="GameCube"></td>
+    <td><img src="docs/screenshots/zh_move.png" alt="Moving a folder"></td>
+  </tr>
+  <tr>
+    <th>Choose cheats before importing, names translated · 先挑再导入（已翻译）</th>
+    <th>Game details: size, discs, screenshots · 游戏详情：大小、碟数、截图</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/zh_cheat_pick.png" alt="Choosing cheats"></td>
+    <td><img src="docs/screenshots/zh_details.png" alt="Game details"></td>
   </tr>
   <tr>
     <th>3DS cheats, translated in one tap · 3DS 金手指（一键翻译）</th>
@@ -116,6 +133,22 @@ Point it at your ROM folders and it finds the games, shows them on the lower scr
   <tr>
     <td><img src="docs/screenshots/zh_menu.png" alt="游戏菜单"></td>
     <td><img src="docs/screenshots/zh_list.png" alt="列表视图"></td>
+  </tr>
+  <tr>
+    <th>GameCube（Dolphin）</th>
+    <th>按住 A 拖动文件夹</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/zh_gamecube.png" alt="GameCube"></td>
+    <td><img src="docs/screenshots/zh_move.png" alt="拖动文件夹"></td>
+  </tr>
+  <tr>
+    <th>下载的金手指先挑再导入（名称已翻译）</th>
+    <th>游戏详情：大小、碟数、截图</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/zh_cheat_pick.png" alt="挑选金手指"></td>
+    <td><img src="docs/screenshots/zh_details.png" alt="游戏详情"></td>
   </tr>
   <tr>
     <th>3DS 金手指：一键翻译成中文</th>
@@ -182,7 +215,8 @@ Point it at your ROM folders and it finds the games, shows them on the lower scr
 ### Your library · 游戏库
 
 - **Finds your games by itself** – add folders in Settings → Game folders, or let it pick up any `Roms` folder on internal storage and SD cards. Platforms are recognised from folder names (`gba`, `Nintendo DS`, `psx`, …) and file extensions.
-- **Platforms** – 3DS, NDS, GBA, GBC, GB, NES, SNES, N64, Mega Drive, PlayStation 1/2/3, PSP, PS Vita, Switch, plus artwork for PS4, PS5, Xbox 360 and Xbox Series.
+- **Platforms** – 3DS, NDS, GBA, GBC, GB, NES, SNES, N64, GameCube, Wii, Mega Drive, PlayStation 1/2/3, PSP, PS Vita, Switch, plus artwork for PS4, PS5, Xbox 360 and Xbox Series.
+- **Multi-disc games as one** – `Disc A/B`, `Disc 1/2`, `CD1/CD2`, `(Disc 2 of 3)` in one folder, or a Pegasus `files:` list, become a single entry; RetroArch and DuckStation get an `.m3u` playlist of the discs so they can change discs in-game.
 - **Android games and apps** – installed games get their own page automatically; pick any apps (video, browser, …) to show on the Apps page.
 - **Works with existing setups** – reads Pegasus `metadata.pegasus.txt`, ES-DE / EmulationStation `gamelist.xml` and `downloaded_media`, RetroArch thumbnails, and `media/`, `covers/`, `images/` folders next to the games.
 - **Your own game info** – names, descriptions and pictures in a `DuoLauncher` folder that wins over every other source, with names and descriptions per language (`name.en:`, `description.en:` …); see [Your own game info](#your-own-game-info).
@@ -193,6 +227,9 @@ Point it at your ROM folders and it finds the games, shows them on the lower scr
 - **Search** – R3 or the search button; results update as you type. Chinese titles also match pinyin and its initials (`kdyg` → 口袋妖怪), opened from inside a platform it searches only that platform, and recent searches are one tap away.
 - **Sort and filter** (SELECT) – default order, name, recently played or most played, and show only 简 / 繁 / 英 games.
 - **Hide what you don't play** – hide a platform folder, or a single game or app (Y → Hide); bring them back in Settings.
+- **Jump by letter** – L2 / R2 jump to the previous / next first letter in a platform; Chinese titles count by their pinyin initial.
+- **What to play?** – a home tile that picks a random game, never-played games more often, and shows it.
+- **Game details** (Y → Details) – file, size, number of discs, folder, emulator, play time, the official English title when known, and the game's screenshots (named after the game, or taken while it ran) on the upper screen.
 - **Starts instantly** – the last scan is cached, so the home screen is up in a second and the scan runs in the background.
 
 ### Playing · 游玩
@@ -206,6 +243,7 @@ Point it at your ROM folders and it finds the games, shows them on the lower scr
   | GB / GBC / GBA | RetroArch · Gambatte, mGBA, gpSP |
   | NES / SNES / MD | RetroArch · FCEUmm, Mesen, Snes9x, Genesis Plus GX, PicoDrive |
   | N64 | RetroArch · Mupen64Plus-Next, Mupen64Plus FZ |
+  | GameCube / Wii | Dolphin MMJR, Dolphin |
   | PS1 | RetroArch · PCSX ReARMed, SwanStation, DuckStation |
   | PS2 | ARMSX2, AetherSX2 |
   | PSP | PPSSPP, RetroArch · PPSSPP |
@@ -213,7 +251,6 @@ Point it at your ROM folders and it finds the games, shows them on the lower scr
   | Switch | Eden |
 
 - **Citra MMJ (performance mode)** – the same Citra MMJ build repackaged under the AnTuTu benchmark's package name, which many Android systems run at full clocks; offered only when that package really is Citra.
-- **RetroArch with your handheld's own settings** – on Retroid handhelds games start with the RetroArch configuration Retroid's system set up for the game screen (hotkeys, shaders, overlays), not an empty one.
 - **Cheats** – see [Cheats](#cheats).
 - **Play time** – how long and when you last played each game, Switch-style. With Usage access granted it counts only the time the game was really on screen.
 - **Play statistics** – total play time, this week by day, time per platform and the most played games.
@@ -233,9 +270,11 @@ Point it at your ROM folders and it finds the games, shows them on the lower scr
 
 ### Handy tools · 实用工具
 
-- **Wi-Fi transfer** – Settings → Wi-Fi transfer shows an address; open it in a browser on the same network and drop ROMs or theme packs straight into any platform folder.
+- **Wi-Fi transfer** – Settings → Wi-Fi transfer shows an address; open it in a browser on the same network and drop ROMs or theme packs straight into any platform folder. The same page has the AI and RetroAchievements settings behind an admin password shown on the handheld, so long keys can be pasted from a phone.
+- **RetroAchievements** – with your user name and Web API key, recently played games and their achievement progress, and a 🏆 tag on matching games.
+- **Updates** – Settings → About checks the latest GitHub release once a day and links to it.
 - **Save backups** – back up and restore the saves of DraStic, RetroArch, PPSSPP, AetherSX2, DuckStation, Mupen64Plus FZ, Azahar and Citra in one zip.
-- **Tidy-up tools** (Settings → Tools) – find duplicate games, list games without pictures, fetch missing covers, translate every cheat at once, export the current theme as a zip, and a diagnostics page.
+- **Tidy-up tools** (Settings → Tools) – find duplicate games, list games without pictures, fetch missing covers, translate every cheat at once, AI names and descriptions for a whole platform, export the current theme as a zip, and a diagnostics page.
 - **Button layout** – swap A/B and X/Y for Nintendo- or Xbox-style confirm buttons.
 
 ### Setup · 设置
@@ -255,10 +294,21 @@ Y → Cheats on a game lists its cheats; A switches one on or off. 在游戏上�
 | Download | [Sharkive](https://github.com/FlagBrew/Sharkive), about 650 games, by title ID read from the ROM | [libretro-database](https://github.com/libretro/libretro-database), about 4,200 games, by the game code in the ROM header | [CWCheat-Database-Plus+](https://github.com/Saramagrean/CWCheat-Database-Plus-), about 4,300 games, by game ID | [libretro-database](https://github.com/libretro/libretro-database) for GBA, by the game code in the ROM header |
 
 - **Translate** – English cheat names become the interface language in one tap, for one game or for every game at once (Settings → Tools). Common cheats come from a built-in glossary (无限血量, 金钱最大, 主代码 …); the rest go to the free MyMemory service, with Google's free endpoint as a second try. Version tags (`v1.2`) and button hints (`(START+L)`) are kept as they are, and the original English name stays in the file as a note.
-- **Edit** – rename or delete any cheat, or add your own with its codes (3DS, NDS and PSP codes are checked as `XXXXXXXX YYYYYYYY`).
+- **Choose before importing** – a download first lists what it found, already translated, with Select all / Select none; only the ticked ones are added.
+- **Translate with AI** – with an AI key set (see [AI](#ai)), a game's cheats go to the model together with the game's name, so it uses the official names of characters and items (鬼神林克, 心之容器 …); names translated earlier by the free services can be redone.
+- **Edit** – rename or delete any cheat, delete all of a game's cheats at once, or add your own with its codes (3DS, NDS and PSP codes are checked as `XXXXXXXX YYYYYYYY`).
 - **Safe for DraStic** – flash-cart patches (anti-piracy bypasses, overlay and Wi-Fi fixes) are left out of NDS downloads because DraStic crashes with them switched on, and at most 256 code lines can be on at once, the most DraStic can load.
 - **Safe for your files** – the first time a hand-written 3DS cheat file is changed, the original is kept as `.txt.bak`.
 - **RetroArch, once** – switch on Quick Menu → Cheats → "Auto-Apply Cheats During Game Load" in RetroArch once, and the cheats you turn on here are active from the moment a game starts.
+
+## AI
+
+Everything here is optional and uses your own account; keys are kept in the launcher's settings on the handheld and sent only to the service you chose. Enter them in Settings, or on the Wi-Fi page from a phone or computer.
+
+- **Settings → AI translation** – DeepSeek, Qwen, OpenAI, Claude, Gemini or any OpenAI-compatible address. Used for cheat names (a whole game in one request) and for Settings → Tools → AI: game names and descriptions, which writes `name.<language>`, `description.<language>` and the official English title (`original:`) into the launcher's own metadata, so a library of Chinese titles reads naturally in English and the other way round. Without a key the free translation services are used for cheats.
+- **Settings → AI pictures** – an OpenAI image key (the newest image model the key can use is picked automatically). Y → Details → Make a cover with AI for games without box art; Platform look and folder icons / backdrops get "Make with AI", in the same clay-icon and paper-cut style as the built-in art. A picture takes about half a minute.
+
+AI 功能都是可选的，用你自己的账号；密钥只存在掌机上，只发给你选的服务。可以在设置里填，也可以在手机或电脑上打开 Wi-Fi 页面填（需要掌机上显示的管理密码）。
 
 ## Your own game info
 
@@ -314,12 +364,14 @@ DuoLauncher/themes/my-theme/
 
 | Button | Action |
 |---|---|
-| D-pad / left stick | Move |
-| A | Open / play |
+| D-pad / left stick | Move; hold to keep moving |
+| Left / right in a list or menu | A page at a time |
+| A | Open / play; hold A on a home folder to move it |
 | B | Back |
 | L / R | Previous / next platform |
+| L2 / R2 | Previous / next first letter |
 | X | Icon size, then list view |
-| Y | Choose emulator, cheats, favorite, add to a folder, top-screen display, hide, or edit a folder; on the home page also rename, recolour or hide any tile |
+| Y | Choose emulator, cheats, details, favorite, add to a folder, top-screen display, hide, or edit a folder; on the home page also rename, recolour or hide any tile |
 | START | Settings (from the home page, even with the Settings tile hidden) |
 | SELECT | Sort and language filter |
 | R3 | Search |
@@ -348,7 +400,8 @@ Platforms without a picture fall back to a drawn console.
 - Citra MMJ: `org.citra.emu/org.citra.emu.ui.EmulationActivity` with `-e GamePath <path>`
 - Citra MMJ (performance mode) is the same build repackaged as `com.antutu.ABenchMark`; many Android builds run that package name at full CPU/GPU clocks. It is only offered when that package really contains Citra.
 - DraStic as shipped on Retroid handhelds wants `-e GAMEPATH "/sf<path>"`; a "plain path" variant is offered for stock builds.
-- RetroArch: `com.retroarch.aarch64/...RetroActivityFuture` with `-e ROM`, `-e LIBRETRO <core>` and `-e CONFIGFILE`.
+- RetroArch: `com.retroarch.aarch64/...RetroActivityFuture` with `-e ROM`, `-e LIBRETRO <core>` and `-e CONFIGFILE`. The config file named in the launch line is kept: on the Duo, RetroArch's own `retroarch.cfg` shows Retroid's per-system frames at full size, while Retroid's per-screen `retroarch1920x1080.cfg` draws games small inside a TV frame.
+- Dolphin (MMJR and official): `.../ui.main.MainActivity` with `--es AutoStartFile <path>`.
 - ARMSX2, AetherSX2, Eden, PPSSPP and Mupen64Plus FZ get the game as a read-only `content://com.duo.launcher.rom/...` link with a one-time read grant, so they need no folder access of their own.
 - Vita3K: `org.vita3k.emulator/.Emulator` with the string array extra `AppStartParameters = ["-r", "<title ID>"]`.
 - Launch lines in Pegasus metadata are used unchanged.

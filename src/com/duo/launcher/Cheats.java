@@ -169,7 +169,7 @@ final class Cheats {
     }
 
     /** The English name a translated cheat keeps as its first note, or null. */
-    private static String original(Cheat c) {
+    static String original(Cheat c) {
         if (c.lines.isEmpty() || !c.lines.get(0).startsWith("*")) return null;
         String o = c.lines.get(0).substring(1).trim();
         return Translate.needs(o) ? o : null;
@@ -184,10 +184,30 @@ final class Cheats {
     static int[] translate(Store st, Translate tr) {
         List<Cheat> list = st.load();
         int n = 0, left = 0;
+        boolean ai = tr.usesAi();
+        if (ai) {
+            // the whole game in one go: names never translated, and (to improve them) ones translated before
+            List<String> src = new ArrayList<>();
+            for (Cheat c : list) {
+                String o = original(c);
+                if (o != null) src.add(o);
+                else if (Translate.needs(c.name)) src.add(c.name);
+            }
+            String given = tr.context;   // the game's name when one game is translated; else the file name
+            if (given == null) tr.context = new File(st.id()).getName().replaceAll("\\.[A-Za-z0-9]+$", "");
+            tr.prefetch(src);
+            tr.context = given;
+            ai = tr.usesAi();
+        }
         for (Cheat c : list) {
             String fixed = Translate.repair(c.name);   // an earlier "original (translation)" answer
             if (fixed != null) { c.name = fixed; n++; continue; }
             String o = original(c);
+            if (o != null && ai) {   // translated before: the AI's answer replaces it
+                String z = tr.translate(o);
+                if (z != null && !z.equals(c.name)) { c.name = z; n++; }
+                continue;
+            }
             if (o != null && Translate.latin(c.name) > 0) {   // translated before, English left in it: try again from the original
                 String z = tr.translate(o);
                 if (z != null && Translate.latin(z) < Translate.latin(c.name)) { c.name = z; n++; }   // otherwise it is as good as it gets (Mega, START)

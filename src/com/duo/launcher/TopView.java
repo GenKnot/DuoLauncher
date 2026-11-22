@@ -289,21 +289,24 @@ final class TopView extends ViewGroup {
 
     /** The Settings or Search tile on the home page. */
     void showTool(Object which) {
-        boolean settings = which == ShelfView.SETTINGS, desktop = which == ShelfView.DESKTOP;
+        boolean settings = which == ShelfView.SETTINGS, desktop = which == ShelfView.DESKTOP, random = which == ShelfView.RANDOM;
         message.setVisibility(GONE);
         setDark(false);
         enter(which);
-        String name = settings ? "settings" : desktop ? "desktop" : "search";
+        String name = settings ? "settings" : desktop ? "desktop" : random ? "random" : "search";
         Bitmap icon = Theme.toolIcon(name);
         if (icon == null && desktop) { name = "apps"; icon = Theme.toolIcon(name); }
+        if (icon == null && random) { name = "recent"; icon = Theme.toolIcon(name); }
         if (icon != null) hero.setDrawable(new ConsoleDrawable(name, icon, true));
         else hero.setDrawable(new ConsoleDrawable(settings ? "gear" : desktop ? "apps" : "search", null, true));
         String label = settings ? ShelfView.toolName("settings", t(S.SETTINGS))
-                : desktop ? ShelfView.toolName("desktop", t(S.ANDROID_DESKTOP)) : ShelfView.toolName("search", t(S.SEARCH));
-        dots.set(settings ? 0xFF6D8299 : desktop ? ShelfView.DESKTOP_COLOR : 0xFF2F8BFF, label, Theme.toolBackground(name));
+                : desktop ? ShelfView.toolName("desktop", t(S.ANDROID_DESKTOP)) : random ? ShelfView.toolName("random", t(S.RANDOM_GAME))
+                : ShelfView.toolName("search", t(S.SEARCH));
+        dots.set(settings ? 0xFF6D8299 : desktop ? ShelfView.DESKTOP_COLOR : random ? ShelfView.RANDOM_COLOR : 0xFF2F8BFF, label, Theme.toolBackground(name));
         title.setText(label);
         if (settings) chips.set(Palette.dark, t(S.SETTINGS_HINT), I18n.name());
         else if (desktop) chips.set(Palette.dark, t(S.DESKTOP_HINT));
+        else if (random) chips.set(Palette.dark, t(S.RANDOM_HINT));
         else chips.set(Palette.dark, t(S.SEARCH_HINT));
         desc.setText("");
         desc.setVisibility(GONE);
@@ -315,6 +318,26 @@ final class TopView extends ViewGroup {
      * @param emu    emulator label, or null for Android games and apps
      * @param played play-time and last-played tags, empty when never played from here
      */
+    /** A screenshot filling the upper screen, with its date as the title. */
+    void showPicture(File f, String caption) {
+        stopVideo();
+        message.setVisibility(GONE);
+        enter(f);
+        setDark(true);
+        hero.clear();
+        android.graphics.BitmapFactory.Options o = new android.graphics.BitmapFactory.Options();
+        o.inSampleSize = f.length() > 3_000_000 ? 2 : 1;
+        Bitmap pic = android.graphics.BitmapFactory.decodeFile(f.getPath(), o);
+        bg.setImageBitmap(pic);              // blurred behind, sharp in the middle
+        if (pic != null) hero.setBitmap(HeroView.CARD, pic);
+        title.setText(caption);
+        chips.set(true);
+        desc.setText("");
+        desc.setVisibility(GONE);
+        hints.set(true, "B|" + t(S.BACK));
+        requestLayout();
+    }
+
     void showGame(Library.Game g, String emu, String... played) {
         message.setVisibility(GONE);
         boolean fresh = shown != g;

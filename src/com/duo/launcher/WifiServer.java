@@ -28,11 +28,32 @@ final class WifiServer {
 
     private final Map<String, File> targets = new LinkedHashMap<>();   // label -> folder
     private final Consumer<String> onReceived;
+    private final AiSettings ai;
     private ServerSocket server;
 
-    WifiServer(Map<String, File> targets, Consumer<String> onReceived) {
+    /** The AI translation settings, filled in from a computer or phone instead of typing a long key on the handheld. */
+    interface AiSettings {
+        /** provider id, address, model, masked key */
+        String[] current();
+        /** key is null to keep the one already set */
+        void save(String provider, String url, String model, String key);
+        /** The admin password that unlocks the settings on this page (shown on the handheld). */
+        String password();
+        /** RetroAchievements: user name, masked Web API key */
+        String[] currentRa();
+        void saveRa(String user, String key);
+        /** image service: address, model, masked key */
+        String[] currentImage();
+        void saveImage(String url, String model, String key);
+    }
+
+    /** Session cookie value for browsers that entered the admin password; new each time the page is switched on. */
+    private final String token = Long.toHexString(new java.security.SecureRandom().nextLong()) + Long.toHexString(System.nanoTime());
+
+    WifiServer(Map<String, File> targets, Consumer<String> onReceived, AiSettings ai) {
         this.targets.putAll(targets);
         this.onReceived = onReceived;
+        this.ai = ai;
     }
 
     boolean running() { return server != null && !server.isClosed(); }
@@ -87,11 +108,46 @@ final class WifiServer {
             if (parts.length < 2) return;
             String method = parts[0], path = parts[1];
             long length = -1;
-            String line;
+            String line, cookie = "";
             while ((line = readLine(in)) != null && !line.isEmpty()) {
                 int k = line.indexOf(':');
                 if (k > 0 && line.substring(0, k).trim().equalsIgnoreCase("Content-Length"))
                     length = Long.parseLong(line.substring(k + 1).trim());
+                if (k > 0 && line.substring(0, k).trim().equalsIgnoreCase("Cookie")) cookie = line.substring(k + 1);
+            }
+            boolean admin = ai != null && cookie.contains("duo=" + token);
+            if (method.equals("POST") && (path.equals("/ai") || path.equals("/login")) && ai != null && length >= 0 && length < 16384) {
+                byte[] body = new byte[(int) length];
+                int got = 0;
+                while (got < body.length) {
+                    int r = in.read(body, got, body.length - got);
+                    if (r < 0) break;
+                    got += r;
+                }
+                Map<String, String> f = query(new String(body, 0, got, StandardCharsets.UTF_8).replace("+", "%20"));
+                if (path.equals("/login")) {
+                    String pw = ai.password();
+                    if (pw != null && !pw.isEmpty() && pw.equals(f.getOrDefault("pw", "").trim())) {
+                        reply(out, "200 OK", "text/html; charset=utf-8", page(true, null), "Set-Cookie: duo=" + token + "; Path=/; HttpOnly; SameSite=Strict");
+                    } else {
+                        Thread.sleep(1500);   // slows down guessing
+                        reply(out, "200 OK", "text/html; charset=utf-8", page(false, "Wrong password · 密码不对"));
+                    }
+                    return;
+                }
+                if (!admin) {
+                    reply(out, "403 Forbidden", "text/html; charset=utf-8", page(false, null));
+                    return;
+                }
+                String key = f.getOrDefault("key", "").trim();
+                ai.save(f.getOrDefault("provider", "deepseek"), f.getOrDefault("url", "").trim(), f.getOrDefault("model", "").trim(),
+                        key.isEmpty() ? null : key);
+                String rk = f.getOrDefault("ra_key", "").trim();
+                ai.saveRa(f.getOrDefault("ra_user", "").trim(), rk.isEmpty() ? null : rk);
+                String ik = f.getOrDefault("img_key", "").trim();
+                ai.saveImage(f.getOrDefault("img_url", "").trim(), f.getOrDefault("img_model", "").trim(), ik.isEmpty() ? null : ik);
+                reply(out, "200 OK", "text/html; charset=utf-8", page(true, "Saved · 已保存"));
+                return;
             }
             if (method.equals("PUT") && path.startsWith("/upload?")) {
                 Map<String, String> q = query(path.substring(path.indexOf('?') + 1));
@@ -121,7 +177,7 @@ final class WifiServer {
                 onReceived.accept(name);
                 reply(out, "200 OK", "text/plain", "ok");
             } else {
-                reply(out, "200 OK", "text/html; charset=utf-8", page());
+                reply(out, "200 OK", "text/html; charset=utf-8", page(admin, null));
             }
         } catch (Exception ignored) {
         }
@@ -137,8 +193,13 @@ final class WifiServer {
     }
 
     private static void reply(OutputStream out, String status, String type, String body) throws IOException {
+        reply(out, status, type, body, null);
+    }
+
+    private static void reply(OutputStream out, String status, String type, String body, String header) throws IOException {
         byte[] b = body.getBytes(StandardCharsets.UTF_8);
         out.write(("HTTP/1.1 " + status + "\r\nContent-Type: " + type + "\r\nContent-Length: " + b.length
+                + "\r\nCache-Control: no-store" + (header == null ? "" : "\r\n" + header)
                 + "\r\nConnection: close\r\n\r\n").getBytes(StandardCharsets.UTF_8));
         out.write(b);
         out.flush();
@@ -146,7 +207,46 @@ final class WifiServer {
 
     private static String esc(String s) { return s.replace("&", "&amp;").replace("<", "&lt;").replace("\"", "&quot;"); }
 
-    private String page() {
+    /** Settings are locked until the admin password shown on the handheld is entered. */
+    private String settings(boolean admin, String note) {
+        if (ai == null) return "";
+        String msg = note == null ? "" : "<p style='color:#2f8bff;font-weight:600'>" + esc(note) + "</p>";
+        if (admin) return aiForm(msg);
+        return "<form class=card method=post action=/login style='margin-top:18px'><h1>Settings · 设置</h1>" + msg
+                + "<p style='font-size:14px;color:#5c6b7a'>Enter the admin password shown on the handheld (Settings → Wi-Fi transfer). "
+                + "输入掌机上显示的管理密码（设置 → Wi-Fi 传输）。</p>"
+                + "<input name=pw type=password inputmode=numeric autocomplete=off placeholder='••••••'>"
+                + "<button style='margin-top:12px;background:#2f8bff;color:#fff;border:0'>Unlock · 解锁</button></form>";
+    }
+
+    /** Settings card for AI translation; the key field is never filled in, only its masked form is shown. */
+    private String aiForm(String msg) {
+        String[] c = ai.current(), ci = ai.currentImage(), cr = ai.currentRa();
+        StringBuilder opts = new StringBuilder();
+        for (String[] p : Ai.PROVIDERS)
+            opts.append("<option value=\"").append(p[0]).append(p[0].equals(c[0]) ? "\" selected>" : "\">")
+                    .append(esc(p[1] == null ? "Custom · 自定义" : p[1])).append("</option>");
+        return "<form class=card method=post action=/ai style='margin-top:18px'><h1>AI translation · AI 翻译</h1>" + msg
+                + "<p style='font-size:14px;color:#5c6b7a'>Cheat names are translated by this service when a key is set. "
+                + "Leave address and model empty for the service's default. 填入密钥后用 AI 翻译金手指；地址和模型留空即用默认。</p>"
+                + "<label>Service · 服务</label><select name=provider>" + opts + "</select>"
+                + "<label>API key · 密钥" + (c[3].isEmpty() ? "" : " (" + esc(c[3]) + ")") + "</label>"
+                + "<input name=key type=password autocomplete=off placeholder='" + (c[3].isEmpty() ? "sk-…" : "unchanged · 不修改") + "'>"
+                + "<label>Model · 模型</label><input name=model value=\"" + esc(c[2]) + "\" placeholder=default>"
+                + "<label>Address · 接口地址</label><input name=url value=\"" + esc(c[1]) + "\" placeholder=default>"
+                + "<h1 style='margin-top:22px'>AI pictures · AI 生图</h1>"
+                + "<label>Image API key (OpenAI) · 生图密钥" + (ci[2].isEmpty() ? "" : " (" + esc(ci[2]) + ")") + "</label>"
+                + "<input name=img_key type=password autocomplete=off placeholder='" + (ci[2].isEmpty() ? "sk-…" : "unchanged · 不修改") + "'>"
+                + "<label>Image model · 生图模型</label><input name=img_model value=\"" + esc(ci[1]) + "\" placeholder=auto>"
+                + "<label>Image address · 生图接口地址</label><input name=img_url value=\"" + esc(ci[0]) + "\" placeholder=https://api.openai.com/v1>"
+                + "<h1 style='margin-top:22px'>RetroAchievements</h1>"
+                + "<label>User name · 用户名</label><input name=ra_user value=\"" + esc(cr[0]) + "\">"
+                + "<label>Web API key · 密钥 (retroachievements.org → Settings)" + (cr[1].isEmpty() ? "" : " (" + esc(cr[1]) + ")") + "</label>"
+                + "<input name=ra_key type=password autocomplete=off placeholder='" + (cr[1].isEmpty() ? "" : "unchanged · 不修改") + "'>"
+                + "<button style='margin-top:16px;background:#2f8bff;color:#fff;border:0'>Save · 保存</button></form>";
+    }
+
+    private String page(boolean admin, String note) {
         StringBuilder opts = new StringBuilder();
         int i = 0;
         for (String label : targets.keySet()) opts.append("<option value=\"").append(i++).append("\">").append(esc(label)).append("</option>");
@@ -154,12 +254,14 @@ final class WifiServer {
                 + "<title>Duo Launcher</title><style>"
                 + "body{font-family:system-ui,sans-serif;background:#eef3f7;color:#1f2a36;margin:0;padding:24px}"
                 + ".card{max-width:560px;margin:auto;background:#fff;border-radius:20px;padding:24px;box-shadow:0 6px 24px #0001}"
-                + "h1{font-size:22px;margin:0 0 16px}select,button{font-size:16px;padding:10px;border-radius:12px;border:1px solid #cdd6df;width:100%}"
+                + "h1{font-size:22px;margin:0 0 16px}select,button,input{font-size:16px;padding:10px;border-radius:12px;border:1px solid #cdd6df;width:100%;box-sizing:border-box}"
+                + "label{display:block;font-size:14px;margin:12px 0 4px;color:#5c6b7a}"
                 + "#drop{margin-top:14px;border:2px dashed #9fb3c8;border-radius:16px;padding:36px 12px;text-align:center;color:#5c6b7a;cursor:pointer}"
                 + ".row{margin-top:10px;font-size:14px}.bar{height:8px;background:#e3e9ef;border-radius:4px;overflow:hidden}"
                 + ".bar i{display:block;height:100%;width:0;background:#2f8bff}</style></head><body><div class=card>"
                 + "<h1>Duo Launcher · Wi-Fi</h1><select id=to>" + opts + "</select>"
                 + "<div id=drop>⬆ Drop files here or tap to choose<input id=f type=file multiple hidden></div><div id=list></div></div>"
+                + settings(admin, note)
                 + "<script>const d=document.getElementById('drop'),f=document.getElementById('f');"
                 + "d.onclick=()=>f.click();f.onchange=()=>send([...f.files]);"
                 + "d.ondragover=e=>{e.preventDefault()};d.ondrop=e=>{e.preventDefault();send([...e.dataTransfer.files])};"

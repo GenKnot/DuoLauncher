@@ -61,6 +61,12 @@ final class Library {
         String volumeId = "primary", relDir = "";
         String treeDir;              // folder the emulator was granted, when it is above relDir (installed titles)
         String titleId;              // 3DS program ID as 16 hex digits, for installed titles
+        /** Further discs of a multi-disc game (file names in the same folder), in order; empty for one disc. */
+        final List<String> discs = new ArrayList<>();
+        /** Official English title, when the launcher's own metadata knows it ("original:"). */
+        String original;
+        /** Name of the game without the disc tag, for its media folder ("Tales DiscA" → "Tales"). */
+        String mediaBase;
         File ownMedia;               // DuoLauncher/<platform>/media/<name>/, looked at before anything else
         Platform platform;
         final Map<String, String> assets = new HashMap<>();
@@ -92,6 +98,7 @@ final class Library {
                     if (x.isFile()) f = x;
                 }
                 if (f == null) f = findImage(new File(dir, "media/" + baseName()), aliases(kind));
+                if (f == null && mediaBase != null) f = findImage(new File(dir, "media/" + mediaBase), aliases(kind));
                 if (f == null && kind.equals("box_front")) {
                     String base = new File(baseName()).getName();
                     for (String sub : new String[]{"covers", "images", "boxart"}) {
@@ -121,6 +128,8 @@ final class Library {
             {"NES", "nes fc famicom", "nes fds unf"},
             {"SNES", "snes sfc superfamicom supernintendo", "sfc smc"},
             {"N64", "n64 nintendo64", "n64 z64 v64"},
+            {"NGC", "ngc gc gamecube nintendogamecube", "gcm gcz rvz ciso"},
+            {"WII", "wii nintendowii", "wbfs wad rvz gcz ciso"},
             {"MD", "md genesis megadrive segagenesis", "md gen smd"},
             {"PS1", "ps1 psx playstation", "pbp"},
             {"PS2", "ps2 playstation2", ""},
@@ -194,6 +203,8 @@ final class Library {
             case "NES": return "Nintendo - Nintendo Entertainment System";
             case "SNES": return "Nintendo - Super Nintendo Entertainment System";
             case "N64": return "Nintendo - Nintendo 64";
+            case "NGC": return "Nintendo - GameCube";
+            case "WII": return "Nintendo - Wii";
             case "MD": return "Sega - Mega Drive - Genesis";
             case "PS1": return "Sony - PlayStation";
             case "PS2": return "Sony - PlayStation 2";
@@ -308,6 +319,20 @@ final class Library {
         }
         for (String f : folders) roots.add(new File(f));
         for (File r : roots) lib.scan(r, systemForFolder(r.getName()), raw, seen, 0);
+        // two Pegasus folders that call themselves the same collection ("PS1" and a "PS1 hack" folder that says
+        // "collection: PS1"): the one whose folder has another name is shown under its folder name
+        Map<String, Integer> named = new HashMap<>();
+        for (Platform p : lib.platforms) named.merge(p.name.toLowerCase(Locale.ROOT), 1, Integer::sum);
+        for (Platform p : lib.platforms) {
+            if (named.get(p.name.toLowerCase(Locale.ROOT)) < 2 || p.games.isEmpty() || p.games.get(0).dir == null) continue;
+            String folder = p.games.get(0).dir.getName();
+            if (folder.equalsIgnoreCase(p.name)) continue;
+            if (p.system.isEmpty()) {
+                String sys = systemForFolder(p.name);
+                if (sys != null) p.system = sys;
+            }
+            p.name = folder;
+        }
         addInstalled3ds(lib, raw);
 
         // scanned games join a Pegasus collection of the same name instead of making a second folder
@@ -331,17 +356,57 @@ final class Library {
             return c != 0 ? c : a.name.compareTo(b.name);
         });
         addAndroid(ctx, lib, shownApps, col);
+        for (Platform p : lib.platforms) mergeDiscs(p);
         applyOwnMetadata(ctx, lib);
         for (Platform p : lib.platforms) for (Game g : p.games) lib.byKey.put(g.key(), g);
         lib.signature = lib.computeSignature();
         return lib;
     }
 
+    // ---- multi-disc games: "Name Disc A" + "Name Disc B" (or Disc 1/2, CD1/CD2) become one entry ----
+
+    private static final java.util.regex.Pattern DISC = java.util.regex.Pattern.compile(
+            "(?i)^(.*?)[\\s_.-]*[(\\[]?\\s*(?:disc|disk|cd)\\s*([0-9]{1,2}|[a-f])(?![a-z0-9])(?:\\s*of\\s*\\d+)?\\s*[)\\]]?(.*)$");
+
+    /** {name without the tag, disc number from 1}, or null when the name carries no disc tag. */
+    static String[] discTag(String base) {
+        java.util.regex.Matcher m = DISC.matcher(base);
+        if (!m.matches() || m.group(1).trim().isEmpty()) return null;
+        String d = m.group(2).toLowerCase(Locale.ROOT);
+        int n = Character.isDigit(d.charAt(0)) ? Integer.parseInt(d) : d.charAt(0) - 'a' + 1;
+        String rest = m.group(3).trim();
+        return new String[]{(m.group(1).trim() + (rest.isEmpty() ? "" : " " + rest)).trim(), String.valueOf(n)};
+    }
+
+    private static void mergeDiscs(Platform p) {
+        Map<String, List<Game>> groups = new java.util.LinkedHashMap<>();
+        for (Game g : p.games) {
+            if (g.file == null || g.dir == null || g.pkg != null || !g.discs.isEmpty()) continue;
+            String[] t = discTag(g.baseName());
+            if (t == null) continue;
+            groups.computeIfAbsent(g.dir.getPath() + "\u0001" + t[0].toLowerCase(Locale.ROOT), k -> new ArrayList<>()).add(g);
+        }
+        for (List<Game> grp : groups.values()) {
+            if (grp.size() < 2) continue;
+            grp.sort((a, b) -> Integer.compare(Integer.parseInt(discTag(a.baseName())[1]), Integer.parseInt(discTag(b.baseName())[1])));
+            Game first = grp.get(0);
+            String[] t = discTag(first.baseName());
+            first.mediaBase = t[0];
+            String[] tt = discTag(first.title);
+            if (tt != null) first.title = tt[0];
+            for (int i = 1; i < grp.size(); i++) {
+                first.discs.add(grp.get(i).file);
+                if (first.description.isEmpty()) first.description = grp.get(i).description;
+                p.games.remove(grp.get(i));
+            }
+        }
+    }
+
     // ---- start-up cache: the last scan, so the launcher can show it before scanning again ----
 
     /** Changes whenever a game, its name, description or pictures change; compared to skip needless redraws. */
     String signature = "";
-    private static final int CACHE_VERSION = 1;
+    private static final int CACHE_VERSION = 2;
 
     private String computeSignature() {
         long h = 1125899906842597L;
@@ -349,7 +414,7 @@ final class Library {
             h = 31 * h + p.name.hashCode() + p.launch.hashCode();
             for (Game g : p.games) {
                 h = 31 * h + g.key().hashCode();
-                h = 31 * h + (g.title + "\u0001" + g.description + "\u0001" + g.assets + "\u0001" + g.ownMedia + "\u0001" + g.launch).hashCode();
+                h = 31 * h + (g.title + "\u0001" + g.description + "\u0001" + g.assets + "\u0001" + g.ownMedia + "\u0001" + g.launch + "\u0001" + g.discs).hashCode();
             }
         }
         return Long.toHexString(h);
@@ -385,6 +450,9 @@ final class Library {
                     file(o, g.path); file(o, g.dir); file(o, g.ownMedia);
                     str(o, g.volumeId); str(o, g.relDir); str(o, g.treeDir); str(o, g.titleId);
                     o.writeBoolean(g.scanned);
+                    str(o, g.mediaBase);
+                    o.writeInt(g.discs.size());
+                    for (String d : g.discs) str(o, d);
                     o.writeInt(g.assets.size());
                     for (Map.Entry<String, String> a : g.assets.entrySet()) { str(o, a.getKey()); str(o, a.getValue()); }
                 }
@@ -413,6 +481,8 @@ final class Library {
                     g.path = file(d); g.dir = file(d); g.ownMedia = file(d);
                     g.volumeId = str(d); g.relDir = str(d); g.treeDir = str(d); g.titleId = str(d);
                     g.scanned = d.readBoolean();
+                    g.mediaBase = str(d);
+                    for (int k = d.readInt(); k > 0; k--) g.discs.add(str(d));
                     for (int k = d.readInt(); k > 0; k--) g.assets.put(str(d), str(d));
                     g.platform = p;
                     p.games.add(g);
@@ -467,6 +537,7 @@ final class Library {
                         if (e.title != null && !e.title.isEmpty()) g.title = e.title;
                         if (!e.description.isEmpty()) g.description = e.description;
                         if (!e.developer.isEmpty()) g.developer = e.developer;
+                        if (e.original != null) g.original = e.original;
                         for (Map.Entry<String, String> a : e.assets.entrySet())
                             g.assets.put(a.getKey(), new File(dir, a.getValue()).getAbsolutePath());
                         if (!e.assets.isEmpty()) g.resolved.clear();
@@ -762,6 +833,10 @@ final class Library {
                     if (g != null && g.file == null) {
                         String f = firstLine(v);
                         if (!f.isEmpty()) g.file = f;
+                        for (String more : v.split("\n")) {
+                            String m = more.trim();
+                            if (!m.isEmpty() && !m.equals(f)) g.discs.add(m);
+                        }
                     }
                     break;
                 case "titleid":
@@ -775,6 +850,9 @@ final class Library {
                 case "sort-by":
                 case "sort_by":
                     if (g == null) p.sortBy = v;
+                    break;
+                case "original":
+                    if (g != null) g.original = v.trim();
                     break;
                 case "developer":
                 case "developers":
@@ -849,6 +927,8 @@ final class Library {
             case "NES": return "NES / Famicom";
             case "SNES": return "Super Nintendo";
             case "N64": return "Nintendo 64";
+            case "NGC": case "GC": case "GAMECUBE": return "GameCube";
+            case "WII": return "Wii";
             case "MD": return "Mega Drive / Genesis";
             case "PS1": return "PlayStation";
             case "PS2": return "PlayStation 2";
@@ -874,6 +954,8 @@ final class Library {
             case "NDS": return "nds";
             case "GBC": return "gbc";
             case "GB": return "gb";
+            case "NGC": case "GC": case "GAMECUBE": return "gc";
+            case "WII": return "wii";
             case "XBOX360": case "X360": return "xbox360";
             case "XBOX": case "XBOXSERIES": case "XBOXSERIESX": case "XSX": return "xboxsx";
             case "ANDROID": return "android";
@@ -895,6 +977,8 @@ final class Library {
             case "nes": return 0xFFC0392B;
             case "snes": return 0xFF7D5BA6;
             case "n64": return 0xFF2E7D32;
+            case "gc": return 0xFF5A4FCF;
+            case "wii": return 0xFF3BA9D9;
             case "md": return 0xFF263238;
             case "ps1": return 0xFF607D8B;
             case "ps2": return 0xFF2D3C8F;
@@ -918,7 +1002,8 @@ final class Library {
             PKG_CITRA = "org.citra.emu", PKG_CITRA_PERF = "com.antutu.ABenchMark", PKG_DRASTIC = "com.dsemu.drastic", PKG_RETROARCH = "com.retroarch.aarch64",
             PKG_ARMSX2 = "com.armsx2", PKG_AETHERSX2 = "xyz.aethersx2.android", PKG_VITA3K = "org.vita3k.emulator",
             PKG_EDEN = "dev.eden.eden_emulator", PKG_PPSSPP = "org.ppsspp.ppsspp",
-            PKG_DUCKSTATION = "com.github.stenzek.duckstation", PKG_MUPEN = "org.mupen64plusae.v3.fzurita.pro";
+            PKG_DUCKSTATION = "com.github.stenzek.duckstation", PKG_MUPEN = "org.mupen64plusae.v3.fzurita.pro",
+            PKG_DOLPHIN_MMJR = "org.dolphinemu.mmjr", PKG_DOLPHIN = "org.dolphinemu.dolphinemu";
 
     // standalone emulators that take a content link get the game through RomProvider
     static final String ARMSX2 = "am start --user 0 -n com.armsx2/.MainActivity -a android.intent.action.VIEW -d {file.provider} --activity-clear-top";
@@ -928,6 +1013,12 @@ final class Library {
     static final String PPSSPP = "am start --user 0 -n org.ppsspp.ppsspp/.PpssppActivity -a android.intent.action.VIEW -d {file.provider} --activity-clear-task";
     static final String DUCKSTATION = "am start --user 0 -n com.github.stenzek.duckstation/.EmulationActivity -a android.intent.action.MAIN -e bootPath {file.path}";
     static final String MUPEN = "am start --user 0 -n org.mupen64plusae.v3.fzurita.pro/paulscode.android.mupen64plusae.SplashActivity -a android.intent.action.VIEW -d {file.provider}";
+
+    /** Dolphin starts a game given by path through its main activity ("AutoStartFile"). */
+    private static String dolphin(String pkg) {
+        return "am start --user 0 -n " + pkg + "/org.dolphinemu.dolphinemu.ui.main.MainActivity"
+                + " -a android.intent.action.VIEW --es AutoStartFile \"{file.path}\" --activity-clear-top";
+    }
 
     private static String azahar(String pkg) {
         return "am start --user 0 -n " + pkg + "/org.citra.citra_emu.activities.EmulationActivity"
@@ -991,6 +1082,11 @@ final class Library {
             case "N64":
                 o.add(new String[]{"RetroArch · Mupen64Plus-Next", retroArch("mupen64plus_next_gles3"), PKG_RETROARCH});
                 o.add(new String[]{"Mupen64Plus FZ", MUPEN, PKG_MUPEN});
+                break;
+            case "NGC":
+            case "WII":
+                o.add(new String[]{"Dolphin MMJR", dolphin(PKG_DOLPHIN_MMJR), PKG_DOLPHIN_MMJR});
+                o.add(new String[]{"Dolphin", dolphin(PKG_DOLPHIN), PKG_DOLPHIN});
                 break;
             case "MD":
                 o.add(new String[]{"RetroArch · Genesis Plus GX", retroArch("genesis_plus_gx"), PKG_RETROARCH});
@@ -1057,6 +1153,8 @@ final class Library {
         if (cmd.contains(PKG_PPSSPP)) return "PPSSPP";
         if (cmd.contains(PKG_DUCKSTATION)) return "DuckStation";
         if (cmd.contains(PKG_MUPEN)) return "Mupen64Plus FZ";
+        if (cmd.contains(PKG_DOLPHIN_MMJR + "/")) return "Dolphin MMJR";
+        if (cmd.contains(PKG_DOLPHIN + "/")) return "Dolphin";
         if (cmd.contains("retroarch")) {
             Matcher m = CORE.matcher(cmd);
             return "RetroArch" + (m.find() ? " · " + m.group(1) : "");

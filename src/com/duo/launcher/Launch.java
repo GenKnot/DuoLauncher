@@ -40,22 +40,35 @@ final class Launch {
         return out;
     }
 
-    /** Placeholders are replaced per token, so paths with spaces stay one argument. */
-    /**
-     * Retroid's system keeps RetroArch's real settings (hotkeys, shaders, overlays) in retroarch<W>x<H>.cfg for each
-     * screen, and leaves retroarch.cfg nearly empty; set at start-up on those handhelds, null elsewhere.
-     */
-    static String retroArchConfig;
 
-    static String subst(String t, Library.Game g) {
-        if (retroArchConfig != null && t.endsWith("/com.retroarch.aarch64/files/retroarch.cfg"))
-            return t.substring(0, t.length() - "retroarch.cfg".length()) + retroArchConfig;
+    static String subst(String t, Library.Game g) { return subst(t, g, g.path); }
+
+    /**
+     * A multi-disc game for an emulator that reads .m3u playlists (RetroArch, DuckStation): a playlist of its
+     * discs in DuoLauncher/m3u/, so the emulator can change discs; others get the first disc.
+     */
+    static java.io.File launchFile(String cmd, Library.Game g) {
+        if (g.discs.isEmpty() || g.path == null || !(cmd.contains("retroarch") || cmd.contains("duckstation"))) return g.path;
+        java.io.File dir = new java.io.File(android.os.Environment.getExternalStorageDirectory(), "DuoLauncher/m3u");
+        dir.mkdirs();
+        java.io.File m3u = new java.io.File(dir, (g.mediaBase != null ? g.mediaBase : g.title).replaceAll("[\\\\/:*?\"<>|]", "_") + ".m3u");
+        StringBuilder sb = new StringBuilder(g.path.getAbsolutePath()).append('\n');
+        for (String d : g.discs) sb.append(new java.io.File(g.dir, d).getAbsolutePath()).append('\n');
+        try (java.io.OutputStream o = new java.io.FileOutputStream(m3u)) {
+            o.write(sb.toString().getBytes(StandardCharsets.UTF_8));
+            return m3u;
+        } catch (IOException e) {
+            return g.path;
+        }
+    }
+
+    static String subst(String t, Library.Game g, java.io.File path) {
         if (t.indexOf('{') < 0) return t;
         String rel = g.relDir.isEmpty() ? g.file : g.relDir + "/" + g.file;
         String tree = g.treeDir != null ? g.treeDir : g.relDir;
         String uri = "content://com.android.externalstorage.documents/tree/" + Uri.encode(g.volumeId + ":" + tree)
                 + "/document/" + Uri.encode(g.volumeId + ":" + rel);
-        return t.replace("{file.path}", g.path.getAbsolutePath())
+        return t.replace("{file.path}", path.getAbsolutePath())
                 .replace("{file.provider}", RomProvider.uriFor(g.path).toString())
                 .replace("{vita.titleid}", vitaTitleId(g))
                 .replace("{file.uri}", uri)
@@ -90,6 +103,7 @@ final class Launch {
 
     static Intent build(String cmd, Library.Game g) {
         List<String> t = tokenize(cmd);
+        java.io.File path = g.path == null ? null : launchFile(cmd, g);
         Intent it = new Intent();
         String data = null, type = null;
         int flags = Intent.FLAG_ACTIVITY_NEW_TASK;
@@ -97,14 +111,14 @@ final class Launch {
             String a = t.get(i);
             switch (a) {
                 case "--user": i++; break;
-                case "-n": it.setComponent(ComponentName.unflattenFromString(subst(t.get(++i), g))); break;
+                case "-n": it.setComponent(ComponentName.unflattenFromString(subst(t.get(++i), g, path))); break;
                 case "-a": it.setAction(t.get(++i)); break;
                 case "-c": it.addCategory(t.get(++i)); break;
-                case "-d": data = subst(t.get(++i), g); break;
+                case "-d": data = subst(t.get(++i), g, path); break;
                 case "-t": type = t.get(++i); break;
                 case "-e":
-                case "--es": { String k = t.get(++i); it.putExtra(k, subst(t.get(++i), g)); break; }
-                case "--esa": { String k = t.get(++i); it.putExtra(k, subst(t.get(++i), g).split(",")); break; }
+                case "--es": { String k = t.get(++i); it.putExtra(k, subst(t.get(++i), g, path)); break; }
+                case "--esa": { String k = t.get(++i); it.putExtra(k, subst(t.get(++i), g, path).split(",")); break; }
                 case "--ez": { String k = t.get(++i); it.putExtra(k, Boolean.parseBoolean(t.get(++i))); break; }
                 case "--ei": { String k = t.get(++i); it.putExtra(k, Integer.parseInt(t.get(++i))); break; }
                 case "--el": { String k = t.get(++i); it.putExtra(k, Long.parseLong(t.get(++i))); break; }

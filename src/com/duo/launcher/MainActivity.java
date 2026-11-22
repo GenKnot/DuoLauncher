@@ -76,21 +76,15 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         I18n.set(prefs.getString("lang", I18n.systemDefault()));
         applyDisplayMode();
         shelfState.hidden.addAll(prefs.getStringSet("hidden", new HashSet<>()));
+        for (String k : prefs.getString("homeOrder", "").split("\n")) if (!k.isEmpty()) shelfState.homeOrder.add(k);
         hiddenGames.addAll(prefs.getStringSet("hiddenGames", new HashSet<>()));
         Theme.init(this);
         applyTextScale();
         TopView.videoEnabled = prefs.getBoolean("videoPreview", true);
         TopView.prefs = prefs;
-        if (android.os.Build.MODEL != null && android.os.Build.MODEL.startsWith("Retroid")) {
-            // games run on the largest screen; its size names the config Retroid's system set up for RetroArch
-            int w = 0, h = 0;
-            for (Display d : getSystemService(DisplayManager.class).getDisplays()) {
-                Display.Mode m = d.getMode();
-                int mw = Math.max(m.getPhysicalWidth(), m.getPhysicalHeight()), mh = Math.min(m.getPhysicalWidth(), m.getPhysicalHeight());
-                if (mw * mh > w * h) { w = mw; h = mh; }
-            }
-            if (w > 0) Launch.retroArchConfig = "retroarch" + w + "x" + h + ".cfg";
-        }
+        // RetroArch keeps the config file the game's launch line names (its own retroarch.cfg): that one shows Retroid's
+        // per-system frames at full size. Retroid's per-screen retroarch1920x1080.cfg draws every game small inside
+        // a TV frame on the Duo's upper screen, so it is not used.
         loadToolLooks();
         loadSounds();
         icons = new Icons(this);
@@ -137,6 +131,9 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         if (saving) stopSaver();
         keepAwake(false);
         if (sfx != null) sfx.pauseMusic();
+        // a game's video must not keep playing (or start late) under the emulator; redrawn on return
+        if (top != null) top.reset();
+        stopRepeat();
         // emulators drive the second screen themselves
         if (pres != null) { pres.dismiss(); pres = null; shelf = null; }
         super.onPause();
@@ -227,6 +224,8 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
                 if (n == 0) Toast.makeText(this, t(S.NO_GAMES), Toast.LENGTH_LONG).show();
                 else if (manual && !reloadPending) Toast.makeText(this, I18n.f(S.SCAN_DONE, n), Toast.LENGTH_SHORT).show();
                 if (reloadPending) { reloadPending = false; load(); } else prepareSearchIndex();
+                checkForUpdate(false, null);
+                if (Achievements.configured(prefs)) new Thread(() -> Achievements.refresh(prefs, false), "ra").start();
             });
         }, "library").start();
     }
@@ -390,15 +389,96 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         m.add(t(S.WIFI_TRANSFER) + (wifi != null && wifi.running() ? "  ·  " + t(S.ON) : ""), false, this::showWifiMenu);
         int toolsRow = m.labels.size();
         m.add(t(S.TOOLS), false, () -> showToolsMenu(toolsRow));
+        Ai aiNow = Ai.from(prefs);
+        m.add(t(S.AI_TRANSLATE) + "  ·  " + (aiNow == null ? t(S.OFF) : Ai.preset(aiNow.provider)[1] == null ? t(S.CUSTOM) : Ai.preset(aiNow.provider)[1]),
+                aiNow != null, () -> showAiMenu(m, 0));
+        AiImage imgNow = AiImage.from(prefs);
+        m.add(t(S.AI_IMAGES) + "  ·  " + (imgNow == null ? t(S.OFF) : imgNow.model.isEmpty() ? AiImage.DEFAULT_MODEL : imgNow.model), imgNow != null, () -> showImageAiMenu(m, 0));
+        boolean ra = Achievements.configured(prefs);
+        m.add("RetroAchievements  ·  " + (ra ? prefs.getString("ra.user", "") : t(S.OFF)), ra, () -> showRaMenu(m));
         m.add(t(S.EXIT_TO_DESKTOP), false, this::onOpenDesktop);
         m.add(t(S.ANDROID_SETTINGS), false, () -> {
             shelf.closeMenu();
             try { startActivity(new Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); } catch (Exception ignored) { }
         });
         m.add(t(S.PERMISSIONS) + (hasUsageAccess() ? "" : "  ·  !"), false, () -> showPermissionsMenu(m));
-        m.add(t(S.ABOUT) + "  ·  Duo Launcher " + versionName(), false, null);
+        String newer = newerVersion();
+        m.add(t(S.ABOUT) + "  ·  Duo Launcher " + versionName() + (newer != null ? "  ·  " + I18n.f(S.UPDATE_AVAILABLE, newer) : ""),
+                newer != null, this::showUpdateMenu);
         m.sel = 0;   // open at the top, not on the first ticked row
         shelf.showMenu(m);
+    }
+
+    // ---- new versions: the latest GitHub release, looked up at most once a day; downloads stay on GitHub ----
+
+    private static final String RELEASES_API = "https://api.github.com/repos/GenKnot/DuoLauncher/releases/latest";
+    static final String RELEASES_PAGE = "https://github.com/GenKnot/DuoLauncher/releases/latest";
+
+    /** "1.2.0" when the last check found a release newer than this build, else null. */
+    private String newerVersion() {
+        String tag = prefs.getString("update.tag", "");
+        return !tag.isEmpty() && compareVersions(tag, versionName()) > 0 ? tag : null;
+    }
+
+    static int compareVersions(String a, String b) {
+        String[] x = a.replaceAll("[^0-9.]", "").split("\\."), y = b.replaceAll("[^0-9.]", "").split("\\.");
+        for (int i = 0; i < Math.max(x.length, y.length); i++) {
+            int p = i < x.length && !x[i].isEmpty() ? Integer.parseInt(x[i]) : 0, q = i < y.length && !y[i].isEmpty() ? Integer.parseInt(y[i]) : 0;
+            if (p != q) return Integer.compare(p, q);
+        }
+        return 0;
+    }
+
+    /** Looks up the latest release in the background (forced, or when the last look is a day old). */
+    private void checkForUpdate(boolean force, Runnable then) {
+        if (!force && System.currentTimeMillis() - prefs.getLong("update.checked", 0) < 24L * 3600 * 1000) return;
+        new Thread(() -> {
+            String tag = null;
+            java.net.HttpURLConnection con = null;
+            try {
+                con = (java.net.HttpURLConnection) new java.net.URL(RELEASES_API).openConnection();
+                con.setConnectTimeout(10000);
+                con.setReadTimeout(15000);
+                con.setRequestProperty("Accept", "application/vnd.github+json");
+                if (con.getResponseCode() == 200) {
+                    java.io.ByteArrayOutputStream b = new java.io.ByteArrayOutputStream();
+                    try (java.io.InputStream in = con.getInputStream()) { Backups.copy(in, b); }
+                    tag = new org.json.JSONObject(b.toString("UTF-8")).optString("tag_name", "").replaceFirst("^[vV]", "");
+                }
+            } catch (Exception ignored) {
+            } finally {
+                if (con != null) con.disconnect();
+            }
+            String found = tag;
+            main.post(() -> {
+                if (found != null && !found.isEmpty())
+                    prefs.edit().putString("update.tag", found).putLong("update.checked", System.currentTimeMillis()).apply();
+                if (then != null) then.run();
+            });
+        }, "update-check").start();
+    }
+
+    private void showUpdateMenu() {
+        String newer = newerVersion();
+        ShelfView.Menu m = new ShelfView.Menu("Duo Launcher " + versionName(), newer != null ? I18n.f(S.UPDATE_AVAILABLE, newer) : null);
+        m.parent = shelfState.menu;
+        if (newer != null) m.add("⇣ " + I18n.f(S.DOWNLOAD_VERSION, newer), false, this::openReleasePage);
+        m.add(t(S.CHECK_UPDATES), false, () -> checkForUpdate(true, () -> {
+            String n = newerVersion();
+            Toast.makeText(this, n != null ? I18n.f(S.UPDATE_AVAILABLE, n) : t(S.UP_TO_DATE), Toast.LENGTH_LONG).show();
+            if (shelf != null) { shelf.closeMenu(); onSettings(); }
+        }));
+        m.add("github.com/GenKnot/DuoLauncher", false, this::openReleasePage);
+        shelf.showMenu(m);
+    }
+
+    private void openReleasePage() {
+        shelf.closeMenu();
+        try {
+            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(RELEASES_PAGE)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+        } catch (Exception e) {
+            Toast.makeText(this, RELEASES_PAGE, Toast.LENGTH_LONG).show();
+        }
     }
 
     // ---- the system's own home screen, for when this launcher is the default one ----
@@ -434,7 +514,7 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
     private void loadToolLooks() {
         ShelfView.TOOL_NAMES.clear();
         ShelfView.TOOL_COLORS.clear();
-        for (String id : new String[]{"continue", "recent", "favorites", "add", "search", "stats", "settings", "desktop"}) {
+        for (String id : new String[]{"continue", "recent", "favorites", "add", "search", "stats", "random", "settings", "desktop"}) {
             String n = prefs.getString("tool." + id + ".name", null);
             if (n != null) ShelfView.TOOL_NAMES.put(id, n);
             if (prefs.contains("tool." + id + ".color")) ShelfView.TOOL_COLORS.put(id, prefs.getInt("tool." + id + ".color", 0));
@@ -515,6 +595,150 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         shelf.showMenu(m);
     }
 
+    // ---- AI translation: service, key, model; the key can also be pasted on the Wi-Fi page ----
+
+    private void showAiMenu(ShelfView.Menu parent, int sel) {
+        String provider = prefs.getString("ai.provider", "deepseek");
+        String[] p = Ai.preset(provider);
+        String key = prefs.getString("ai.key", "");
+        ShelfView.Menu m = new ShelfView.Menu(t(S.AI_TRANSLATE), t(S.AI_HINT));
+        m.parent = parent;
+        m.onBack = () -> { shelf.closeMenu(); onSettings(); };
+        m.add(t(S.AI_SERVICE) + "  ·  " + (p[1] == null ? t(S.CUSTOM) : p[1]), false, () -> {
+            ShelfView.Menu pm = new ShelfView.Menu(t(S.AI_SERVICE), null);
+            pm.parent = m;
+            for (String[] q : Ai.PROVIDERS) pm.add(q[1] == null ? t(S.CUSTOM) : q[1], q[0].equals(provider), () -> {
+                // a new service starts from its own address and model
+                prefs.edit().putString("ai.provider", q[0]).remove("ai.url").remove("ai.model").apply();
+                showAiMenu(parent, 0);
+            });
+            shelf.showMenu(pm);
+        });
+        m.add(t(S.API_KEY) + "  ·  " + (key.isEmpty() ? t(S.NOT_SET) : Ai.masked(key)), !key.isEmpty(),
+                () -> askText(t(S.API_KEY), "", k -> { prefs.edit().putString("ai.key", k.trim()).apply(); showAiMenu(parent, 1); }));
+        String model = prefs.getString("ai.model", "");
+        m.add(t(S.AI_MODEL) + "  ·  " + (model.isEmpty() ? p[3] : model), false,
+                () -> askText(t(S.AI_MODEL), model.isEmpty() ? p[3] : model, v -> { prefs.edit().putString("ai.model", v.trim()).apply(); showAiMenu(parent, 2); }));
+        String url = prefs.getString("ai.url", "");
+        m.add(t(S.AI_URL) + "  ·  " + (url.isEmpty() ? (p[2].isEmpty() ? t(S.NOT_SET) : p[2]) : url), false,
+                () -> askText(t(S.AI_URL), url.isEmpty() ? p[2] : url, v -> { prefs.edit().putString("ai.url", v.trim()).apply(); showAiMenu(parent, 3); }));
+        m.add(t(S.AI_ON_PHONE), false, this::showWifiMenu);
+        m.add(t(S.AI_TEST), false, () -> {
+            Ai ai = Ai.from(prefs);
+            if (ai == null) { Toast.makeText(this, t(S.API_KEY) + " · " + t(S.NOT_SET), Toast.LENGTH_LONG).show(); return; }
+            String lang = Translate.target() != null ? Translate.target() : "zh-CN";
+            runInBackground(() -> {
+                List<String> r = ai.translate(java.util.Arrays.asList("Infinite Health", "Max Money"), lang, null);
+                return () -> Toast.makeText(this, r != null ? I18n.f(S.AI_OK, r.get(0) + " · " + r.get(1)) : I18n.f(S.AI_FAILED, ai.error),
+                        Toast.LENGTH_LONG).show();
+            });
+        });
+        if (!key.isEmpty()) m.add(t(S.AI_OFF), false, () -> { prefs.edit().remove("ai.key").apply(); showAiMenu(parent, 0); });
+        m.sel = Math.min(sel, m.labels.size() - 1);
+        shelf.showMenu(m);
+    }
+
+    private void showImageAiMenu(ShelfView.Menu parent, int sel) {
+        String key = prefs.getString("img.key", "");
+        ShelfView.Menu m = new ShelfView.Menu(t(S.AI_IMAGES), t(S.AI_IMAGES_HINT));
+        m.parent = parent;
+        m.onBack = () -> { shelf.closeMenu(); onSettings(); };
+        m.add(t(S.API_KEY) + "  ·  " + (key.isEmpty() ? t(S.NOT_SET) : Ai.masked(key)), !key.isEmpty(),
+                () -> askText(t(S.API_KEY), "", k -> { prefs.edit().putString("img.key", k.trim()).apply(); showImageAiMenu(parent, 0); }));
+        String model = prefs.getString("img.model", "");
+        m.add(t(S.AI_MODEL) + "  ·  " + (model.isEmpty() ? AiImage.DEFAULT_MODEL : model), false,
+                () -> askText(t(S.AI_MODEL), model.isEmpty() ? AiImage.DEFAULT_MODEL : model, v -> { prefs.edit().putString("img.model", v.trim()).apply(); showImageAiMenu(parent, 1); }));
+        String url = prefs.getString("img.url", "");
+        m.add(t(S.AI_URL) + "  ·  " + (url.isEmpty() ? AiImage.DEFAULT_URL : url), false,
+                () -> askText(t(S.AI_URL), url.isEmpty() ? AiImage.DEFAULT_URL : url, v -> { prefs.edit().putString("img.url", v.trim()).apply(); showImageAiMenu(parent, 2); }));
+        m.add(t(S.AI_ON_PHONE), false, this::showWifiMenu);
+        if (!key.isEmpty()) m.add(t(S.REMOVE_KEY), false, () -> { prefs.edit().remove("img.key").apply(); showImageAiMenu(parent, 0); });
+        m.sel = Math.min(sel, m.labels.size() - 1);
+        shelf.showMenu(m);
+    }
+
+    private void showRaMenu(ShelfView.Menu parent) {
+        String user = prefs.getString("ra.user", ""), key = prefs.getString("ra.key", "");
+        ShelfView.Menu m = new ShelfView.Menu("RetroAchievements", t(S.RA_HINT));
+        m.parent = parent;
+        m.onBack = () -> { shelf.closeMenu(); onSettings(); };
+        m.add(t(S.RA_USER) + "  ·  " + (user.isEmpty() ? t(S.NOT_SET) : user), !user.isEmpty(),
+                () -> askText(t(S.RA_USER), user, v -> { prefs.edit().putString("ra.user", v.trim()).apply(); showRaMenu(parent); }));
+        m.add(t(S.RA_KEY) + "  ·  " + (key.isEmpty() ? t(S.NOT_SET) : Ai.masked(key)), !key.isEmpty(),
+                () -> askText(t(S.RA_KEY), "", v -> { prefs.edit().putString("ra.key", v.trim()).apply(); showRaMenu(parent); }));
+        m.add(t(S.AI_ON_PHONE), false, this::showWifiMenu);
+        if (Achievements.configured(prefs)) m.add("🏆 " + t(S.RA_RECENT), false, () -> runInBackground(() -> {
+            boolean ok = Achievements.refresh(prefs, true);
+            List<Achievements.Game> gs = Achievements.cached(prefs);
+            return () -> {
+                if (!ok) { Toast.makeText(this, I18n.f(S.AI_FAILED, Achievements.error), Toast.LENGTH_LONG).show(); return; }
+                ShelfView.Menu r = new ShelfView.Menu(t(S.RA_RECENT), user);
+                r.parent = m;
+                if (gs.isEmpty()) r.add(t(S.NONE_FOUND), false, null);
+                for (Achievements.Game a : gs) r.add(a.title + "  ·  " + a.console + "  ·  🏆 " + a.got + " / " + a.total, a.total > 0 && a.got == a.total, null);
+                shelf.showMenu(r);
+            };
+        }));
+        if (!key.isEmpty()) m.add(t(S.REMOVE_KEY), false, () -> {
+            prefs.edit().remove("ra.key").remove("ra.cache").apply();
+            showRaMenu(parent);
+        });
+        shelf.showMenu(m);
+    }
+
+    /** A console picture or backdrop for a platform or folder, made by the image service from its name. */
+    private void aiPicture(Library.Platform p, String kind, Runnable then) {
+        AiImage ai = AiImage.from(prefs);
+        if (ai == null) { Toast.makeText(this, t(S.AI_IMAGES_NEEDED), Toast.LENGTH_LONG).show(); return; }
+        boolean icon = kind.equals(Theme.CONSOLE);
+        String subject = p.isCustom() ? p.title() : Library.platformTitle(p.system.isEmpty() ? p.name : p.system) + " video game console";
+        askText(t(S.AI_SUBJECT), subject, what -> {
+            Toast.makeText(this, t(S.AI_DRAWING), Toast.LENGTH_LONG).show();
+            new Thread(() -> {
+                android.graphics.Bitmap b = ai.generate(icon ? AiImage.iconPrompt(what) : AiImage.backdropPrompt(what), icon ? "1024x1024" : "1536x1024");
+                boolean ok = false;
+                if (b != null) {
+                    try { ok = Theme.save(p.name, kind, new java.io.ByteArrayInputStream(AiImage.png(icon ? AiImage.cutOut(b) : b))); } catch (IOException ignored) { }
+                }
+                boolean done = ok;
+                main.post(() -> {
+                    Toast.makeText(this, done ? t(S.SAVED) : I18n.f(S.AI_FAILED, ai.error), Toast.LENGTH_LONG).show();
+                    Theme.forgetPlatform(p.name);
+                    if (shelf != null) then.run();
+                });
+            }, "ai-picture").start();
+        });
+    }
+
+    /** A cover for a game without one, kept in the launcher's own media folder. */
+    private void aiCover(Library.Game g) {
+        AiImage ai = AiImage.from(prefs);
+        if (ai == null) { Toast.makeText(this, t(S.AI_IMAGES_NEEDED), Toast.LENGTH_LONG).show(); return; }
+        shelf.closeMenu();
+        Toast.makeText(this, t(S.AI_DRAWING), Toast.LENGTH_LONG).show();
+        new Thread(() -> {
+            android.graphics.Bitmap b = ai.generate(AiImage.coverPrompt(g.title, g.original,
+                    Library.platformTitle(g.platform.system.isEmpty() ? g.platform.name : g.platform.system)), "1024x1536");
+            boolean ok = false;
+            if (b != null) {
+                File dir = new File(GameText.ownDir(g.platform, g), "media/" + (g.mediaBase != null ? g.mediaBase : new File(g.baseName()).getName()));
+                dir.mkdirs();
+                try (java.io.FileOutputStream o = new java.io.FileOutputStream(new File(dir, "cover.png"))) {
+                    o.write(AiImage.png(b));
+                    ok = true;
+                } catch (IOException e) {
+                    ai.error = e.getMessage() + " (" + dir + ")";
+                }
+            }
+            boolean done = ok;
+            android.util.Log.e("DuoLauncher", "ai cover " + g.title + ": " + (done ? "saved" : "failed " + ai.error));
+            main.post(() -> {
+                Toast.makeText(this, done ? t(S.SAVED) : I18n.f(S.AI_FAILED, ai.error), Toast.LENGTH_LONG).show();
+                if (done) load();
+            });
+        }, "ai-cover").start();
+    }
+
     // ---- Wi-Fi transfer ----
 
     private WifiServer wifi;
@@ -538,7 +762,42 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
             wifi = new WifiServer(wifiTargets(), name -> main.post(() -> {
                 wifiReceived++;
                 Toast.makeText(this, I18n.f(S.UPLOADED, name), Toast.LENGTH_SHORT).show();
-            }));
+            }), new WifiServer.AiSettings() {
+                @Override public String[] current() {
+                    return new String[]{prefs.getString("ai.provider", "deepseek"), prefs.getString("ai.url", ""),
+                            prefs.getString("ai.model", ""), Ai.masked(prefs.getString("ai.key", ""))};
+                }
+
+                @Override public void save(String provider, String url, String model, String key) {
+                    SharedPreferences.Editor e = prefs.edit().putString("ai.provider", provider).putString("ai.url", url).putString("ai.model", model);
+                    if (key != null) e.putString("ai.key", key);   // an empty field keeps the key already set
+                    e.apply();
+                    main.post(() -> Toast.makeText(MainActivity.this, t(S.AI_SAVED), Toast.LENGTH_LONG).show());
+                }
+
+                @Override public String password() { return adminPassword(); }
+
+                @Override public String[] currentRa() {
+                    return new String[]{prefs.getString("ra.user", ""), Ai.masked(prefs.getString("ra.key", ""))};
+                }
+
+                @Override public void saveRa(String user, String key) {
+                    SharedPreferences.Editor e = prefs.edit().putString("ra.user", user);
+                    if (key != null) e.putString("ra.key", key);
+                    e.apply();
+                }
+
+                @Override public String[] currentImage() {
+                    return new String[]{prefs.getString("img.url", ""), prefs.getString("img.model", ""), Ai.masked(prefs.getString("img.key", ""))};
+                }
+
+                @Override public void saveImage(String url, String model, String key) {
+                    SharedPreferences.Editor e = prefs.edit().putString("img.url", url).putString("img.model", model);
+                    if (key != null) e.putString("img.key", key);
+                    e.apply();
+                    main.post(() -> Toast.makeText(MainActivity.this, t(S.AI_SAVED), Toast.LENGTH_LONG).show());
+                }
+            });
             new Thread(() -> {
                 try { wifi.start(); } catch (IOException e) { wifi = null; }
                 main.post(this::showWifiMenu2);
@@ -548,6 +807,16 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         showWifiMenu2();
     }
 
+    /** Unlocks the settings on the Wi-Fi page; a random six-digit one until the user sets their own. */
+    private String adminPassword() {
+        String pw = prefs.getString("admin.pw", "");
+        if (pw.isEmpty()) {
+            pw = String.format(Locale.ROOT, "%06d", new java.security.SecureRandom().nextInt(1_000_000));
+            prefs.edit().putString("admin.pw", pw).apply();
+        }
+        return pw;
+    }
+
     private void showWifiMenu2() {
         if (shelf == null) return;
         String url = WifiServer.address();
@@ -555,9 +824,13 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
             Toast.makeText(this, t(S.NONE_FOUND), Toast.LENGTH_SHORT).show();
             return;
         }
-        top.showMessage(t(S.WIFI_OPEN) + "\n\n" + url);
+        top.showMessage(t(S.WIFI_OPEN) + "\n\n" + url + "\n" + t(S.ADMIN_PASSWORD) + "  " + adminPassword());
         ShelfView.Menu m = new ShelfView.Menu(t(S.WIFI_TRANSFER), url);
         m.add(url, false, null);
+        m.add(t(S.ADMIN_PASSWORD) + "  ·  " + adminPassword(), false, () -> askText(t(S.ADMIN_PASSWORD), "", pw -> {
+            if (pw.trim().length() >= 4) prefs.edit().putString("admin.pw", pw.trim()).apply();
+            showWifiMenu2();
+        }));
         m.add(t(S.WIFI_STOP), false, () -> {
             wifi.stop();
             wifi = null;
@@ -635,7 +908,7 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         });
         String lang = Translate.target();
         if (lang != null) m.add(t(S.TRANSLATE_ALL_CHEATS), false, () -> runInBackground(() -> {
-            Translate tr = new Translate(new File(getFilesDir(), "translations.tsv"), lang);
+            Translate tr = new Translate(new File(getFilesDir(), "translations.tsv"), lang, Ai.from(prefs));
             int n = 0, left = 0;
             List<Cheats.Store> stores = new ArrayList<>();
             for (String tid : Cheats.allTitleIds()) stores.add(Cheats.citra(tid));
@@ -648,14 +921,64 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
                 left += r[1];
             }
             int done = n, rest = left;
-            return () -> Toast.makeText(this, I18n.f(S.TRANSLATED, done) + (rest > 0 ? "  ·  " + I18n.f(S.NOT_TRANSLATED, rest) : ""), Toast.LENGTH_LONG).show();
+            String err = tr.aiError();
+            return () -> Toast.makeText(this, I18n.f(S.TRANSLATED, done) + (rest > 0 ? "  ·  " + I18n.f(S.NOT_TRANSLATED, rest) : "")
+                    + (err != null ? "\n" + I18n.f(S.AI_FAILED, err) : ""), Toast.LENGTH_LONG).show();
         }));
+        m.add(t(S.AI_GAME_TEXT), false, this::showGameTextMenu);
         m.add(t(S.EXPORT_THEME), false, () -> runInBackground(() -> {
             File out = Theme.export(this, new File(Backups.folder(volumeRoots()).getParentFile(), "exports"));
             return () -> Toast.makeText(this, I18n.f(S.EXPORTED, out.getAbsolutePath()), Toast.LENGTH_LONG).show();
         }));
         m.add(t(S.DIAGNOSTICS), false, this::showDiagnostics);
         shelf.showMenu(m);
+    }
+
+    /** Game names and descriptions into the interface language with the AI service, platform by platform. */
+    private void showGameTextMenu() {
+        Ai ai = Ai.from(prefs);
+        if (ai == null) { Toast.makeText(this, t(S.AI_NEEDED), Toast.LENGTH_LONG).show(); return; }
+        String lang = I18n.code();
+        ShelfView.Menu m = new ShelfView.Menu(t(S.AI_GAME_TEXT), t(S.AI_GAME_TEXT_HINT));
+        m.parent = shelfState.menu;
+        List<Library.Platform> ps = new ArrayList<>();
+        int total = 0;
+        for (Library.Platform p : lib.platforms) {
+            if (p.isCustom() || shelf.isPseudo(p)) continue;
+            int n = GameText.todo(p, lang).size();
+            if (n == 0) continue;
+            ps.add(p);
+            total += n;
+            m.add(p.title() + "  ·  " + I18n.f(S.GAMES_COUNT, n), false, () -> runGameText(java.util.Collections.singletonList(p), ai, lang));
+        }
+        if (ps.isEmpty()) m.add(t(S.NONE_FOUND), false, null);
+        else if (ps.size() > 1) m.add(t(S.ALL_PLATFORMS) + "  ·  " + I18n.f(S.GAMES_COUNT, total), false, () -> runGameText(ps, ai, lang));
+        shelf.showMenu(m);
+    }
+
+    private void runGameText(List<Library.Platform> ps, Ai ai, String lang) {
+        shelf.closeMenu();
+        int total = 0;
+        for (Library.Platform p : ps) total += GameText.todo(p, lang).size();
+        int all = total;
+        Toast.makeText(this, I18n.f(S.AI_GAME_TEXT_PROGRESS, 0, all), Toast.LENGTH_SHORT).show();
+        new Thread(() -> {
+            int done = 0;
+            for (Library.Platform p : ps) {
+                List<Library.Game> gs = GameText.todo(p, lang);
+                int base = done;
+                int n = GameText.translate(ai, p, gs, lang, k -> main.post(() ->
+                        Toast.makeText(this, I18n.f(S.AI_GAME_TEXT_PROGRESS, base + k, all), Toast.LENGTH_SHORT).show()));
+                done += n;
+                if (n < gs.size() && ai.error != null) break;
+            }
+            int finished = done;
+            String err = ai.error;
+            main.post(() -> {
+                Toast.makeText(this, I18n.f(S.TRANSLATED, finished) + (err != null ? "\n" + I18n.f(S.AI_FAILED, err) : ""), Toast.LENGTH_LONG).show();
+                if (finished > 0) load();
+            });
+        }, "game-text").start();
     }
 
     /** Same platform, same file size and the same name once tags and punctuation are ignored. */
@@ -853,8 +1176,10 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
             top.showPlatform(p, Library.emulatorLabel(platformCmd(p)), null);
             showPlatformLookMenu(parent, p);
         });
+        m.add(t(S.CONSOLE_IMAGE) + " · ✦ " + t(S.AI_MAKE), false, () -> aiPicture(p, Theme.CONSOLE, () -> showPlatformLookMenu(parent, p)));
         boolean customDark = Theme.isCustom(p.name, Theme.BACKGROUND_DARK);
         m.add(t(S.BACKGROUND_LIGHT) + " · " + t(S.PICK_IMAGE), false, () -> pickImage(p, Theme.BACKGROUND));
+        m.add(t(S.BACKGROUND_LIGHT) + " · ✦ " + t(S.AI_MAKE), false, () -> aiPicture(p, Theme.BACKGROUND, () -> showPlatformLookMenu(parent, p)));
         if (customBg) m.add(t(S.BACKGROUND_LIGHT) + " · " + t(S.RESET_DEFAULT), false, () -> {
             Theme.reset(p.name, Theme.BACKGROUND);
             top.showPlatform(p, Library.emulatorLabel(platformCmd(p)), null);
@@ -1086,7 +1411,7 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
     private static final int[] FOLDER_COLORS = {0xFF6C5CE7, 0xFFE8463E, 0xFFF2A93B, 0xFF2E9E5B, 0xFF1FA99B,
             0xFF2F8BFF, 0xFF3A4FA3, 0xFFD6458F, 0xFF6D8299, 0xFF37474F};
     private static final String[] ART = {"custom", "recent", "android", "apps", "search", "settings",
-            "3ds", "nds", "gba", "gbc", "gb", "nes", "snes", "n64", "md", "ps1", "ps2", "ps3", "ps4", "ps5",
+            "3ds", "nds", "gba", "gbc", "gb", "nes", "snes", "n64", "gc", "wii", "md", "ps1", "ps2", "ps3", "ps4", "ps5",
             "psp", "psv", "switch", "xbox360", "xboxsx"};
 
     private List<String> folderIds() {
@@ -1252,6 +1577,7 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         ShelfView.Menu m = new ShelfView.Menu(icon ? t(S.ICON) : t(S.BACKGROUND_IMAGE), pl.title());
         m.parent = parent;
         m.add(t(S.PICK_IMAGE), own, () -> pickImage(pl, kind));
+        m.add("✦ " + t(S.AI_MAKE), false, () -> aiPicture(pl, kind, () -> { foldersChanged(); showFolderArt(parent, id, icon, 0); }));
         if (own) m.add(t(S.RESET_DEFAULT), false, () -> {
             Theme.reset(pl.name, kind);
             foldersChanged();
@@ -1325,8 +1651,8 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
             });
         }
         // the built-in home tiles, after the platforms
-        String[] ids = {"continue", "recent", "favorites", "add", "search", "stats", "settings", "desktop"};
-        S[] names = {S.CONTINUE, S.RECENT, S.FAVORITES, S.NEW_FOLDER, S.SEARCH, S.STATS, S.SETTINGS, S.ANDROID_DESKTOP};
+        String[] ids = {"continue", "recent", "favorites", "add", "search", "stats", "random", "settings", "desktop"};
+        S[] names = {S.CONTINUE, S.RECENT, S.FAVORITES, S.NEW_FOLDER, S.SEARCH, S.STATS, S.RANDOM_GAME, S.SETTINGS, S.ANDROID_DESKTOP};
         for (int i = 0; i < ids.length; i++) {
             String key = "tool:" + ids[i];
             int idx = ps.size() + i;
@@ -1459,7 +1785,7 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         if (item instanceof Library.Game) playBanner((Library.Game) item);
         if (item == ShelfView.STATS) {
             top.showStats(collectStats());
-        } else if (item == ShelfView.SETTINGS || item == ShelfView.SEARCH || item == ShelfView.DESKTOP) {
+        } else if (item == ShelfView.SETTINGS || item == ShelfView.SEARCH || item == ShelfView.DESKTOP || item == ShelfView.RANDOM) {
             top.showTool(item);
         } else if (item instanceof Library.Game) {
             Library.Game g = (Library.Game) item;
@@ -1563,6 +1889,39 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
     }
 
     /** A on the statistics tile: every played game, most played first. */
+    /**
+     * A game to play: from every platform except Android apps, games never started from here three times as
+     * likely, and not one of the last ten played.
+     */
+    @Override public void onRandom() {
+        if (lib == null) return;
+        java.util.Set<Library.Game> recentSet = new java.util.HashSet<>();
+        for (int i = 0; i < Math.min(10, shelfState.recent.games.size()); i++) recentSet.add(shelfState.recent.games.get(i));
+        List<Library.Game> pool = new ArrayList<>();
+        for (Library.Platform p : lib.platforms) {
+            if (p.isCustom() || shelfState.hidden.contains(p.name)) continue;
+            for (Library.Game g : p.games) {
+                if (g.pkg != null || recentSet.contains(g) || hiddenGames.contains(g.key())) continue;
+                pool.add(g);
+                if (prefs.getLong("time:" + g.key(), 0) == 0) { pool.add(g); pool.add(g); }
+            }
+        }
+        if (pool.isEmpty()) return;
+        Library.Game g = pool.get(new java.util.Random().nextInt(pool.size()));
+        shelf.reveal(g);
+    }
+
+    @Override public char initial(Library.Game g) {
+        String[] py = pinyin.get(g);
+        String s = py != null && !py[1].isEmpty() ? py[1] : g.title.trim();
+        char c = s.isEmpty() ? '#' : Character.toUpperCase(s.charAt(0));
+        return c >= 'A' && c <= 'Z' ? c : '#';
+    }
+
+    @Override public void onHomeOrder(String order) {
+        prefs.edit().putString("homeOrder", order).apply();
+    }
+
     @Override public void onStats() {
         if (shelf == null || lib == null) return;
         List<Library.Game> played = new ArrayList<>();
@@ -1696,13 +2055,23 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
             });
         }
         String lang = Translate.target();
-        boolean english = false;
-        for (Cheats.Cheat c : list) if (Cheats.untranslated(c)) { english = true; break; }
-        if (lang != null && english) m.add("文 " + t(S.TRANSLATE_CHEATS), false, () -> runInBackground(() -> {
-            int[] r = Cheats.translate(st, new Translate(new java.io.File(getFilesDir(), "translations.tsv"), lang));
+        Ai ai = Ai.from(prefs);
+        boolean english = false, translatedBefore = false;
+        for (Cheats.Cheat c : list) {
+            if (Cheats.untranslated(c)) english = true;
+            if (Cheats.original(c) != null) translatedBefore = true;
+        }
+        // with an AI service, names translated before by the free services can be translated again
+        if (lang != null && (english || (ai != null && translatedBefore)))
+            m.add("文 " + t(ai != null ? S.AI_TRANSLATE_CHEATS : S.TRANSLATE_CHEATS), false, () -> runInBackground(() -> {
+            Translate tr = new Translate(new java.io.File(getFilesDir(), "translations.tsv"), lang, ai);
+            tr.context = g.title;
+            int[] r = Cheats.translate(st, tr);
             List<Cheats.Cheat> fresh = st.load();
+            String err = tr.aiError();
             return () -> {
-                Toast.makeText(this, I18n.f(S.TRANSLATED, r[0]) + (r[1] > 0 ? "  ·  " + I18n.f(S.NOT_TRANSLATED, r[1]) : ""), Toast.LENGTH_LONG).show();
+                Toast.makeText(this, I18n.f(S.TRANSLATED, r[0]) + (r[1] > 0 ? "  ·  " + I18n.f(S.NOT_TRANSLATED, r[1]) : "")
+                        + (err != null ? "\n" + I18n.f(S.AI_FAILED, err) : ""), Toast.LENGTH_LONG).show();
                 showCheats(g, st, fresh, parent, 0);
             };
         }));
@@ -1713,17 +2082,137 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
             st.save(list);
             showCheats(g, st, list, parent, list.size() - 1);
         })));
+        if (!list.isEmpty()) m.add("－ " + t(S.DELETE_ALL_CHEATS), false, () -> {
+            ShelfView.Menu sure = new ShelfView.Menu(I18n.f(S.DELETE_ALL_SURE, list.size()), g.title);
+            sure.parent = shelfState.menu;
+            sure.add(t(S.CANCEL), false, () -> showCheats(g, st, list, parent, 0));
+            sure.add("－ " + t(S.DELETE_ALL_CHEATS), false, () -> {
+                st.save(new ArrayList<>());
+                Toast.makeText(this, t(S.DELETED), Toast.LENGTH_SHORT).show();
+                showCheats(g, st, st.load(), parent, 0);
+            });
+            shelf.showMenu(sure);
+        });
         m.add("⇣ " + t(S.DOWNLOAD_CHEATS), false, () -> runInBackground(() -> {
+            // the store adds what it found; take those back out and let the user choose which to keep
+            List<Cheats.Cheat> before = st.load();
             int n = st.download();
-            List<Cheats.Cheat> fresh = st.load();
-            return () -> {
-                Toast.makeText(this, n < 0 ? t(S.CHEATS_NOT_FOUND) : I18n.f(S.CHEATS_ADDED, n), Toast.LENGTH_LONG).show();
-                showCheats(g, st, fresh, parent, Math.max(0, fresh.size() - n));
-            };
+            if (n <= 0) return () -> Toast.makeText(this, n < 0 ? t(S.CHEATS_NOT_FOUND) : I18n.f(S.CHEATS_ADDED, 0), Toast.LENGTH_LONG).show();
+            java.util.Set<String> had = new java.util.HashSet<>();
+            for (Cheats.Cheat c : before) had.add(c.name);
+            List<Cheats.Cheat> found = new ArrayList<>();
+            for (Cheats.Cheat c : st.load()) {
+                boolean code = c.props.containsKey("code");
+                for (String l : c.lines) if (!l.startsWith("*")) { code = true; break; }
+                if (code && !had.contains(c.name)) { c.enabled = false; found.add(c); }
+            }
+            st.save(before);
+            CheatPick pick = new CheatPick(g, st, before, found, parent);
+            return () -> { showCheatPick(pick, 0); translatePick(pick); };
         }));
         if (!st.strictCodes()) m.add("ⓘ " + t(S.RETROARCH_CHEAT_HINT), false, null);
         m.sel = Math.max(0, Math.min(sel, m.labels.size() - 1));
         shelf.showMenu(m);
+    }
+
+    /** Cheats just downloaded, waiting for the user to choose which to import; names shown translated when possible. */
+    private static final class CheatPick {
+        final Library.Game g;
+        final Cheats.Store st;
+        final List<Cheats.Cheat> have, found;
+        final ShelfView.Menu parent;
+        final String[] shown;
+        final boolean[] picked;
+        ShelfView.Menu menu;
+        boolean translating;
+
+        CheatPick(Library.Game g, Cheats.Store st, List<Cheats.Cheat> have, List<Cheats.Cheat> found, ShelfView.Menu parent) {
+            this.g = g;
+            this.st = st;
+            this.have = have;
+            this.found = found;
+            this.parent = parent;
+            shown = new String[found.size()];
+            picked = new boolean[found.size()];
+        }
+
+        int count() { int n = 0; for (boolean b : picked) if (b) n++; return n; }
+    }
+
+    private static final int PICK_HEAD = 3;   // import, select all, select none
+
+    private void showCheatPick(CheatPick p, int sel) {
+        ShelfView.Menu m = new ShelfView.Menu(t(S.PICK_CHEATS), p.g.title + "  ·  " + I18n.f(S.PICKED, p.count(), p.found.size())
+                + (p.translating ? "  ·  " + t(S.TRANSLATING) : ""));
+        m.parent = p.parent;
+        m.onBack = () -> showCheats(p.g, p.st, p.st.load(), p.parent, 0);
+        m.add("⇣ " + I18n.f(S.IMPORT_PICKED, p.count()), false, () -> {
+            if (p.count() == 0) return;
+            List<Cheats.Cheat> list = new ArrayList<>(p.have);
+            for (int i = 0; i < p.found.size(); i++) {
+                if (!p.picked[i]) continue;
+                Cheats.Cheat c = p.found.get(i);
+                if (p.shown[i] != null && !p.shown[i].equals(c.name)) {
+                    c.lines.add(0, "*" + c.name);   // the original name stays as a note
+                    c.name = p.shown[i];
+                }
+                list.add(c);
+            }
+            st(p).save(list);
+            Toast.makeText(this, I18n.f(S.CHEATS_ADDED, p.count()), Toast.LENGTH_LONG).show();
+            p.menu = null;
+            showCheats(p.g, p.st, p.st.load(), p.parent, p.have.size());
+        });
+        m.add("☑ " + t(S.SELECT_ALL), false, () -> { java.util.Arrays.fill(p.picked, true); showCheatPick(p, 1); });
+        m.add("☐ " + t(S.SELECT_NONE), false, () -> { java.util.Arrays.fill(p.picked, false); showCheatPick(p, 2); });
+        for (int i = 0; i < p.found.size(); i++) {
+            int row = i;
+            m.add(p.shown[i] != null ? p.shown[i] : p.found.get(i).name, p.picked[i], () -> {
+                p.picked[row] = !p.picked[row];
+                showCheatPick(p, PICK_HEAD + row);
+            });
+        }
+        m.sel = Math.max(0, Math.min(sel, m.labels.size() - 1));
+        if (p.menu != null && shelfState.menu == p.menu) m.top = p.menu.top;   // a refresh keeps the scroll position
+        p.menu = m;
+        shelf.showMenu(m);
+    }
+
+    private static Cheats.Store st(CheatPick p) { return p.st; }
+
+    /** Translates the found names into the interface language in the background, refreshing the list as they come. */
+    private void translatePick(CheatPick p) {
+        String lang = Translate.target();
+        if (lang == null) return;
+        List<String> names = new ArrayList<>();
+        for (Cheats.Cheat c : p.found) if (Translate.needs(c.name)) names.add(c.name);
+        if (names.isEmpty()) return;
+        p.translating = true;
+        refreshPick(p);
+        new Thread(() -> {
+            Translate tr = new Translate(new File(getFilesDir(), "translations.tsv"), lang, Ai.from(prefs));
+            tr.context = p.g.title;
+            tr.prefetch(names);   // with an AI service: all of them in a few requests
+            for (int i = 0; i < p.found.size(); i++) {
+                String n = p.found.get(i).name;
+                if (!Translate.needs(n)) continue;
+                String z = tr.translate(n);
+                if (z != null) p.shown[i] = z;
+                if (i % 12 == 11) main.post(() -> refreshPick(p));
+            }
+            p.translating = false;
+            String err = tr.aiError();
+            main.post(() -> {
+                refreshPick(p);
+                if (err != null) Toast.makeText(this, I18n.f(S.AI_FAILED, err), Toast.LENGTH_LONG).show();
+            });
+        }, "pick-translate").start();
+    }
+
+    /** Redraws the picker with new names if it is still the menu on screen, keeping the cursor where it is. */
+    private void refreshPick(CheatPick p) {
+        if (p.menu == null || shelf == null || shelfState.menu != p.menu) return;
+        showCheatPick(p, p.menu.sel);
     }
 
     /** Rename or delete single cheats. */
@@ -1864,6 +2353,91 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         String day = "day:" + new java.text.SimpleDateFormat("yyyyMMdd", Locale.ROOT).format(new Date(now));
         prefs.edit().putLong("time:" + key, prefs.getLong("time:" + key, 0) + spent).putLong("last:" + key, now)
                 .putLong(day, prefs.getLong(day, 0) + spent).apply();
+        // the last sessions' times, so screenshots taken while the game ran can be found again
+        List<String> ses = new ArrayList<>(java.util.Arrays.asList(prefs.getString("sessions:" + key, "").split(",")));
+        ses.removeIf(String::isEmpty);
+        ses.add(start + "-" + now);
+        while (ses.size() > 40) ses.remove(0);
+        prefs.edit().putString("sessions:" + key, String.join(",", ses)).apply();
+    }
+
+    // ---- game details and screenshots ----
+
+    private static final String[] SHOT_DIRS = {"Pictures/Screenshots", "DCIM/Screenshots", "RetroArch/screenshots", "azahar/screenshots",
+            "citra-emu/screenshots", "DraStic/screenshots", "PSP/SCREENSHOT", "dolphin-mmjr/ScreenShots", "dolphin-emu/ScreenShots",
+            "duckstation/screenshots", "ARMSX2/snaps", "Pictures/RetroArch"};
+
+    /** Screenshots of a game: named after its file, or taken while it was running (by the recorded play sessions). */
+    private List<File> screenshots(Library.Game g) {
+        List<long[]> ses = new ArrayList<>();
+        for (String s : prefs.getString("sessions:" + g.key(), "").split(",")) {
+            int d = s.indexOf('-');
+            if (d <= 0) continue;
+            try { ses.add(new long[]{Long.parseLong(s.substring(0, d)), Long.parseLong(s.substring(d + 1)) + 60_000}); } catch (NumberFormatException ignored) { }
+        }
+        String base = (g.mediaBase != null ? g.mediaBase : new File(g.baseName()).getName()).toLowerCase(Locale.ROOT);
+        List<File> out = new ArrayList<>();
+        File prim = android.os.Environment.getExternalStorageDirectory();
+        java.util.ArrayDeque<File[]> todo = new java.util.ArrayDeque<>();
+        for (String d : SHOT_DIRS) todo.add(new File[]{new File(prim, d)});
+        int dirs = 0;
+        while (!todo.isEmpty() && dirs < 200) {
+            File dir = todo.poll()[0];
+            File[] fs = dir.listFiles();
+            if (fs == null) continue;
+            dirs++;
+            for (File f : fs) {
+                if (f.isDirectory()) { todo.add(new File[]{f}); continue; }
+                String n = f.getName().toLowerCase(Locale.ROOT);
+                if (!(n.endsWith(".png") || n.endsWith(".jpg") || n.endsWith(".jpeg") || n.endsWith(".webp"))) continue;
+                boolean mine = base.length() >= 3 && n.contains(base);
+                long t = f.lastModified();
+                for (long[] s : ses) if (t >= s[0] && t <= s[1]) { mine = true; break; }
+                if (mine) out.add(f);
+            }
+        }
+        out.sort((a, b) -> Long.compare(b.lastModified(), a.lastModified()));
+        return out;
+    }
+
+    @Override public void onDetails(Library.Game g) {
+        ShelfView.Menu m = new ShelfView.Menu(t(S.DETAILS), g.title);
+        m.parent = shelfState.menu;
+        m.add(t(S.PLATFORM) + "  ·  " + g.platform.title(), false, null);
+        if (g.original != null && !g.original.isEmpty()) m.add(t(S.ORIGINAL_NAME) + "  ·  " + g.original, false, null);
+        m.add(t(S.FILE) + "  ·  " + g.path.getName(), false, null);
+        long size = g.path.length();
+        for (String d : g.discs) size += new File(g.dir, d).length();
+        String sz = size >= 1L << 30 ? String.format(Locale.ROOT, "%.2f GB", size / (double) (1L << 30)) : size >= 1L << 20 ? (size >> 20) + " MB" : Math.max(1, size >> 10) + " KB";
+        m.add(t(S.SIZE) + "  ·  " + sz + (g.discs.isEmpty() ? "" : "  ·  " + I18n.f(S.DISCS, g.discs.size() + 1)), false, null);
+        m.add(t(S.LOCATION) + "  ·  " + g.path.getParent(), false, null);
+        m.add(t(S.EMULATOR) + "  ·  " + Library.emulatorLabel(effectiveCmd(g)), false, null);
+        for (String s : playedTags(g)) if (s != null) m.add(s, false, null);
+        m.add("✦ " + t(S.AI_COVER), false, () -> aiCover(g));
+        int shotRow = m.labels.size();
+        m.add("▧ " + t(S.SCREENSHOTS) + "  ·  …", false, null);
+        shelf.showMenu(m);
+        new Thread(() -> {
+            List<File> shots = screenshots(g);
+            main.post(() -> {
+                if (shelfState.menu != m) return;
+                m.labels.set(shotRow, "▧ " + t(S.SCREENSHOTS) + "  ·  " + shots.size());
+                if (!shots.isEmpty()) m.actions.set(shotRow, () -> showScreenshots(g, shots, m, 0));
+                shelf.invalidate();
+            });
+        }, "shots").start();
+    }
+
+    private void showScreenshots(Library.Game g, List<File> shots, ShelfView.Menu parent, int sel) {
+        ShelfView.Menu m = new ShelfView.Menu(t(S.SCREENSHOTS), g.title + "  ·  " + shots.size());
+        m.parent = parent;
+        DateFormat df = DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT, Locale.forLanguageTag(I18n.code()));
+        for (File f : shots) m.add(df.format(new Date(f.lastModified())), false, null);
+        m.onSelect = i -> top.showPicture(shots.get(i), g.title + "  ·  " + df.format(new Date(shots.get(i).lastModified())));
+        m.onBack = () -> { shelf.showMenu(parent); onFocus(g); };
+        m.sel = sel;
+        shelf.showMenu(m);
+        m.onSelect.accept(sel);
     }
 
     private String[] playedTags(Library.Game g) {
@@ -1877,7 +2451,9 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
             String d = DateFormat.getDateInstance(DateFormat.MEDIUM, Locale.forLanguageTag(I18n.code())).format(new Date(last));
             when = I18n.f(S.LAST_PLAYED, d);
         }
-        return new String[]{played, when};
+        Achievements.Game a = Achievements.find(prefs, g);
+        String trophies = a != null && a.total > 0 ? "🏆 " + a.got + " / " + a.total : null;
+        return new String[]{played, when, trophies};
     }
 
     // ---- input: gamepad keys and the left stick drive the lower-screen shelf, whichever window has focus ----
@@ -1896,7 +2472,16 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         if (code == KeyEvent.KEYCODE_VOLUME_UP || code == KeyEvent.KEYCODE_VOLUME_DOWN || code == KeyEvent.KEYCODE_HOME) return false;
         if (noteActivity(e)) return true; // the key only woke the screensaver
         code = remap(code);
-        if (e.getAction() == KeyEvent.ACTION_DOWN) return shelf.onKey(code);
+        if (e.getAction() == KeyEvent.ACTION_DOWN) {
+            if (e.getRepeatCount() > 0 && shelf.holdingA()) return true;   // holding A to lift a home tile
+            if (isDirection(code)) {
+                if (e.getRepeatCount() > 0) return true;   // our own repeat runs instead, at a steady pace
+                startRepeat(code);
+            }
+            return shelf.onKey(code);
+        }
+        if (e.getAction() == KeyEvent.ACTION_UP && isDirection(code) && code == repeatCode) stopRepeat();
+        if (e.getAction() == KeyEvent.ACTION_UP && shelf.onKeyUp(code)) return true;
         return e.getAction() == KeyEvent.ACTION_UP && code != KeyEvent.KEYCODE_POWER;
     }
 
@@ -1984,11 +2569,53 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         if (x == 0) x = axis(e.getAxisValue(MotionEvent.AXIS_HAT_X));
         if (y == 0) y = axis(e.getAxisValue(MotionEvent.AXIS_HAT_Y));
         if (x != 0 || y != 0) lastInput = SystemClock.uptimeMillis();   // resting stick noise is not activity
-        if (x != stickX && x != 0) shelf.onKey(x < 0 ? KeyEvent.KEYCODE_DPAD_LEFT : KeyEvent.KEYCODE_DPAD_RIGHT);
-        if (y != stickY && y != 0) shelf.onKey(y < 0 ? KeyEvent.KEYCODE_DPAD_UP : KeyEvent.KEYCODE_DPAD_DOWN);
+        if (x != stickX && x != 0) {
+            int k = x < 0 ? KeyEvent.KEYCODE_DPAD_LEFT : KeyEvent.KEYCODE_DPAD_RIGHT;
+            shelf.onKey(k);
+            startRepeat(k);
+        }
+        if (y != stickY && y != 0) {
+            int k = y < 0 ? KeyEvent.KEYCODE_DPAD_UP : KeyEvent.KEYCODE_DPAD_DOWN;
+            shelf.onKey(k);
+            startRepeat(k);
+        }
+        if (x == 0 && y == 0 && (stickX != 0 || stickY != 0)) stopRepeat();
         stickX = x;
         stickY = y;
         return true;
+    }
+
+    // ---- holding a direction (d-pad key, hat or stick) keeps moving: a pause, then steady steps that speed up ----
+
+    private static final long REPEAT_DELAY = 380, REPEAT_STEP = 95, REPEAT_FAST = 45;
+    private int repeatCode;
+    private long repeatStart;
+
+    private static boolean isDirection(int code) {
+        return code == KeyEvent.KEYCODE_DPAD_UP || code == KeyEvent.KEYCODE_DPAD_DOWN
+                || code == KeyEvent.KEYCODE_DPAD_LEFT || code == KeyEvent.KEYCODE_DPAD_RIGHT;
+    }
+
+    private final Runnable repeater = new Runnable() {
+        @Override public void run() {
+            if (repeatCode == 0 || shelf == null) return;
+            lastInput = SystemClock.uptimeMillis();
+            shelf.onKey(repeatCode);
+            boolean fast = SystemClock.uptimeMillis() - repeatStart > 1500;   // after a while, faster
+            main.postDelayed(this, fast ? REPEAT_FAST : REPEAT_STEP);
+        }
+    };
+
+    private void startRepeat(int code) {
+        main.removeCallbacks(repeater);
+        repeatCode = code;
+        repeatStart = SystemClock.uptimeMillis();
+        main.postDelayed(repeater, REPEAT_DELAY);
+    }
+
+    private void stopRepeat() {
+        main.removeCallbacks(repeater);
+        repeatCode = 0;
     }
 
     private static int axis(float v) { return v > 0.6f ? 1 : v < -0.6f ? -1 : 0; }
