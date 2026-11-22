@@ -103,9 +103,11 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         lastInput = SystemClock.uptimeMillis();
         main.removeCallbacks(idleCheck);
         main.postDelayed(idleCheck, 15_000);
-        keepAwake(prefs.getInt("screensaver", 5) > 0);
+        keepAwake(prefs.getInt("screensaver", 5) > 0 || (wifi != null && wifi.running()));
         getSystemService(DisplayManager.class).registerDisplayListener(displays, main);
         showShelf();
+        shelfState.askAi = true;
+        PadKeyboard.askAi = true;
         if (lib == null && !loading) {
             if (Environment.isExternalStorageManager()) {
                 load();
@@ -141,6 +143,10 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         // a game's video must not keep playing (or start late) under the emulator; redrawn on return
         if (voice != null) { voice.stop(); voice = null; }
         voiceTo = null;
+        main.removeCallbacks(holdFired);
+        holdCode = 0;
+        holdListening = false;
+        closeChat();
         closeKeyboard();
         if (top != null) top.reset();
         stopRepeat();
@@ -455,6 +461,7 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
                 aiNow != null, () -> showAiMenu(m, 0));
         AiImage imgNow = AiImage.from(prefs);
         m.add(t(S.AI_IMAGES) + "  ·  " + (imgNow == null ? t(S.OFF) : imgNow.model.isEmpty() ? AiImage.DEFAULT_MODEL : imgNow.model), imgNow != null, () -> showImageAiMenu(m, 0));
+        m.add(t(S.TTS_REPLY) + "  ·  " + ttsName(Speaker.provider(prefs)), Speaker.ready(prefs), () -> showVoiceMenu(m, 0));
         boolean ra = Achievements.configured(prefs);
         m.add("RetroAchievements  ·  " + (ra ? prefs.getString("ra.user", "") : t(S.OFF)), ra, () -> showRaMenu(m));
         m.add(t(S.EXIT_TO_DESKTOP), false, this::onOpenDesktop);
@@ -740,6 +747,59 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         shelf.showMenu(m);
     }
 
+    private static String ttsName(String provider) {
+        switch (provider) {
+            case Speaker.SONIOX: return "Soniox";
+            case Speaker.OPENAI: return "OpenAI";
+            default: return t(S.OFF);
+        }
+    }
+
+    /** Settings → AI voice replies: off, Soniox (its own key) or OpenAI (the image service's key), the voice, a test. */
+    private void showVoiceMenu(ShelfView.Menu parent, int sel) {
+        String prov = Speaker.provider(prefs), key = prefs.getString("soniox.key", "");
+        ShelfView.Menu m = new ShelfView.Menu(t(S.TTS_REPLY), t(S.TTS_HINT));
+        m.parent = parent;
+        m.onBack = () -> { shelf.closeMenu(); onSettings(); };
+        for (String p : new String[]{Speaker.OFF, Speaker.SONIOX, Speaker.OPENAI}) {
+            int row = m.labels.size();
+            m.add(ttsName(p), p.equals(prov), () -> { prefs.edit().putString("tts.provider", p).apply(); showVoiceMenu(parent, row); });
+        }
+        int keyRow = m.labels.size();
+        m.add(t(S.SONIOX_KEY) + "  ·  " + (key.isEmpty() ? t(S.NOT_SET) : Ai.masked(key)), !key.isEmpty(),
+                () -> askText(t(S.SONIOX_KEY), "", k -> { prefs.edit().putString("soniox.key", k.trim()).apply(); showVoiceMenu(parent, keyRow); }));
+        if (prov.equals(Speaker.OPENAI) && AiImage.from(prefs) == null) m.add(t(S.TTS_OPENAI_KEY), false, () -> showImageAiMenu(parent, 0));
+        if (!prov.equals(Speaker.OFF)) {
+            String vk = "tts.voice." + prov, def = prov.equals(Speaker.SONIOX) ? Speaker.SONIOX_VOICE : Speaker.OPENAI_VOICE;
+            String voiceName = prefs.getString(vk, def);
+            int voiceRow = m.labels.size();
+            m.add(t(S.TTS_VOICE) + "  ·  " + voiceName, false, () -> askText(t(S.TTS_VOICE), voiceName, v -> {
+                if (v.trim().isEmpty()) prefs.edit().remove(vk).apply();
+                else prefs.edit().putString(vk, v.trim()).apply();
+                showVoiceMenu(parent, voiceRow);
+            }));
+            m.add(t(S.TTS_TEST), false, () -> {
+                if (!Speaker.ready(prefs)) { Toast.makeText(this, t(S.TTS_NEEDS_KEY), Toast.LENGTH_LONG).show(); return; }
+                speaker().say(t(S.TTS_TEST_TEXT), I18n.code(), err -> Toast.makeText(this, I18n.f(S.TTS_FAILED, String.valueOf(err)), Toast.LENGTH_LONG).show());
+            });
+        }
+        m.add(t(S.AI_ON_PHONE), false, this::showWifiMenu);
+        if (!key.isEmpty()) m.add(t(S.REMOVE_KEY), false, () -> { prefs.edit().remove("soniox.key").apply(); showVoiceMenu(parent, 0); });
+        m.sel = Math.max(0, Math.min(sel, m.labels.size() - 1));
+        shelf.showMenu(m);
+    }
+
+    private Speaker speaker;
+
+    private Speaker speaker() {
+        if (speaker == null) speaker = new Speaker(getApplicationContext(), prefs);
+        return speaker;
+    }
+
+    private void stopSpeaking() {
+        if (speaker != null) speaker.stop();
+    }
+
     private void showRaMenu(ShelfView.Menu parent) {
         String user = prefs.getString("ra.user", ""), key = prefs.getString("ra.key", "");
         ShelfView.Menu m = new ShelfView.Menu("RetroAchievements", t(S.RA_HINT));
@@ -991,6 +1051,20 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
                     return new String[]{prefs.getString("img.url", ""), prefs.getString("img.model", ""), Ai.masked(prefs.getString("img.key", ""))};
                 }
 
+                @Override public String[] currentVoice() {
+                    return new String[]{Speaker.provider(prefs), prefs.getString("tts.voice." + Speaker.provider(prefs), ""), Ai.masked(prefs.getString("soniox.key", ""))};
+                }
+
+                @Override public void saveVoice(String provider, String voice, String key) {
+                    SharedPreferences.Editor e = prefs.edit().putString("tts.provider", provider);
+                    if (!provider.equals(Speaker.OFF)) {
+                        if (voice.isEmpty()) e.remove("tts.voice." + provider);
+                        else e.putString("tts.voice." + provider, voice);
+                    }
+                    if (key != null) e.putString("soniox.key", key);
+                    e.apply();
+                }
+
                 @Override public void saveImage(String url, String model, String key) {
                     SharedPreferences.Editor e = prefs.edit().putString("img.url", url).putString("img.model", model);
                     if (key != null) e.putString("img.key", key);
@@ -1025,7 +1099,8 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
             Toast.makeText(this, t(S.NONE_FOUND), Toast.LENGTH_SHORT).show();
             return;
         }
-        top.showMessage(t(S.WIFI_OPEN) + "\n\n" + url + "\n" + t(S.ADMIN_PASSWORD) + "  " + adminPassword());
+        top.showMessage(t(S.WIFI_OPEN) + "\n\n" + url + "\n" + t(S.ADMIN_PASSWORD) + "  " + adminPassword() + "\n\n" + t(S.WIFI_KEEP_ON));
+        keepAwake(true);   // with the screen off the page would not open
         ShelfView.Menu m = new ShelfView.Menu(t(S.WIFI_TRANSFER), url);
         m.add(url, false, null);
         m.add(t(S.ADMIN_PASSWORD) + "  ·  " + adminPassword(), false, () -> askText(t(S.ADMIN_PASSWORD), "", pw -> {
@@ -1035,6 +1110,7 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         m.add(t(S.WIFI_STOP), false, () -> {
             wifi.stop();
             wifi = null;
+            keepAwake(prefs.getInt("screensaver", 5) > 0);
             shelf.closeMenu();
             if (wifiReceived > 0) load();
             onFocus(shelf.selected());
@@ -1674,86 +1750,8 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
 
     // ---- talking with the AI about what to play: say or type what you feel like, then narrow it down ----
 
-    private final List<String> chatLog = new ArrayList<>();
-
     private void startChat() {
-        if (Ai.from(prefs) == null) { Toast.makeText(this, t(S.AI_NEEDED), Toast.LENGTH_LONG).show(); return; }
-        chatLog.clear();
-        chatAsk();
-    }
-
-    private void chatAsk() {
-        if (shelf == null) return;
-        ShelfView.Menu m = new ShelfView.Menu(t(S.AI_CHAT), t(S.AI_CHAT_HINT));
-        m.add(t(S.ASK_SPEAK), false, () -> { shelf.closeMenu(); listen(this::chatSay); });
-        m.add(t(S.ASK_TYPE), false, () -> askText(t(S.AI_CHAT), "", this::chatSay));
-        if (!chatLog.isEmpty()) m.add(t(S.CHAT_RESTART), false, () -> { chatLog.clear(); chatAsk(); });
-        shelf.showMenu(m);
-    }
-
-    private void chatSay(String text) {
-        Ai ai = Ai.from(prefs);
-        if (ai == null || lib == null) return;
-        if (shelf != null) shelf.closeMenu();
-        chatLog.add("User: " + text);
-        Toast.makeText(this, t(S.THINKING), Toast.LENGTH_LONG).show();
-        List<Library.Game> all = new ArrayList<>();
-        for (Library.Game g : lib.byKey.values()) if (g.pkg == null && g.path != null) all.add(g);
-        StringBuilder cat = new StringBuilder();
-        for (int i = 0; i < all.size(); i++) {
-            Library.Game g = all.get(i);
-            cat.append(i).append('|').append(g.title).append('|').append(platformName(g)).append('|').append(g.genre == null ? "" : g.genre)
-                    .append('|').append(prefs.getLong("time:" + g.key(), 0) / 60_000).append('|').append(prefs.getString("status:" + g.key(), "")).append('\n');
-        }
-        String convo = String.join("\n", chatLog), lang = I18n.name();
-        new Thread(() -> {
-            String a = ai.chat("You help the user choose what to play from their own game library, listed below. Read the "
-                    + "conversation and answer the latest message: reply in " + lang + " in one or two friendly sentences, and pick "
-                    + "up to 6 games from the library that fit what they asked for, each with a short reason. Prefer games they "
-                    + "have not finished or dropped. Answer only with JSON: {\"reply\": string, \"picks\": [{\"i\": index, \"why\": string}]}.",
-                    "Library (index|title|platform|genre|minutes played|status):\n" + cat + "\nConversation:\n" + convo, 1200);
-            String reply = null;
-            List<Library.Game> picks = new ArrayList<>();
-            java.util.Map<Library.Game, String> whys = new java.util.HashMap<>();
-            if (a != null) {
-                int x = a.indexOf('{'), y = a.lastIndexOf('}');
-                try {
-                    org.json.JSONObject o = new org.json.JSONObject(a.substring(x, y + 1));
-                    reply = o.optString("reply", "");
-                    org.json.JSONArray arr = o.optJSONArray("picks");
-                    for (int j = 0; arr != null && j < arr.length(); j++) {
-                        org.json.JSONObject p = arr.getJSONObject(j);
-                        int i = p.optInt("i", -1);
-                        if (i < 0 || i >= all.size() || picks.contains(all.get(i))) continue;
-                        picks.add(all.get(i));
-                        whys.put(all.get(i), p.optString("why", ""));
-                    }
-                } catch (Exception ignored) {
-                }
-            }
-            String said = reply, err = ai.error;
-            main.post(() -> {
-                if (said == null) {
-                    Toast.makeText(this, I18n.f(S.AI_FAILED, err != null ? err : "unexpected answer"), Toast.LENGTH_LONG).show();
-                    return;
-                }
-                StringBuilder log = new StringBuilder("AI: " + said);
-                StringBuilder msg = new StringBuilder(said);
-                for (int k = 0; k < picks.size(); k++) {
-                    Library.Game g = picks.get(k);
-                    log.append(k == 0 ? " Picked: " : "; ").append(g.title);
-                    msg.append("\n\n").append(k + 1).append(". ").append(g.title).append(" · ").append(platformName(g))
-                            .append("\n").append(whys.get(g));
-                }
-                chatLog.add(log.toString());
-                TopView.extra.clear();
-                TopView.extra.putAll(whys);
-                searchText = "";
-                searchGenre = null;
-                if (shelf != null && !picks.isEmpty()) shelf.showResults(t(S.AI_CHAT), picks);
-                showTextDialog(t(S.AI_CHAT), msg.toString(), t(S.CHAT_MORE), this::chatAsk);
-            });
-        }, "ai-chat").start();
+        openChat();
     }
 
     // ---- storage: what takes the space, and deleting games ----
@@ -1953,8 +1951,9 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         Voice v = new Voice();
         if (!v.start()) { Toast.makeText(this, I18n.f(S.VOICE_FAILED, String.valueOf(v.error)), Toast.LENGTH_LONG).show(); return; }
         voice = v;
-        if (kb != null) kb.setStatus(t(S.LISTENING));
-        else Toast.makeText(this, t(S.LISTENING), Toast.LENGTH_SHORT).show();
+        String msg = t(holdCode == KeyEvent.KEYCODE_BUTTON_R1 ? S.R_LISTENING : S.LISTENING);
+        if (kb != null) kb.setStatus(msg);
+        else Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
     }
 
     private void stopVoice() {
@@ -2478,6 +2477,7 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
 
     @Override public void onSearch() {
         if (lib == null || top == null) return;
+        closeChat();
         TopView.extra.clear();
         Library.Platform cur = shelfState.current;
         if (cur != shelfState.results) searchScope = cur == null || cur == shelfState.recent || shelf.isPseudo(cur) ? null : cur;
@@ -4028,11 +4028,16 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         if (noteActivity(e)) return true; // the key only woke the screensaver
         code = remap(code);
         if (voiceTo != null && voice == null && SystemClock.uptimeMillis() - voiceToAt > 30_000) voiceTo = null;
-        if (code == KeyEvent.KEYCODE_BUTTON_L1 && (kb != null || voiceTo != null)) {
+        if (holdCode != 0 && code == holdCode) return holdKey(code, e);
+        if ((code == KeyEvent.KEYCODE_BUTTON_L1 && (kb != null || voiceTo != null))
+                || (code == KeyEvent.KEYCODE_BUTTON_R1 && voiceTo != null)) {
             if (e.getAction() == KeyEvent.ACTION_DOWN && e.getRepeatCount() == 0) startVoice();
             else if (e.getAction() == KeyEvent.ACTION_UP) stopVoice();
             return true;
         }
+        if ((code == KeyEvent.KEYCODE_BUTTON_L1 || code == KeyEvent.KEYCODE_BUTTON_R1)
+                && e.getAction() == KeyEvent.ACTION_DOWN && !shelf.menuOpen()) return holdKey(code, e);
+        if (chat != null && e.getAction() == KeyEvent.ACTION_DOWN && e.getRepeatCount() == 0 && chatKey(code)) return true;
         if (e.getAction() == KeyEvent.ACTION_DOWN) {
             if (e.getRepeatCount() > 0 && shelf.holdingA()) return true;   // holding A to lift a home tile
             if (isDirection(code)) {
@@ -4045,6 +4050,197 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         if (e.getAction() == KeyEvent.ACTION_UP && kb != null) return true;
         if (e.getAction() == KeyEvent.ACTION_UP && shelf.onKeyUp(code)) return true;
         return e.getAction() == KeyEvent.ACTION_UP && code != KeyEvent.KEYCODE_POWER;
+    }
+
+    // ---- hold L to search by voice, hold R to chat with the AI; a short press keeps its old job ----
+
+    /** The L or R key being held (0 = none), and whether holding it has started listening. */
+    private int holdCode;
+    private boolean holdListening;
+    private final Runnable holdFired = () -> {
+        if (holdCode == 0 || shelf == null) return;
+        if (holdCode == KeyEvent.KEYCODE_BUTTON_L1) {
+            // the search keyboard opens and the words go into it
+            closeChat();
+            if (kb == null) onSearch();
+            if (AiImage.from(prefs) == null) { Toast.makeText(this, t(S.VOICE_NEEDS_KEY), Toast.LENGTH_LONG).show(); return; }
+            holdListening = true;
+            startVoice();
+            if (voice == null) holdListening = false;
+            return;
+        }
+        if (!openChat()) return;
+        stopSpeaking();
+        if (AiImage.from(prefs) == null) { askText(t(S.CHAT_TITLE), "", this::chatSend); return; }   // no speech-to-text: type
+        holdListening = true;
+        voiceTo = this::chatSend;
+        voiceToAt = SystemClock.uptimeMillis();
+        startVoice();
+        if (voice == null) { holdListening = false; voiceTo = null; }
+        else if (this.chat != null) this.chat.setStatus(t(S.R_LISTENING));
+    };
+
+    private boolean holdKey(int code, KeyEvent e) {
+        if (e.getAction() == KeyEvent.ACTION_DOWN) {
+            if (e.getRepeatCount() == 0 && holdCode == 0) {
+                holdCode = code;
+                main.postDelayed(holdFired, 450);
+            }
+            return true;
+        }
+        if (e.getAction() == KeyEvent.ACTION_UP && holdCode == code) {
+            holdCode = 0;
+            main.removeCallbacks(holdFired);
+            if (holdListening) {
+                holdListening = false;
+                if (chat != null && voice != null) chat.setStatus(t(S.TRANSCRIBING));
+                stopVoice();
+            } else if (voice == null) nav(code);   // a short press: previous / next platform, as before
+        }
+        return true;
+    }
+
+    // ---- the AI chat on the upper screen ----
+
+    private ChatPanel chat;
+    private final List<ChatPanel.Msg> chatMsgs = new ArrayList<>();
+    private long chatAt;
+
+    /** Opens the chat (carrying on a conversation from the last half hour); false with a setup help when there is no AI key. */
+    private boolean openChat() {
+        if (Ai.from(prefs) == null) {
+            showTextDialog(t(S.AI_SETUP_TITLE), t(S.AI_SETUP_HELP), t(S.OPEN_WIFI), this::showWifiMenu);
+            return false;
+        }
+        if (shelf != null) shelf.closeMenu();
+        closeKeyboard();
+        if (SystemClock.uptimeMillis() - chatAt > 30 * 60_000L) chatMsgs.clear();
+        if (chat == null) {
+            chat = new ChatPanel(this, chatMsgs, AiImage.from(prefs) != null);
+            top.setOverlay(chat);
+        }
+        return true;
+    }
+
+    private void closeChat() {
+        stopSpeaking();
+        if (chat == null) return;
+        chat = null;
+        if (top != null) top.setOverlay(null);
+        if (shelf != null) onFocus(shelf.selected());
+    }
+
+    /** Keys of the chat; everything else drives the lower screen, where its games are. */
+    private boolean chatKey(int code) {
+        switch (code) {
+            case KeyEvent.KEYCODE_BUTTON_B: closeChat(); return true;
+            case KeyEvent.KEYCODE_BUTTON_Y: askText(t(S.CHAT_TITLE), "", this::chatSend); return true;
+            case KeyEvent.KEYCODE_BUTTON_L2: chat.scrollBy(-1); return true;
+            case KeyEvent.KEYCODE_BUTTON_R2: chat.scrollBy(1); return true;
+            default: return false;
+        }
+    }
+
+    /** One message to the AI: it answers in the chat, and the games it picks or searches for fill the lower screen. */
+    private void chatSend(String text) {
+        Ai ai = Ai.from(prefs);
+        if (ai == null || lib == null) return;
+        if (chat == null && !openChat()) return;
+        stopSpeaking();
+        chatAt = SystemClock.uptimeMillis();
+        chatMsgs.add(new ChatPanel.Msg(true, text, null));
+        if (chat != null) chat.setStatus(t(S.THINKING));
+        List<Library.Game> all = new ArrayList<>();
+        for (Library.Game g : lib.byKey.values()) if (g.pkg == null && g.path != null) all.add(g);
+        StringBuilder cat = new StringBuilder();
+        for (int i = 0; i < all.size(); i++) {
+            Library.Game g = all.get(i);
+            cat.append(i).append('|').append(g.title).append('|').append(platformName(g)).append('|').append(g.genre == null ? "" : g.genre)
+                    .append('|').append(prefs.getLong("time:" + g.key(), 0) / 60_000).append('|').append(prefs.getString("status:" + g.key(), "")).append('\n');
+        }
+        // the conversation so far, newest last
+        StringBuilder convo = new StringBuilder();
+        for (int i = Math.max(0, chatMsgs.size() - 20); i < chatMsgs.size(); i++) {
+            ChatPanel.Msg m = chatMsgs.get(i);
+            convo.append(m.me ? "User: " : "AI: ").append(m.text);
+            if (!m.games.isEmpty()) convo.append(" [shown games: ").append(String.join("; ", m.games)).append(']');
+            convo.append('\n');
+        }
+        // "this game" means the one selected on screen
+        Object sel = shelf == null ? null : shelf.selected();
+        String here = "";
+        if (sel instanceof Library.Game && ((Library.Game) sel).pkg == null) {
+            Library.Game g = (Library.Game) sel;
+            here = "\nThe game selected on screen now (\"this game\"): " + g.title + " · " + platformName(g)
+                    + (g.original == null || g.original.isEmpty() ? "" : " (" + g.original + ")");
+        }
+        String lang = I18n.name(), context = here;
+        new Thread(() -> {
+            String a = ai.chat("You are a friendly, knowledgeable game companion on the user's retro handheld, chatting with them. "
+                    + "Their own game library is listed below. Answer the latest message of the conversation in " + lang
+                    + ", in plain text without markdown. Talk about anything they bring up: what to play, walkthroughs and tips, "
+                    + "stories, characters, game history, or just chat; keep answers to about eight sentences unless they ask for "
+                    + "more. When they want something to play, pick up to 6 fitting games from the library, each with a short "
+                    + "reason, preferring games they have not finished or dropped. When they ask to find or show games in their "
+                    + "library by name or series, put a short search word (a title fragment as it is written in the library) in "
+                    + "\"search\". Otherwise leave picks empty and search empty. Answer only with JSON: "
+                    + "{\"reply\": string, \"picks\": [{\"i\": index, \"why\": string}], \"search\": string}.",
+                    "Library (index|title|platform|genre|minutes played|status):\n" + cat + context + "\nConversation:\n" + convo, 1800);
+            String reply = null, find = "";
+            List<Library.Game> picks = new ArrayList<>();
+            java.util.Map<Library.Game, String> whys = new java.util.HashMap<>();
+            if (a != null) {
+                int x = a.indexOf('{'), y = a.lastIndexOf('}');
+                try {
+                    org.json.JSONObject o = new org.json.JSONObject(a.substring(x, y + 1));
+                    reply = o.optString("reply", "");
+                    find = o.optString("search", "").trim();
+                    org.json.JSONArray arr = o.optJSONArray("picks");
+                    for (int j = 0; arr != null && j < arr.length(); j++) {
+                        org.json.JSONObject pk = arr.getJSONObject(j);
+                        int i = pk.optInt("i", -1);
+                        if (i < 0 || i >= all.size() || picks.contains(all.get(i))) continue;
+                        picks.add(all.get(i));
+                        whys.put(all.get(i), pk.optString("why", ""));
+                    }
+                } catch (Exception ignored) {
+                    if (x < 0) reply = a.trim();   // a model that answered in plain text
+                }
+            }
+            String said = reply, err = ai.error, look = find;
+            main.post(() -> {
+                if (chat != null) chat.setStatus(null);
+                if (said == null) {
+                    chatMsgs.add(new ChatPanel.Msg(false, I18n.f(S.AI_FAILED, err != null ? err : "unexpected answer"), null));
+                    if (chat != null) chat.invalidate();
+                    return;
+                }
+                List<String> names = new ArrayList<>();
+                String answer = said;
+                if (!picks.isEmpty()) {
+                    for (Library.Game g : picks) names.add(g.title + " · " + platformName(g));
+                    TopView.extra.clear();
+                    TopView.extra.putAll(whys);
+                    searchText = "";
+                    searchGenre = null;
+                    if (shelf != null) shelf.showResults(t(S.CHAT_TITLE), picks);
+                } else if (!look.isEmpty() && shelf != null) {
+                    TopView.extra.clear();
+                    searchScope = null;
+                    searchGenre = null;
+                    searchText = look;
+                    prepareSearchIndex();
+                    search(look);
+                    answer = said + "\n\n" + I18n.f(S.CHAT_FOUND, shelfState.results.games.size());
+                }
+                chatAt = SystemClock.uptimeMillis();
+                if (chat != null && Speaker.ready(prefs))
+                    speaker().say(said, I18n.code(), e -> Toast.makeText(this, I18n.f(S.TTS_FAILED, String.valueOf(e)), Toast.LENGTH_LONG).show());
+                ChatPanel.Msg m = new ChatPanel.Msg(false, answer, names);
+                if (chat != null) chat.add(m);
+                else chatMsgs.add(m);
+            });
+        }, "ai-chat").start();
     }
 
     /** A key goes to the gamepad keyboard while it is open, else to the lower screen. */

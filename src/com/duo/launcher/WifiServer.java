@@ -45,6 +45,9 @@ final class WifiServer {
         /** image service: address, model, masked key */
         String[] currentImage();
         void saveImage(String url, String model, String key);
+        /** AI voice replies: provider (off, soniox, openai), voice, masked Soniox key */
+        String[] currentVoice();
+        void saveVoice(String provider, String voice, String key);
     }
 
     /** Session cookie value for browsers that entered the admin password; new each time the page is switched on. */
@@ -156,6 +159,10 @@ final class WifiServer {
                 ai.saveRa(f.getOrDefault("ra_user", "").trim(), rk.isEmpty() ? null : rk);
                 String ik = f.getOrDefault("img_key", "").trim();
                 ai.saveImage(f.getOrDefault("img_url", "").trim(), f.getOrDefault("img_model", "").trim(), ik.isEmpty() ? null : ik);
+                String sk = f.getOrDefault("soniox_key", "").trim();
+                String tp = f.getOrDefault("tts", "off");
+                if (!tp.equals("soniox") && !tp.equals("openai")) tp = "off";
+                ai.saveVoice(tp, f.getOrDefault("tts_voice", "").trim(), sk.isEmpty() ? null : sk);
                 reply(out, "200 OK", "text/html; charset=utf-8", page(true, "Saved · 已保存"));
                 return;
             }
@@ -236,7 +243,10 @@ final class WifiServer {
 
     /** Settings card for AI translation; the key field is never filled in, only its masked form is shown. */
     private String aiForm(String msg) {
-        String[] c = ai.current(), ci = ai.currentImage(), cr = ai.currentRa();
+        String[] c = ai.current(), ci = ai.currentImage(), cr = ai.currentRa(), cv = ai.currentVoice();
+        StringBuilder tts = new StringBuilder();
+        for (String[] o : new String[][]{{"off", "Off · 关闭"}, {"soniox", "Soniox"}, {"openai", "OpenAI (image key · 用生图密钥)"}})
+            tts.append("<option value=").append(o[0]).append(o[0].equals(cv[0]) ? " selected>" : ">").append(o[1]).append("</option>");
         StringBuilder opts = new StringBuilder();
         for (String[] p : Ai.PROVIDERS)
             opts.append("<option value=\"").append(p[0]).append(p[0].equals(c[0]) ? "\" selected>" : "\">")
@@ -254,6 +264,12 @@ final class WifiServer {
                 + "<input name=img_key type=password autocomplete=off placeholder='" + (ci[2].isEmpty() ? "sk-…" : "unchanged · 不修改") + "'>"
                 + "<label>Image model · 生图模型</label><input name=img_model value=\"" + esc(ci[1]) + "\" placeholder=auto>"
                 + "<label>Image address · 生图接口地址</label><input name=img_url value=\"" + esc(ci[0]) + "\" placeholder=https://api.openai.com/v1>"
+                + "<h1 style='margin-top:22px'>AI voice replies · AI 语音回复</h1>"
+                + "<p style='font-size:14px;color:#5c6b7a'>Reads the AI chat's answers aloud. 聊天时把 AI 的回答读出来。</p>"
+                + "<label>Voice service · 语音服务</label><select name=tts>" + tts + "</select>"
+                + "<label>Soniox API key · Soniox 密钥" + (cv[2].isEmpty() ? "" : " (" + esc(cv[2]) + ")") + "</label>"
+                + "<input name=soniox_key type=password autocomplete=off placeholder='" + (cv[2].isEmpty() ? "" : "unchanged · 不修改") + "'>"
+                + "<label>Voice · 声音</label><input name=tts_voice value=\"" + esc(cv[1]) + "\" placeholder='Soniox: Adrian · OpenAI: coral'>"
                 + "<h1 style='margin-top:22px'>RetroAchievements</h1>"
                 + "<label>User name · 用户名</label><input name=ra_user value=\"" + esc(cr[0]) + "\">"
                 + "<label>Web API key · 密钥 (retroachievements.org → Settings)" + (cr[1].isEmpty() ? "" : " (" + esc(cr[1]) + ")") + "</label>"

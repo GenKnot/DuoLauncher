@@ -192,6 +192,8 @@ final class ShelfView extends View {
         int homeMode;
         /** Space around a game's picture in its tile: 0 fills the tile, 1-3 leave a small, medium or large margin. */
         int tilePad;
+        /** An AI key is set, so holding R asks the AI (shown in the footer). */
+        boolean askAi;
         /** One folder per series with at least two games. */
         final List<Library.Platform> series = new ArrayList<>();
         /** The search keyboard is open on the top screen. */
@@ -572,6 +574,8 @@ final class ShelfView extends View {
     private int clampSel(int i) { return Math.max(0, Math.min(i, st.items.size() - 1)); }
 
     Object selected() { return st.sel >= 0 && st.sel < st.items.size() ? st.items.get(st.sel) : null; }
+
+    boolean menuOpen() { return st.menu != null; }
 
     private void setSel(int i) {
         i = clampSel(i);
@@ -1464,7 +1468,8 @@ final class ShelfView extends View {
             x = hintItem(c, x, cy, "X", t(S.SPACE_KEY));
             x = hintItem(c, x, cy, "Y", t(S.SYSTEM_KEYBOARD));
             x = hintItem(c, x, cy, "L", t(S.VOICE));
-            hintItem(c, x, cy, "START", t(S.KB_DONE));
+            x = hintItem(c, x, cy, "START", t(S.KB_DONE));
+            askHint(c, x, cy);
             hitZoom.setEmpty();
             hitSort.setEmpty();
             return;
@@ -1501,6 +1506,18 @@ final class ShelfView extends View {
                 hitSort.set(x0, top, x, getHeight());
             }
         }
+        askHint(c, x, cy);
+    }
+
+    /** "R  Hold: ask AI" at the end of the footer, when an AI key is set and it fits. */
+    private void askHint(Canvas c, float x, float cy) {
+        if (!st.askAi) return;
+        float u = u();
+        String label = t(S.R_ASK_AI);
+        if (x + 34 * u + 10 * u + measure(label, 25 * u) > getWidth() - pad()) return;
+        x = hintItem(c, x, cy, "R", label);
+        String l = t(S.L_VOICE_SEARCH);
+        if (!st.typing && x + 34 * u + 10 * u + measure(l, 25 * u) <= getWidth() - pad()) hintItem(c, x, cy, "L", l);
     }
 
     private float hintItem(Canvas c, float x, float cy, String key, String label) {

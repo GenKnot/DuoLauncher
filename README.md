@@ -334,6 +334,8 @@ Point it at your ROM folders and it finds the games, shows them on the lower scr
 - **Where you left off** – a played game's newest screenshot or save-state picture becomes its upper-screen background.
 - **How to play** (Y → How to play) – the AI writes the controls (including swapped confirm / cancel buttons in Japanese releases) and the basics a newcomer needs, once per game; up / down scrolls, Y writes it again.
 - **Ask the AI** (Y → Ask AI) – type or say a question about the game and the answer appears on the upper screen.
+- **Chat with the AI** – hold R anywhere (home, a folder, the search keyboard) and talk: the conversation fills the upper screen while the games it recommends or finds for you fill the lower one, ready to start with A. Ask what to play, how to get past a part of the game you have selected, about a story or a character – or just chat; it remembers the conversation for half an hour. Without an AI key it explains how to add one, on the handheld or from a computer over Wi-Fi.
+- **Search by voice** – hold L anywhere to open the search keyboard and say a name.
 - **What to play today** – Y on the random-game tile (or Settings → Tools) has the AI pick six games from your own library to match your taste, with a reason for each; "Ask AI what to play" turns it into a conversation – say or type what you feel like ("a relaxed RPG, not too long"), then narrow it down ("something with action instead").
 - **When a game does not start** – a missing file, an emulator that is not installed, one that cannot be opened that way, or a game that closes at once each get a message saying what to do.
 - **Break reminder** (Settings → Tools → Break reminder) – after two hours in a game (or one or three, or off) the launcher suggests a break when you come back.
@@ -353,7 +355,7 @@ Point it at your ROM folders and it finds the games, shows them on the lower scr
 
 ### Handy tools · 实用工具
 
-- **Wi-Fi transfer** – Settings → Wi-Fi transfer shows an address and a PIN; open the address in a browser on the same network, enter the PIN, and drop ROMs or theme packs straight into any platform folder. The same page has the AI translation, AI pictures and RetroAchievements settings behind an admin password (six random digits, or your own of four characters or more), so long keys can be pasted from a phone.
+- **Wi-Fi transfer** – Settings → Wi-Fi transfer shows an address and a PIN; open the address in a browser on the same network, enter the PIN, and drop ROMs or theme packs straight into any platform folder. The same page has the AI translation, AI pictures and RetroAchievements settings behind an admin password (six random digits, or your own of four characters or more), so long keys can be pasted from a phone. The handheld's screen stays on while the transfer runs, since the page cannot be reached once the screen is off.
 - **RetroAchievements** – with your user name and Web API key, recently played games and their achievement progress, and a 🏆 tag on matching games.
 - **Updates** – Settings → About checks the latest GitHub release once a day and links to it.
 - **Save backups** – back up and restore the saves of DraStic, RetroArch, PPSSPP, AetherSX2, DuckStation, Mupen64Plus FZ, Azahar and Citra in one zip, kept in `DuoLauncher/backups` on the SD card (internal storage when there is no card). After three hours of play without a backup the launcher reminds you (Back up now, Always, In 3 hours, Don't remind) or, if you set Settings → Tools → Save backup reminder to "Back up by itself", makes one by itself (the newest ten automatic ones are kept; your own are never removed). A restore replaces each save only once its copy is complete.
@@ -455,7 +457,7 @@ DuoLauncher/themes/my-theme/
 | Left / right, L / R in a list or menu | A page at a time |
 | A | Open / play; hold A on a home folder to move it |
 | B | Back |
-| L / R | Previous / next platform |
+| L / R | Previous / next platform; **hold L** to search by voice, **hold R** to chat with the AI |
 | L2 / R2 | Previous / next first letter |
 | X | Icon size, then list view |
 | Y | On a game: emulator, favorite, add to / remove from a folder, cheats, details, genre, note, ask AI, status and rating, how to play, saves, top-screen display, hide. On a console folder: default emulator, rename, merge folders, hide. On a genre or series folder: icon. On an Android app: add to a folder. On the home page: rename, recolour, change the icon of or hide any tile |
@@ -463,6 +465,7 @@ DuoLauncher/themes/my-theme/
 | SELECT | On the home page: consoles / genres / series; in a folder: sort and language filter |
 | R3 | Search |
 | L (search keyboard) | Hold and speak |
+| In the AI chat | Hold R to speak, Y to type, L2 / R2 to scroll, B to close; the d-pad and A pick from the games below |
 
 ## Building
 

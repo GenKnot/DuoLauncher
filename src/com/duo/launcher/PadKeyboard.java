@@ -21,6 +21,9 @@ import static com.duo.launcher.I18n.t;
  */
 final class PadKeyboard extends View {
 
+    /** Holding R asks the AI; shown in the hint line when an AI key is set. */
+    static boolean askAi;
+
     interface Host {
         void onQuery(String text, String genre);
         void onClose();
@@ -227,7 +230,7 @@ final class PadKeyboard extends View {
         p.setTextAlign(Paint.Align.CENTER);
         p.setTextSize(26 * u);
         p.setColor(sub);
-        c.drawText(t(S.PAD_KEYS_HINT) + " · L " + t(S.VOICE), panel.centerX(), panel.bottom - 22 * u, p);
+        c.drawText(t(S.PAD_KEYS_HINT) + " · L " + t(S.VOICE) + (askAi ? " · R " + t(S.R_ASK_AI) : ""), panel.centerX(), panel.bottom - 22 * u, p);
     }
 
     private void drawKey(Canvas c, Key k, boolean focus, boolean dark, int fg) {
