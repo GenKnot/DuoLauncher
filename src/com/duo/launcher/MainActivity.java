@@ -81,6 +81,16 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         applyTextScale();
         TopView.videoEnabled = prefs.getBoolean("videoPreview", true);
         TopView.prefs = prefs;
+        if (android.os.Build.MODEL != null && android.os.Build.MODEL.startsWith("Retroid")) {
+            // games run on the largest screen; its size names the config Retroid's system set up for RetroArch
+            int w = 0, h = 0;
+            for (Display d : getSystemService(DisplayManager.class).getDisplays()) {
+                Display.Mode m = d.getMode();
+                int mw = Math.max(m.getPhysicalWidth(), m.getPhysicalHeight()), mh = Math.min(m.getPhysicalWidth(), m.getPhysicalHeight());
+                if (mw * mh > w * h) { w = mw; h = mh; }
+            }
+            if (w > 0) Launch.retroArchConfig = "retroarch" + w + "x" + h + ".cfg";
+        }
         loadToolLooks();
         loadSounds();
         icons = new Icons(this);
@@ -623,6 +633,23 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
             });
             shelf.showMenu(rm);
         });
+        String lang = Translate.target();
+        if (lang != null) m.add(t(S.TRANSLATE_ALL_CHEATS), false, () -> runInBackground(() -> {
+            Translate tr = new Translate(new File(getFilesDir(), "translations.tsv"), lang);
+            int n = 0, left = 0;
+            List<Cheats.Store> stores = new ArrayList<>();
+            for (String tid : Cheats.allTitleIds()) stores.add(Cheats.citra(tid));
+            stores.addAll(RaCheats.all());
+            stores.addAll(NdsCheats.all());
+            stores.addAll(PspCheats.all());
+            for (Cheats.Store st : stores) {
+                int[] r = Cheats.translate(st, tr);
+                n += r[0];
+                left += r[1];
+            }
+            int done = n, rest = left;
+            return () -> Toast.makeText(this, I18n.f(S.TRANSLATED, done) + (rest > 0 ? "  ·  " + I18n.f(S.NOT_TRANSLATED, rest) : ""), Toast.LENGTH_LONG).show();
+        }));
         m.add(t(S.EXPORT_THEME), false, () -> runInBackground(() -> {
             File out = Theme.export(this, new File(Backups.folder(volumeRoots()).getParentFile(), "exports"));
             return () -> Toast.makeText(this, I18n.f(S.EXPORTED, out.getAbsolutePath()), Toast.LENGTH_LONG).show();
@@ -1602,6 +1629,160 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
             shelf.setRecent(recentGames());
             shelf.refresh();
         }
+    }
+
+    // ---- 3DS cheats, shared by Azahar and Citra ----
+
+    @Override public void onCheats(Library.Game g) {
+        ShelfView.Menu parent = shelfState.menu;
+        String cmd = effectiveCmd(g);
+        if (PspCheats.isPpsspp(cmd) && g.path != null) {
+            runInBackground(() -> {
+                String id = PspId.of(g.path);
+                Cheats.Store st = id == null ? null : PspCheats.store(this, g, id);
+                List<Cheats.Cheat> list = st == null ? null : st.load();
+                return () -> {
+                    if (st == null) { Toast.makeText(this, t(S.NO_TITLE_ID), Toast.LENGTH_LONG).show(); return; }
+                    showCheats(g, st, list, parent, 0);
+                };
+            });
+            return;
+        }
+        if (NdsCheats.isDrastic(cmd) && g.path != null) {
+            Cheats.Store st = NdsCheats.store(this, g);
+            runInBackground(() -> {
+                List<Cheats.Cheat> list = st.load();
+                return () -> showCheats(g, st, list, parent, 0);
+            });
+            return;
+        }
+        if (!g.platform.system.equals("3DS")) {
+            if (!RaCheats.isRetroArch(cmd)) { Toast.makeText(this, t(S.CHEATS_RETROARCH_ONLY), Toast.LENGTH_LONG).show(); return; }
+            Cheats.Store st = RaCheats.store(this, g, cmd);
+            runInBackground(() -> {
+                List<Cheats.Cheat> list = st.load();
+                return () -> showCheats(g, st, list, parent, 0);
+            });
+            return;
+        }
+        runInBackground(() -> {
+            String tid = Cheats.titleId(g);
+            List<Cheats.Cheat> list = tid == null ? null : Cheats.load(tid);
+            return () -> {
+                if (tid == null) { Toast.makeText(this, t(S.NO_TITLE_ID), Toast.LENGTH_LONG).show(); return; }
+                if (Cheats.dirs().isEmpty()) { Toast.makeText(this, t(S.NO_CHEAT_EMULATOR), Toast.LENGTH_LONG).show(); return; }
+                showCheats(g, Cheats.citra(tid), list, parent, 0);
+            };
+        });
+    }
+
+    private void showCheats(Library.Game g, Cheats.Store st, List<Cheats.Cheat> list, ShelfView.Menu parent, int sel) {
+        ShelfView.Menu m = new ShelfView.Menu(t(S.CHEATS), g.title);
+        m.parent = parent;
+        if (list.isEmpty()) m.add(t(S.NO_CHEATS), false, null);
+        for (int i = 0; i < list.size(); i++) {
+            Cheats.Cheat c = list.get(i);
+            int row = i;
+            boolean code = c.props.containsKey("code");
+            for (String l : c.lines) if (!l.startsWith("*")) { code = true; break; }
+            if (!code) { m.add("— " + c.name + " —", false, null); continue; }   // a heading in the file
+            m.add(c.name, c.enabled, () -> {
+                c.enabled = !c.enabled;
+                if (!st.save(list)) {
+                    c.enabled = !c.enabled;
+                    Toast.makeText(this, t(S.CHEATS_TOO_MANY), Toast.LENGTH_LONG).show();
+                }
+                showCheats(g, st, list, parent, row);
+            });
+        }
+        String lang = Translate.target();
+        boolean english = false;
+        for (Cheats.Cheat c : list) if (Cheats.untranslated(c)) { english = true; break; }
+        if (lang != null && english) m.add("文 " + t(S.TRANSLATE_CHEATS), false, () -> runInBackground(() -> {
+            int[] r = Cheats.translate(st, new Translate(new java.io.File(getFilesDir(), "translations.tsv"), lang));
+            List<Cheats.Cheat> fresh = st.load();
+            return () -> {
+                Toast.makeText(this, I18n.f(S.TRANSLATED, r[0]) + (r[1] > 0 ? "  ·  " + I18n.f(S.NOT_TRANSLATED, r[1]) : ""), Toast.LENGTH_LONG).show();
+                showCheats(g, st, fresh, parent, 0);
+            };
+        }));
+        if (!list.isEmpty()) m.add("✎ " + t(S.EDIT_CHEATS), false, () -> showCheatEditor(g, st, list, parent, 0));
+        m.add("＋ " + t(S.NEW_CHEAT), false, () -> askText(t(S.CHEAT_NAME), "", name -> askCodes(st.strictCodes(), codes -> {
+            Cheats.Cheat c = st.newCheat(name, codes);
+            list.add(c);
+            st.save(list);
+            showCheats(g, st, list, parent, list.size() - 1);
+        })));
+        m.add("⇣ " + t(S.DOWNLOAD_CHEATS), false, () -> runInBackground(() -> {
+            int n = st.download();
+            List<Cheats.Cheat> fresh = st.load();
+            return () -> {
+                Toast.makeText(this, n < 0 ? t(S.CHEATS_NOT_FOUND) : I18n.f(S.CHEATS_ADDED, n), Toast.LENGTH_LONG).show();
+                showCheats(g, st, fresh, parent, Math.max(0, fresh.size() - n));
+            };
+        }));
+        if (!st.strictCodes()) m.add("ⓘ " + t(S.RETROARCH_CHEAT_HINT), false, null);
+        m.sel = Math.max(0, Math.min(sel, m.labels.size() - 1));
+        shelf.showMenu(m);
+    }
+
+    /** Rename or delete single cheats. */
+    private void showCheatEditor(Library.Game g, Cheats.Store st, List<Cheats.Cheat> list, ShelfView.Menu parent, int sel) {
+        ShelfView.Menu m = new ShelfView.Menu(t(S.EDIT_CHEATS), g.title);
+        m.parent = parent;
+        m.onBack = () -> showCheats(g, st, list, parent, 0);   // back to the cheat list, with the new names
+        for (int i = 0; i < list.size(); i++) {
+            Cheats.Cheat c = list.get(i);
+            int row = i;
+            m.add(c.name, false, () -> {
+                ShelfView.Menu one = new ShelfView.Menu(c.name, g.title);
+                one.parent = shelfState.menu;
+                one.add(t(S.RENAME), false, () -> askText(t(S.CHEAT_NAME), c.name, name -> {
+                    c.name = name;
+                    st.save(list);
+                    showCheatEditor(g, st, list, parent, row);
+                }));
+                one.add("－ " + t(S.DELETE_CHEAT), false, () -> {
+                    list.remove(c);
+                    st.save(list);
+                    showCheatEditor(g, st, list, parent, Math.max(0, row - 1));
+                });
+                shelf.showMenu(one);
+            });
+        }
+        m.sel = Math.max(0, Math.min(sel, m.labels.size() - 1));
+        shelf.showMenu(m);
+    }
+
+    /** Several lines of cheat code, "XXXXXXXX YYYYYYYY" each; anything else is refused with a hint. */
+    private void askCodes(boolean strict, java.util.function.Consumer<List<String>> done) {
+        EditText field = new EditText(this);
+        field.setSingleLine(false);
+        field.setMinLines(4);
+        field.setHint(strict ? "12345678 0000FFFF" : "82025F42 0063");
+        field.setTypeface(android.graphics.Typeface.MONOSPACE);
+        field.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE
+                | android.text.InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS | android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+        int theme = Palette.dark ? android.R.style.Theme_DeviceDefault_Dialog_Alert : android.R.style.Theme_DeviceDefault_Light_Dialog_Alert;
+        AlertDialog d = new AlertDialog.Builder(this, theme).setTitle(t(S.CHEAT_CODES)).setView(field)
+                .setPositiveButton(t(S.DONE), null).setNegativeButton(t(S.CANCEL), null).create();
+        d.setOnShowListener(x -> {
+            field.requestFocus();
+            d.getWindow().setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+            d.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+                List<String> lines = new ArrayList<>();
+                for (String l : field.getText().toString().toUpperCase(Locale.ROOT).split("\\n")) {
+                    String c = l.trim().replaceAll("\\s+", " ");
+                    if (c.isEmpty()) continue;
+                    if (strict && !c.matches("[0-9A-F]{8} [0-9A-F]{8}")) { field.setError(t(S.BAD_CODES)); return; }
+                    lines.add(c);
+                }
+                if (lines.isEmpty()) { field.setError(t(S.BAD_CODES)); return; }
+                d.dismiss();
+                done.accept(lines);
+            });
+        });
+        d.show();
     }
 
     @Override public void onDisplayModeChanged(Library.Game g) {

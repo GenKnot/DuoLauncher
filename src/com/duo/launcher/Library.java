@@ -549,7 +549,7 @@ final class Library {
 
     /** Emulators and launchers are not listed as games or apps. */
     private static final Set<String> HIDDEN_APPS = new HashSet<>(Arrays.asList(
-            "io.github.azaharplus.android", "org.azahar_emu.azahar", "org.citra.emu", "com.dsemu.drastic",
+            "io.github.azaharplus.android", "org.azahar_emu.azahar", "org.citra.emu", "com.antutu.ABenchMark", "com.dsemu.drastic",
             "com.retroarch.aarch64", "com.retroarch", "org.pegasus_frontend.android", "me.magnum.melonds",
             "org.ppsspp.ppsspp", "org.ppsspp.ppssppgold", "xyz.aethersx2.android", "com.github.stenzek.duckstation",
             "org.vita3k.emulator", "com.retroidpocket.gamelauncher", "com.android.launcher3", "com.teslacoilsw.launcher",
@@ -915,7 +915,7 @@ final class Library {
     // ---- emulators ----
 
     static final String PKG_AZAHAR_PLUS = "io.github.azaharplus.android", PKG_AZAHAR = "org.azahar_emu.azahar",
-            PKG_CITRA = "org.citra.emu", PKG_DRASTIC = "com.dsemu.drastic", PKG_RETROARCH = "com.retroarch.aarch64",
+            PKG_CITRA = "org.citra.emu", PKG_CITRA_PERF = "com.antutu.ABenchMark", PKG_DRASTIC = "com.dsemu.drastic", PKG_RETROARCH = "com.retroarch.aarch64",
             PKG_ARMSX2 = "com.armsx2", PKG_AETHERSX2 = "xyz.aethersx2.android", PKG_VITA3K = "org.vita3k.emulator",
             PKG_EDEN = "dev.eden.eden_emulator", PKG_PPSSPP = "org.ppsspp.ppsspp",
             PKG_DUCKSTATION = "com.github.stenzek.duckstation", PKG_MUPEN = "org.mupen64plusae.v3.fzurita.pro";
@@ -936,6 +936,11 @@ final class Library {
 
     static final String CITRA = "am start --user 0 -n org.citra.emu/org.citra.emu.ui.EmulationActivity"
             + " -a android.intent.action.VIEW -e GamePath {file.path} --activity-clear-top";
+    /**
+     * The same Citra MMJ build repackaged under the AnTuTu benchmark's package name, which many Android builds run
+     * at full CPU/GPU clocks.
+     */
+    static final String CITRA_PERF = CITRA.replace("-n org.citra.emu/", "-n " + "com.antutu.ABenchMark" + "/");
     /** The DraStic build shipped for Retroid handhelds expects the path behind a "/sf" prefix. */
     static final String DRASTIC_SF = "am start --user 0 -n com.dsemu.drastic/.DraSticActivity -a android.intent.action.MAIN -e GAMEPATH \"/sf{file.path}\"";
     static final String DRASTIC = "am start --user 0 -n com.dsemu.drastic/.DraSticActivity -a android.intent.action.MAIN -e GAMEPATH \"{file.path}\"";
@@ -959,6 +964,7 @@ final class Library {
                 o.add(new String[]{"AzaharPlus", azahar(PKG_AZAHAR_PLUS), PKG_AZAHAR_PLUS});
                 o.add(new String[]{"Azahar", azahar(PKG_AZAHAR), PKG_AZAHAR});
                 o.add(new String[]{"Citra MMJ", CITRA, PKG_CITRA});
+                o.add(new String[]{"Citra MMJ (" + I18n.t(I18n.S.PERF_MODE) + ")", CITRA_PERF, PKG_CITRA_PERF});
                 break;
             case "NDS":
                 o.add(new String[]{"DraStic", DRASTIC_SF, PKG_DRASTIC});
@@ -1025,6 +1031,9 @@ final class Library {
     static boolean installed(PackageManager pm, String pkg) {
         try {
             pm.getPackageInfo(pkg, 0);
+            // the AnTuTu package name only counts when it is really the repackaged Citra build
+            if (pkg.equals(PKG_CITRA_PERF))
+                pm.getActivityInfo(new android.content.ComponentName(pkg, "org.citra.emu.ui.EmulationActivity"), 0);
             return true;
         } catch (PackageManager.NameNotFoundException e) {
             return false;
@@ -1038,6 +1047,7 @@ final class Library {
         if (cmd == null || cmd.isEmpty()) return I18n.t(I18n.S.NOT_SET);
         if (cmd.contains(PKG_AZAHAR_PLUS)) return "AzaharPlus";
         if (cmd.contains(PKG_AZAHAR)) return "Azahar";
+        if (cmd.contains(PKG_CITRA_PERF)) return "Citra MMJ (" + I18n.t(I18n.S.PERF_MODE) + ")";   // before Citra: same activity name
         if (cmd.contains(PKG_CITRA)) return "Citra MMJ";
         if (cmd.contains("drastic")) return "DraStic";
         if (cmd.contains(PKG_ARMSX2 + "/")) return "ARMSX2";

@@ -41,7 +41,15 @@ final class Launch {
     }
 
     /** Placeholders are replaced per token, so paths with spaces stay one argument. */
+    /**
+     * Retroid's system keeps RetroArch's real settings (hotkeys, shaders, overlays) in retroarch<W>x<H>.cfg for each
+     * screen, and leaves retroarch.cfg nearly empty; set at start-up on those handhelds, null elsewhere.
+     */
+    static String retroArchConfig;
+
     static String subst(String t, Library.Game g) {
+        if (retroArchConfig != null && t.endsWith("/com.retroarch.aarch64/files/retroarch.cfg"))
+            return t.substring(0, t.length() - "retroarch.cfg".length()) + retroArchConfig;
         if (t.indexOf('{') < 0) return t;
         String rel = g.relDir.isEmpty() ? g.file : g.relDir + "/" + g.file;
         String tree = g.treeDir != null ? g.treeDir : g.relDir;

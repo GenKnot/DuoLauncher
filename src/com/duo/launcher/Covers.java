@@ -46,6 +46,7 @@ final class Covers {
     /** 4-character game code from the ROM header: NDS at 0x0C, GBA at 0xAC; null for other files. */
     static String code(Library.Game g) {
         String e = g.ext();
+        if (e.equals("zip")) return zipCode(g);
         long off = e.equals("nds") ? 0x0C : e.equals("gba") ? 0xAC : -1;
         if (off < 0) return null;
         try (RandomAccessFile r = new RandomAccessFile(g.path, "r")) {
@@ -57,6 +58,32 @@ final class Covers {
         } catch (IOException ex) {
             return null;
         }
+    }
+
+    /** The same header read from the first .gba / .nds file inside a zip. */
+    private static String zipCode(Library.Game g) {
+        try (java.util.zip.ZipFile z = new java.util.zip.ZipFile(g.path)) {
+            java.util.Enumeration<? extends java.util.zip.ZipEntry> en = z.entries();
+            while (en.hasMoreElements()) {
+                java.util.zip.ZipEntry ze = en.nextElement();
+                String n = ze.getName().toLowerCase(Locale.ROOT);
+                int off = n.endsWith(".nds") ? 0x0C : n.endsWith(".gba") ? 0xAC : -1;
+                if (off < 0) continue;
+                try (InputStream in = z.getInputStream(ze)) {
+                    byte[] b = new byte[off + 4];
+                    int got = 0;
+                    while (got < b.length) {
+                        int r = in.read(b, got, b.length - got);
+                        if (r < 0) return null;
+                        got += r;
+                    }
+                    String s = new String(b, off, 4, StandardCharsets.US_ASCII);
+                    return s.matches("[A-Z0-9]{4}") ? s : null;
+                }
+            }
+        } catch (IOException ignored) {
+        }
+        return null;
     }
 
     private static Map<String, String[]> table(Context c, String sys) {

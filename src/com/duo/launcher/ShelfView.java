@@ -33,6 +33,7 @@ final class ShelfView extends View {
     interface Listener {
         void onFocus(Object item);
         void onDisplayModeChanged(Library.Game g);
+        void onCheats(Library.Game g);
         void onActivate(Library.Game g);
         void onChoose(Object item, String cmd);
         String chosenCmd(Object item);
@@ -105,6 +106,8 @@ final class ShelfView extends View {
         final List<Integer> swatches = new ArrayList<>();   // optional colour dot per row
         final List<Bitmap> images = new ArrayList<>();      // optional picture per row
         Menu parent;
+        /** Instead of returning to the parent as it was, B runs this (to show a refreshed parent). */
+        Runnable onBack;
         int sel, top;
 
         Menu(String title, String subtitle) {
@@ -419,6 +422,7 @@ final class ShelfView extends View {
     }
 
     private void menuBack() {
+        if (st.menu.onBack != null) { st.menu.onBack.run(); return; }
         st.menu = st.menu.parent;
         if (st.menu == null) fireFocus(); else invalidate();
     }
@@ -483,6 +487,7 @@ final class ShelfView extends View {
         Library.Platform here = st.current;
         if (here != null && here.isCustom())
             m.add("－ " + t(S.REMOVE_FROM_FOLDER), false, () -> { closeMenu(); listener.onRemoveFromFolder(here, g); });
+        if (emulated) m.add("✦ " + t(S.CHEATS), false, () -> listener.onCheats(g));
         String[] modes = {"auto", "logo", "cover", "video"};
         S[] modeNames = {S.DISPLAY_AUTO, S.DISPLAY_LOGO, S.DISPLAY_COVER, S.DISPLAY_VIDEO};
         String mode = TopView.displayMode(g);
