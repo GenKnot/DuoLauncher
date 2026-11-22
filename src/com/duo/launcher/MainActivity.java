@@ -380,100 +380,173 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
 
     // ---- settings ----
 
+    /** The settings page last shown, so a refresh keeps the category and rows where they were. */
+    private ShelfView.Menu settingsPage;
+
     @Override public void onSettings() {
         if (shelf == null) return;
-        ShelfView.Menu m = new ShelfView.Menu(t(S.SETTINGS), null);
-        m.add(t(S.GAME_FOLDERS), false, () -> showFoldersMenu(m));
-        m.add(t(S.CHOOSE_APPS), false, () -> showAppsMenu(m, 0));
-        m.add(t(S.LANGUAGE) + "  ·  " + I18n.name(), false, () -> showLanguageMenu(m, false));
+        ShelfView.Menu old = settingsPage;
+        ShelfView.Menu page = new ShelfView.Menu(t(S.SETTINGS), "Duo Launcher " + versionName());
+        settingsPage = page;
+        ShelfView.Menu look = page.tab(t(S.TAB_LOOK), 0xFFE07A3F), games = page.tab(t(S.TAB_LIBRARY), 0xFF2BAE66),
+                play = page.tab(t(S.TAB_PLAY), 0xFF6366F1), ai = page.tab(t(S.TAB_AI), 0xFF9B5DE5), data = page.tab(t(S.TAB_DATA), 0xFF14A38B),
+                tools = page.tab(t(S.TOOLS), 0xFF2F8BFF), sys = page.tab(t(S.TAB_SYSTEM), 0xFF6D8299);
+
+        // look and sound
         String mode = prefs.getString("mode", "system");
-        m.add(t(S.DISPLAY_MODE) + "  ·  " + t(mode.equals("dark") ? S.MODE_DARK : mode.equals("light") ? S.MODE_LIGHT : S.MODE_SYSTEM),
-                false, () -> showDisplayModeMenu(m));
-        m.add(t(S.APPEARANCE), false, () -> showAppearanceMenu(m));
+        look.add(t(S.DISPLAY_MODE) + "  ·  " + t(mode.equals("dark") ? S.MODE_DARK : mode.equals("light") ? S.MODE_LIGHT : S.MODE_SYSTEM),
+                false, () -> showDisplayModeMenu(look));
+        look.add(t(S.APPEARANCE), false, () -> showAppearanceMenu(look));
         File pack = Theme.packDir();
-        m.add(t(S.THEME) + "  ·  " + (pack == null ? t(S.DEFAULT) : Theme.packName(pack)), false, () -> showThemeMenu(m));
-        int fontRow = m.labels.size();
-        m.add(t(S.FONT_SIZE) + "  ·  " + t(TEXT_SIZE_NAMES[prefs.getInt("textScale", 1)]), false, () -> showTextSizeMenu(fontRow));
-        int padRow = m.labels.size();
-        m.add(tilePadLabel(), false, () -> {
+        look.add(t(S.THEME) + "  ·  " + (pack == null ? t(S.DEFAULT) : Theme.packName(pack)), false, () -> showThemeMenu(look));
+        int fontRow = look.labels.size();
+        look.add(t(S.FONT_SIZE) + "  ·  " + t(TEXT_SIZE_NAMES[prefs.getInt("textScale", 1)]), false, () -> showTextSizeMenu(fontRow));
+        int padRow = look.labels.size();
+        look.add(tilePadLabel(), false, () -> {
             shelfState.tilePad = (shelfState.tilePad + 1) % 4;
             prefs.edit().putInt("tilePad", shelfState.tilePad).apply();
-            m.labels.set(padRow, tilePadLabel());
+            look.labels.set(padRow, tilePadLabel());
             shelf.invalidate();
         });
+        boolean video = prefs.getBoolean("videoPreview", true);
+        look.toggle(t(S.VIDEO_PREVIEW), video, () -> {
+            prefs.edit().putBoolean("videoPreview", !video).apply();
+            TopView.videoEnabled = !video;
+            onSettings();
+        });
         boolean sounds = prefs.getBoolean("sounds", true);
-        int soundsRow = m.labels.size();
-        m.add(t(S.SOUNDS) + "  ·  " + t(sounds ? S.ON : S.OFF), sounds, () -> {
+        look.toggle(t(S.SOUNDS), sounds, () -> {
             prefs.edit().putBoolean("sounds", !sounds).apply();
             sfx.enabled = !sounds;
-            reopenSettingsAt(soundsRow);
+            onSettings();
         });
         if (sfx.hasMusic()) {
             boolean music = prefs.getBoolean("music", true);
-            int musicRow = m.labels.size();
-            m.add(t(S.MUSIC) + "  ·  " + t(music ? S.ON : S.OFF), music, () -> {
+            look.toggle(t(S.MUSIC), music, () -> {
                 prefs.edit().putBoolean("music", !music).apply();
                 sfx.musicEnabled = !music;
                 if (music) sfx.pauseMusic(); else sfx.resumeMusic();
-                reopenSettingsAt(musicRow);
+                onSettings();
             });
         }
+        boolean banner = prefs.getBoolean("bannerMusic", true);
+        look.toggle(t(S.BANNER_MUSIC), banner, () -> {
+            prefs.edit().putBoolean("bannerMusic", !banner).apply();
+            if (banner) stopBanner();
+            onSettings();
+        });
         int saverMin = prefs.getInt("screensaver", 5);
-        int saverRow = m.labels.size();
-        m.add(t(S.SCREENSAVER) + "  ·  " + (saverMin == 0 ? t(S.OFF) : I18n.f(S.MINUTES, saverMin)), false, () -> {
+        look.add(t(S.SCREENSAVER) + "  ·  " + (saverMin == 0 ? t(S.OFF) : I18n.f(S.MINUTES, saverMin)), false, () -> {
             ShelfView.Menu sm = new ShelfView.Menu(t(S.SCREENSAVER), null);
-            sm.parent = shelfState.menu;
+            sm.parent = look;
             for (int v : new int[]{0, 1, 3, 5, 10, 20}) {
                 sm.add(v == 0 ? t(S.OFF) : I18n.f(S.MINUTES, v), v == saverMin, () -> {
                     prefs.edit().putInt("screensaver", v).apply();
-                    reopenSettingsAt(saverRow);
+                    onSettings();
                 });
             }
             shelf.showMenu(sm);
         });
-        int buttonsRow = m.labels.size();
-        m.add(t(S.BUTTONS), false, () -> showButtonsMenu(buttonsRow));
-        boolean video = prefs.getBoolean("videoPreview", true);
-        int videoRow = m.labels.size();
-        m.add(t(S.VIDEO_PREVIEW) + "  ·  " + t(video ? S.ON : S.OFF), video, () -> {
-            prefs.edit().putBoolean("videoPreview", !video).apply();
-            TopView.videoEnabled = !video;
-            reopenSettingsAt(videoRow);
-        });
-        boolean banner = prefs.getBoolean("bannerMusic", true);
-        int bannerRow = m.labels.size();
-        m.add(t(S.BANNER_MUSIC) + "  ·  " + t(banner ? S.ON : S.OFF), banner, () -> {
-            prefs.edit().putBoolean("bannerMusic", !banner).apply();
-            if (banner) stopBanner();
-            reopenSettingsAt(bannerRow);
-        });
-        m.add(t(S.HIDDEN_FOLDERS) + (shelfState.hidden.isEmpty() ? "" : "  ·  " + shelfState.hidden.size()), false, () -> showHiddenMenu(m, 0));
+
+        // home and library
+        games.add(t(S.GAME_FOLDERS), false, () -> showFoldersMenu(games));
+        games.add(t(S.CHOOSE_APPS), false, () -> showAppsMenu(games, 0));
+        games.add(t(S.HIDDEN_FOLDERS) + (shelfState.hidden.isEmpty() ? "" : "  ·  " + shelfState.hidden.size()), false, () -> showHiddenMenu(games, 0));
         if (!hiddenGames.isEmpty())
-            m.add(t(S.HIDDEN_GAMES) + "  ·  " + hiddenGames.size(), false, () -> showHiddenGamesMenu(m, 0));
-        m.add(t(S.SET_HOME), false, () -> {
+            games.add(t(S.HIDDEN_GAMES) + "  ·  " + hiddenGames.size(), false, () -> showHiddenGamesMenu(games, 0));
+
+        // playing
+        play.add(t(S.BUTTONS), false, () -> showButtonsMenu(0));
+        boolean ra = Achievements.configured(prefs);
+        play.add("RetroAchievements  ·  " + (ra ? prefs.getString("ra.user", "") : t(S.OFF)), ra, () -> showRaMenu(play));
+
+        // AI services (their tools are added below)
+        Ai aiNow = Ai.from(prefs);
+        ai.add(t(S.AI_TRANSLATE) + "  ·  " + (aiNow == null ? t(S.OFF) : Ai.preset(aiNow.provider)[1] == null ? t(S.CUSTOM) : Ai.preset(aiNow.provider)[1]),
+                aiNow != null, () -> showAiMenu(ai, 0));
+        AiImage imgNow = AiImage.from(prefs);
+        ai.add(t(S.AI_IMAGES) + "  ·  " + (imgNow == null ? t(S.OFF) : imgNow.model.isEmpty() ? AiImage.DEFAULT_MODEL : imgNow.model), imgNow != null, () -> showImageAiMenu(ai, 0));
+        ai.add(t(S.TTS_REPLY) + "  ·  " + ttsName(Speaker.provider(prefs)), Speaker.ready(prefs), () -> showVoiceMenu(ai, 0));
+
+        // saves, transfer and sharing
+        data.add(t(S.WIFI_TRANSFER) + (wifi != null && wifi.running() ? "  ·  " + t(S.ON) : ""), wifi != null && wifi.running(), this::showWifiMenu);
+        addToolRows(tools, data, ai, play);
+        data.add(t(S.EXPORT_CONFIG), false, () -> runInBackground(() -> {
+            File out = Config.export(prefs, Theme.dir, new File(Backups.folder(volumeRoots()).getParentFile(), "exports"));
+            return () -> Toast.makeText(this, I18n.f(S.EXPORTED, out.getAbsolutePath()), Toast.LENGTH_LONG).show();
+        }));
+        data.add(t(S.IMPORT_CONFIG), false, () -> showImportConfigMenu(data));
+
+        // system
+        sys.add(t(S.LANGUAGE) + "  ·  " + I18n.name(), false, () -> showLanguageMenu(sys, false));
+        sys.add(t(S.SET_HOME), false, () -> {
             try { startActivity(new Intent(Settings.ACTION_HOME_SETTINGS)); } catch (Exception ignored) { }
         });
-        m.add(t(S.WIFI_TRANSFER) + (wifi != null && wifi.running() ? "  ·  " + t(S.ON) : ""), false, this::showWifiMenu);
-        int toolsRow = m.labels.size();
-        m.add(t(S.TOOLS), false, () -> showToolsMenu(toolsRow));
-        Ai aiNow = Ai.from(prefs);
-        m.add(t(S.AI_TRANSLATE) + "  ·  " + (aiNow == null ? t(S.OFF) : Ai.preset(aiNow.provider)[1] == null ? t(S.CUSTOM) : Ai.preset(aiNow.provider)[1]),
-                aiNow != null, () -> showAiMenu(m, 0));
-        AiImage imgNow = AiImage.from(prefs);
-        m.add(t(S.AI_IMAGES) + "  ·  " + (imgNow == null ? t(S.OFF) : imgNow.model.isEmpty() ? AiImage.DEFAULT_MODEL : imgNow.model), imgNow != null, () -> showImageAiMenu(m, 0));
-        m.add(t(S.TTS_REPLY) + "  ·  " + ttsName(Speaker.provider(prefs)), Speaker.ready(prefs), () -> showVoiceMenu(m, 0));
-        boolean ra = Achievements.configured(prefs);
-        m.add("RetroAchievements  ·  " + (ra ? prefs.getString("ra.user", "") : t(S.OFF)), ra, () -> showRaMenu(m));
-        m.add(t(S.EXIT_TO_DESKTOP), false, this::onOpenDesktop);
-        m.add(t(S.ANDROID_SETTINGS), false, () -> {
+        sys.add(t(S.EXIT_TO_DESKTOP), false, this::onOpenDesktop);
+        sys.add(t(S.ANDROID_SETTINGS), false, () -> {
             shelf.closeMenu();
             try { startActivity(new Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); } catch (Exception ignored) { }
         });
-        m.add(t(S.PERMISSIONS) + (hasUsageAccess() ? "" : "  ·  !"), false, () -> showPermissionsMenu(m));
+        sys.add(t(S.PERMISSIONS) + (hasUsageAccess() ? "" : "  ·  !"), false, () -> showPermissionsMenu(sys));
         String newer = newerVersion();
-        m.add(t(S.ABOUT) + "  ·  Duo Launcher " + versionName() + (newer != null ? "  ·  " + I18n.f(S.UPDATE_AVAILABLE, newer) : ""),
+        sys.add(t(S.ABOUT) + "  ·  Duo Launcher " + versionName() + (newer != null ? "  ·  " + I18n.f(S.UPDATE_AVAILABLE, newer) : ""),
                 newer != null, this::showUpdateMenu);
-        m.sel = 0;   // open at the top, not on the first ticked row
+
+        // the same place as before a refresh; a fresh page opens on its first category
+        for (int i = 0; i < page.tabs.size(); i++) {
+            ShelfView.Menu tb = page.tabs.get(i);
+            tb.sel = old != null && i < old.tabs.size() ? Math.min(old.tabs.get(i).sel, Math.max(0, tb.labels.size() - 1)) : 0;
+            tb.top = old != null && i < old.tabs.size() ? Math.min(old.tabs.get(i).top, tb.sel) : 0;
+        }
+        if (old != null) { page.tab = Math.min(old.tab, page.tabs.size() - 1); page.inRows = old.inRows; }
+        if (top != null) top.showMessage(settingsStatus());
+        shelf.showMenu(page);
+    }
+
+    /** What the upper screen shows with Settings open: version, free space, AI and Wi-Fi. */
+    private String settingsStatus() {
+        StringBuilder b = new StringBuilder("Duo Launcher " + versionName());
+        java.util.Set<String> vols = new java.util.LinkedHashSet<>();
+        if (lib != null) for (Library.Game g : lib.byKey.values()) if (g.pkg == null && g.path != null) vols.add(volumeOf(g.path));
+        for (String v : vols) {
+            try {
+                android.os.StatFs fs = new android.os.StatFs(v);
+                b.append("\n").append(I18n.f(S.STORAGE_FREE, v.startsWith("/storage/emulated") ? t(S.INTERNAL_STORAGE) : t(S.CARD_STORAGE),
+                        gb(fs.getAvailableBytes()), gb(fs.getTotalBytes())));
+            } catch (Exception ignored) {
+            }
+        }
+        Ai aiNow = Ai.from(prefs);
+        b.append("\n").append(t(S.AI_TRANSLATE)).append("  ·  ").append(aiNow == null ? t(S.OFF) : Ai.preset(aiNow.provider)[1] == null ? t(S.CUSTOM) : Ai.preset(aiNow.provider)[1]);
+        b.append("\n").append(t(S.TTS_REPLY)).append("  ·  ").append(ttsName(Speaker.provider(prefs)));
+        if (wifi != null && wifi.running() && WifiServer.address() != null) b.append("\n").append(t(S.WIFI_TRANSFER)).append("  ·  ").append(WifiServer.address());
+        return b.toString();
+    }
+
+    /** Settings → Import a config: the configs found in DuoLauncher/exports and Download, newest first. */
+    private void showImportConfigMenu(ShelfView.Menu parent) {
+        List<File> dirs = new ArrayList<>();
+        dirs.add(new File(Backups.folder(volumeRoots()).getParentFile(), "exports"));
+        dirs.add(new File(android.os.Environment.getExternalStorageDirectory(), "Download"));
+        for (File v : volumeRoots()) dirs.add(new File(v, "DuoLauncher/exports"));
+        ShelfView.Menu m = new ShelfView.Menu(t(S.IMPORT_CONFIG), t(S.IMPORT_CONFIG_HINT));
+        m.parent = parent;
+        List<File> found = Config.find(dirs);
+        if (found.isEmpty()) m.add(t(S.NONE_FOUND), false, null);
+        for (File z : found) m.add(z.getName(), false, () -> {
+            ShelfView.Menu sure = new ShelfView.Menu(t(S.IMPORT_CONFIG), z.getName());
+            sure.parent = m;
+            sure.add(t(S.GO), false, () -> runInBackground(() -> {
+                int n = Config.apply(z, prefs, Theme.dir);
+                return () -> {
+                    Toast.makeText(this, I18n.f(S.CONFIG_IMPORTED, n), Toast.LENGTH_LONG).show();
+                    settingsPage = null;
+                    recreate();   // the look, home and language all come from the settings just taken over
+                };
+            }));
+            sure.add(t(S.CANCEL), false, () -> shelf.showMenu(m));
+            shelf.showMenu(sure);
+        });
         shelf.showMenu(m);
     }
 
@@ -582,7 +655,7 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
     private void loadToolLooks() {
         ShelfView.TOOL_NAMES.clear();
         ShelfView.TOOL_COLORS.clear();
-        for (String id : new String[]{"continue", "recent", "favorites", "add", "search", "stats", "random", "settings", "desktop"}) {
+        for (String id : new String[]{"continue", "recent", "favorites", "add", "search", "stats", "storage", "random", "settings", "desktop"}) {
             String n = prefs.getString("tool." + id + ".name", null);
             if (n != null) ShelfView.TOOL_NAMES.put(id, n);
             if (prefs.contains("tool." + id + ".color")) ShelfView.TOOL_COLORS.put(id, prefs.getInt("tool." + id + ".color", 0));
@@ -830,11 +903,29 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
     }
 
     /** A console picture or backdrop for a platform or folder, made by the image service from its name. */
+    /** What the picture of a home tool tile shows, in words the image service understands. */
+    private static String toolSubject(String id, String label) {
+        switch (id) {
+            case "storage": return "a chunky SD memory card with a storage gauge bar";
+            case "stats": return "a golden trophy with small bar charts";
+            case "random": return "two dice";
+            case "search": return "a magnifying glass over a game cartridge";
+            case "settings": return "a gear and a wrench";
+            case "desktop": return "a little house surrounded by app icons";
+            case "add": return "a folder with a plus sign";
+            case "continue": return "a big play button with a game controller";
+            case "recent": return "a clock with game cartridges";
+            case "favorites": return "a golden star with a game cartridge";
+            default: return label;
+        }
+    }
+
     private void aiPicture(Library.Platform p, String kind, Runnable then) {
         AiImage ai = AiImage.from(prefs);
         if (ai == null) { Toast.makeText(this, t(S.AI_IMAGES_NEEDED), Toast.LENGTH_LONG).show(); return; }
         boolean icon = kind.equals(Theme.CONSOLE);
-        String subject = p.isCustom() ? p.title() : p.name.startsWith("series-") ? p.title() + " video game series: one iconic object or creature from it"
+        String subject = p.name.startsWith("tool-") ? toolSubject(p.name.substring(5), p.title())
+                : p.isCustom() ? p.title() : p.name.startsWith("series-") ? p.title() + " video game series: one iconic object or creature from it"
                 : p.system.equals("GENRE") ? Genres.subject(p.name.substring("genre-".length()))
                 : Library.platformTitle(p.system.isEmpty() ? p.name : p.system) + " video game console";
         askText(t(S.AI_SUBJECT), subject, what -> {
@@ -1143,10 +1234,10 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         }, "tools").start();
     }
 
-    private void showToolsMenu(int settingsRow) {
-        ShelfView.Menu m = new ShelfView.Menu(t(S.TOOLS), null);
-        m.parent = shelfState.menu;
-        m.add(t(S.DUPLICATES), false, () -> runInBackground(() -> {
+    /** The tools, each in its settings category. */
+    private void addToolRows(ShelfView.Menu tools, ShelfView.Menu data, ShelfView.Menu ai, ShelfView.Menu play) {
+        tools.add(t(S.STORAGE), false, this::showStorage);
+        tools.add(t(S.DUPLICATES), false, () -> runInBackground(() -> {
             List<Library.Game> dups = findDuplicates();
             return () -> {
                 shelf.closeMenu();
@@ -1154,7 +1245,7 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
                 else shelf.showList(t(S.DUPLICATES), dups);
             };
         }));
-        m.add(t(S.MISSING_COVERS), false, () -> runInBackground(() -> {
+        tools.add(t(S.MISSING_COVERS), false, () -> runInBackground(() -> {
             List<Library.Game> miss = Covers.missing(lib);
             return () -> {
                 shelf.closeMenu();
@@ -1162,20 +1253,20 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
                 else shelf.showList(t(S.MISSING_COVERS), miss);
             };
         }));
-        m.add(t(S.FILL_COVERS), false, () -> runInBackground(() -> {
+        tools.add(t(S.FILL_COVERS), false, () -> runInBackground(() -> {
             int n = Covers.fetchMissing(this, lib, pct -> { });
             return () -> {
                 Toast.makeText(this, I18n.f(S.COVERS_DONE, n), Toast.LENGTH_LONG).show();
                 if (n > 0) load();
             };
         }));
-        m.add(t(S.BACKUP_SAVES), false, () -> runInBackground(() -> {
+        data.add(t(S.BACKUP_SAVES), false, () -> runInBackground(() -> {
             File out = Backups.backup(Backups.folder(volumeRoots()));
             prefs.edit().putLong("unbackedPlay", 0).apply();
             return () -> Toast.makeText(this, I18n.f(S.BACKUP_DONE, out.getAbsolutePath()), Toast.LENGTH_LONG).show();
         }));
-        m.add(t(S.BACKUP_REMINDER) + "  ·  " + backupRemindLabel(), false, () -> showBackupRemindMenu(shelfState.menu));
-        m.add(t(S.RESTORE_SAVES), false, () -> {
+        data.add(t(S.BACKUP_REMINDER) + "  ·  " + backupRemindLabel(), false, () -> showBackupRemindMenu(data));
+        data.add(t(S.RESTORE_SAVES), false, () -> {
             ShelfView.Menu rm = new ShelfView.Menu(t(S.RESTORE_SAVES), null);
             rm.parent = shelfState.menu;
             List<File> zips = Backups.list(Backups.folder(volumeRoots()));
@@ -1193,7 +1284,7 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
             shelf.showMenu(rm);
         });
         String lang = Translate.target();
-        if (lang != null) m.add(t(S.TRANSLATE_ALL_CHEATS), false, () -> runInBackground(() -> {
+        if (lang != null) tools.add(t(S.TRANSLATE_ALL_CHEATS), false, () -> runInBackground(() -> {
             Translate tr = new Translate(new File(getFilesDir(), "translations.tsv"), lang, Ai.from(prefs));
             int n = 0, left = 0;
             List<Cheats.Store> stores = new ArrayList<>();
@@ -1211,27 +1302,25 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
             return () -> Toast.makeText(this, I18n.f(S.TRANSLATED, done) + (rest > 0 ? "  ·  " + I18n.f(S.NOT_TRANSLATED, rest) : "")
                     + (err != null ? "\n" + I18n.f(S.AI_FAILED, err) : ""), Toast.LENGTH_LONG).show();
         }));
-        m.add(t(S.AI_GAME_TEXT), false, this::showGameTextMenu);
-        m.add(t(S.AI_GENRES), false, this::showGenresMenu);
-        m.add(t(S.AI_GENRE_ICONS), false, this::confirmGenreIcons);
-        m.add(t(S.AI_SERIES), false, this::showSeriesMenu);
-        m.add(t(S.AI_PICK), false, this::aiPick);
-        m.add(t(S.AI_CHAT), false, this::startChat);
-        m.add(t(S.STORAGE), false, this::showStorage);
-        int restRow = m.labels.size();
-        m.add(restLabel(), false, () -> {
+        ai.add(t(S.AI_CHAT), false, () -> { shelf.closeMenu(); startChat(); });
+        ai.add(t(S.AI_PICK), false, this::aiPick);
+        ai.add(t(S.AI_GAME_TEXT), false, this::showGameTextMenu);
+        ai.add(t(S.AI_GENRES), false, this::showGenresMenu);
+        ai.add(t(S.AI_SERIES), false, this::showSeriesMenu);
+        ai.add(t(S.AI_GENRE_ICONS), false, this::confirmGenreIcons);
+        if (imageJob != null) ai.add(t(S.AI_PICTURES_STOP), false, () -> { imageJob.set(true); shelf.closeMenu(); });
+        else ai.add(t(S.AI_PICTURES), false, this::showAiPicturesMenu);
+        int restRow = play.labels.size();
+        play.add(restLabel(), false, () -> {
             prefs.edit().putInt("restHours", (prefs.getInt("restHours", 2) + 1) % 4).apply();
-            m.labels.set(restRow, restLabel());
+            play.labels.set(restRow, restLabel());
             shelf.invalidate();
         });
-        if (imageJob != null) m.add(t(S.AI_PICTURES_STOP), false, () -> { imageJob.set(true); shelf.closeMenu(); });
-        else m.add(t(S.AI_PICTURES), false, this::showAiPicturesMenu);
-        m.add(t(S.EXPORT_THEME), false, () -> runInBackground(() -> {
+        data.add(t(S.EXPORT_THEME), false, () -> runInBackground(() -> {
             File out = Theme.export(this, new File(Backups.folder(volumeRoots()).getParentFile(), "exports"));
             return () -> Toast.makeText(this, I18n.f(S.EXPORTED, out.getAbsolutePath()), Toast.LENGTH_LONG).show();
         }));
-        m.add(t(S.DIAGNOSTICS), false, this::showDiagnostics);
-        shelf.showMenu(m);
+        tools.add(t(S.DIAGNOSTICS), false, this::showDiagnostics);
     }
 
     /** Game names and descriptions into the interface language with the AI service, platform by platform. */
@@ -2239,10 +2328,6 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
     /** Shows Settings again (labels changed) with the cursor back on {@code row}. */
     private void reopenSettingsAt(int row) {
         onSettings();
-        if (shelfState.menu != null) {
-            shelfState.menu.sel = row;
-            shelf.invalidate();
-        }
     }
 
     /**
@@ -3049,8 +3134,8 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
             });
         }
         // the built-in home tiles, after the platforms
-        String[] ids = {"continue", "recent", "favorites", "add", "search", "stats", "random", "settings", "desktop"};
-        S[] names = {S.CONTINUE, S.RECENT, S.FAVORITES, S.NEW_FOLDER, S.SEARCH, S.STATS, S.RANDOM_GAME, S.SETTINGS, S.ANDROID_DESKTOP};
+        String[] ids = {"continue", "recent", "favorites", "add", "search", "stats", "storage", "random", "settings", "desktop"};
+        S[] names = {S.CONTINUE, S.RECENT, S.FAVORITES, S.NEW_FOLDER, S.SEARCH, S.STATS, S.STORAGE, S.RANDOM_GAME, S.SETTINGS, S.ANDROID_DESKTOP};
         for (int i = 0; i < ids.length; i++) {
             String key = "tool:" + ids[i];
             int idx = ps.size() + i;
@@ -3183,6 +3268,9 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         if (item instanceof Library.Game) playBanner((Library.Game) item);
         if (item == ShelfView.STATS) {
             top.showStats(collectStats());
+        } else if (item == ShelfView.STORAGE) {
+            TopView.storageInfo = storageLines();
+            top.showTool(item);
         } else if (item == ShelfView.SETTINGS || item == ShelfView.SEARCH || item == ShelfView.DESKTOP || item == ShelfView.RANDOM) {
             top.showTool(item);
         } else if (item instanceof Library.Game) {
@@ -3379,6 +3467,26 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         if (ms < 60_000) return null;
         long min = ms / 60_000;
         return min >= 60 ? I18n.f(S.PLAYED_HM, min / 60, min % 60) : I18n.f(S.PLAYED_M, min);
+    }
+
+    @Override public void onStorageTile() { showStorage(); }
+
+    /** Free space of every volume that holds games, one line each; also sets how full the card is for the tile. */
+    private String[] storageLines() {
+        java.util.Set<String> vols = new java.util.LinkedHashSet<>();
+        if (lib != null) for (Library.Game g : lib.byKey.values()) if (g.pkg == null && g.path != null) vols.add(volumeOf(g.path));
+        List<String> out = new ArrayList<>();
+        for (String v : vols) {
+            try {
+                android.os.StatFs fs = new android.os.StatFs(v);
+                out.add(I18n.f(S.STORAGE_FREE, v.startsWith("/storage/emulated") ? t(S.INTERNAL_STORAGE) : t(S.CARD_STORAGE),
+                        gb(fs.getAvailableBytes()), gb(fs.getTotalBytes())));
+                if (!v.startsWith("/storage/emulated") && fs.getTotalBytes() > 0)
+                    ShelfView.storageUsed = 1f - (float) fs.getAvailableBytes() / fs.getTotalBytes();
+            } catch (Exception ignored) {
+            }
+        }
+        return out.toArray(new String[0]);
     }
 
     @Override public void onStats() {

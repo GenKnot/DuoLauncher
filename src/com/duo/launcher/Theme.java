@@ -22,7 +22,8 @@ import java.util.Map;
 final class Theme {
     static final String CONSOLE = "console", BACKGROUND = "background";
 
-    private static File dir;
+    /** The player's own pictures (console, folder and tool icons, backdrops). */
+    static File dir;
     private static AssetManager assets;
     private static final Map<String, Bitmap> cache = new HashMap<>();
     private static final Map<String, Boolean> absent = new HashMap<>();

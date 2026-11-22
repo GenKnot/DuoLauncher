@@ -305,7 +305,11 @@ final class TopView extends ViewGroup {
     }
 
     /** The Settings or Search tile on the home page. */
+    /** Free space lines for the storage tile ("TF card 32.3 GB free of 460.9 GB" …). */
+    static String[] storageInfo = new String[0];
+
     void showTool(Object which) {
+        if (which == ShelfView.STORAGE) { showStorageTool(); return; }
         boolean settings = which == ShelfView.SETTINGS, desktop = which == ShelfView.DESKTOP, random = which == ShelfView.RANDOM;
         message.setVisibility(GONE);
         setDark(false);
@@ -328,6 +332,22 @@ final class TopView extends ViewGroup {
         desc.setText("");
         desc.setVisibility(GONE);
         hints.set(Palette.dark, "A|" + t(S.OPEN));
+        requestLayout();
+    }
+
+    private void showStorageTool() {
+        message.setVisibility(GONE);
+        setDark(false);
+        enter(ShelfView.STORAGE);
+        Bitmap icon = Theme.toolIcon("storage");
+        hero.setDrawable(icon != null ? new ConsoleDrawable("storage", icon, true) : new ConsoleDrawable("apps", Theme.toolIcon("apps"), true));
+        String label = ShelfView.toolName("storage", t(S.STORAGE));
+        dots.set(ShelfView.STORAGE_COLOR, label, Theme.toolBackground("storage"));
+        title.setText(label);
+        chips.set(Palette.dark, storageInfo);
+        desc.setText("");
+        desc.setVisibility(GONE);
+        hints.set(Palette.dark, "A|" + t(S.OPEN), "Y|" + t(S.EDIT_FOLDER));
         requestLayout();
     }
 

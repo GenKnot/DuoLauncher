@@ -57,6 +57,8 @@ final class ShelfView extends View {
         void onEditTool(String id, String label, int color);
         void onRenamePlatform(Library.Platform p);
         void onStats();
+        /** The storage tile: free space and what takes it. */
+        void onStorageTile();
         /** The "what to play today" tile: pick a game and show it. */
         void onRandom();
         /** Y → Details on a game: file, size, play time, screenshots. */
@@ -106,6 +108,7 @@ final class ShelfView extends View {
         if (o == DESKTOP) return "desktop";
         if (o == STATS) return "stats";
         if (o == RANDOM) return "random";
+        if (o == STORAGE) return "storage";
         return null;
     }
 
@@ -122,7 +125,7 @@ final class ShelfView extends View {
 
     /** Marker items for the Search, Settings, "new folder" and "continue playing" tiles on the home page. */
     static final Object SETTINGS = new Object(), SEARCH = new Object(), ADD = new Object(), CONTINUE = new Object(),
-            DESKTOP = new Object(), STATS = new Object(), RANDOM = new Object();
+            DESKTOP = new Object(), STATS = new Object(), RANDOM = new Object(), STORAGE = new Object();
 
     static final int SORT_DEFAULT = 0, SORT_NAME = 1, SORT_RECENT = 2, SORT_PLAYTIME = 3;
     /** Language tags in game names that the filter understands. */
@@ -142,10 +145,44 @@ final class ShelfView extends View {
         /** Called with the new row whenever the cursor moves (e.g. to preview a picture on the upper screen). */
         java.util.function.IntConsumer onSelect;
         int sel, top;
+        /** A full-screen page of categories (Settings): their names on the left, the rows of one on the right. */
+        final List<Menu> tabs = new ArrayList<>();
+        /** The category shown, and whether the cursor is in its rows (else in the category list). */
+        int tab;
+        boolean inRows;
+        /** For a category: the page it belongs to. */
+        Menu page;
+        /** For a page: called with the category whenever it changes. */
+        java.util.function.IntConsumer onTab;
+        /** For a category: its colour dot on the settings page. */
+        int color = 0xFF6D8299;
+        /** Rows that switch something on or off, drawn as a switch (its state is the row's mark). */
+        final java.util.Set<Integer> toggles = new java.util.HashSet<>();
+
+        Menu toggle(String label, boolean on, Runnable action) {
+            toggles.add(labels.size());
+            labels.add(label);
+            marks.add(on);
+            actions.add(action);
+            swatches.add(null);
+            images.add(null);
+            return this;
+        }
 
         Menu(String title, String subtitle) {
             this.title = title;
             this.subtitle = subtitle;
+        }
+
+        boolean isPage() { return !tabs.isEmpty(); }
+
+        /** Adds a category to this page. */
+        Menu tab(String name, int color) {
+            Menu t = new Menu(name, null);
+            t.page = this;
+            t.color = color;
+            tabs.add(t);
+            return t;
         }
 
         Menu add(String label, boolean mark, Runnable action) { return add(label, mark, null, null, action); }
@@ -389,6 +426,7 @@ final class ShelfView extends View {
         addTool(ADD);
         addTool(SEARCH);
         addTool(STATS);
+        addTool(STORAGE);
         addTool(RANDOM);
         addTool(SETTINGS);
         addTool(DESKTOP);
@@ -611,6 +649,7 @@ final class ShelfView extends View {
         else if (o == SETTINGS) listener.onSettings();
         else if (o == DESKTOP) listener.onOpenDesktop();
         else if (o == STATS) listener.onStats();
+        else if (o == STORAGE) listener.onStorageTile();
         else if (o == RANDOM) listener.onRandom();
         else if (o == SEARCH) listener.onSearch();
         else if (o == ADD) listener.onAddFolder();
@@ -711,6 +750,7 @@ final class ShelfView extends View {
     // ---- menus ----
 
     void showMenu(Menu m) {
+        if (m.page != null) m = m.page;   // a category is shown as its page
         st.menu = m;
         menuScrollToSel();
         invalidate();
@@ -723,12 +763,19 @@ final class ShelfView extends View {
 
     private void menuBack() {
         if (st.menu.onBack != null) { st.menu.onBack.run(); return; }
-        st.menu = st.menu.parent;
+        Menu up = st.menu.parent;
+        if (up != null && up.page != null) up = up.page;   // back from a submenu lands on its settings page
+        st.menu = up;
         if (st.menu == null) fireFocus(); else invalidate();
     }
 
     private void menuPick() {
         Menu m = st.menu;
+        if (m.isPage()) {
+            if (!m.inRows) { if (!m.tabs.get(m.tab).labels.isEmpty()) m.inRows = true; invalidate(); return; }
+            m = m.tabs.get(m.tab);
+            if (m.labels.isEmpty()) return;
+        }
         Runnable a = m.actions.get(m.sel);
         if (a != null) a.run();
         invalidate();
@@ -737,8 +784,175 @@ final class ShelfView extends View {
     private void menuScrollToSel() {
         Menu m = st.menu;
         if (m == null) return;
+        if (m.isPage()) {
+            Menu t = m.tabs.get(m.tab);
+            int rows = pageRows();
+            if (t.sel < t.top) t.top = t.sel;
+            if (t.sel >= t.top + rows) t.top = t.sel - rows + 1;
+            return;
+        }
         if (m.sel < m.top) m.top = m.sel;
         if (m.sel >= m.top + MENU_ROWS) m.top = m.sel - MENU_ROWS + 1;
+    }
+
+    /** Keys on a settings page: the category list on the left, its rows on the right. */
+    private boolean pageKey(int code) {
+        Menu m = st.menu;
+        Menu t = m.tabs.get(m.tab);
+        switch (code) {
+            case KeyEvent.KEYCODE_DPAD_UP:
+            case KeyEvent.KEYCODE_DPAD_DOWN: {
+                int d = code == KeyEvent.KEYCODE_DPAD_UP ? -1 : 1;
+                if (m.inRows) {
+                    int n = Math.max(0, Math.min(t.labels.size() - 1, t.sel + d));
+                    if (n != t.sel) listener.onCue(Sfx.MOVE);
+                    t.sel = n;
+                } else {
+                    setTab(m, m.tab + d);
+                }
+                menuScrollToSel();
+                invalidate();
+                return true;
+            }
+            case KeyEvent.KEYCODE_BUTTON_L1:
+            case KeyEvent.KEYCODE_BUTTON_R1:
+                setTab(m, m.tab + (code == KeyEvent.KEYCODE_BUTTON_L1 ? -1 : 1));
+                menuScrollToSel();
+                invalidate();
+                return true;
+            case KeyEvent.KEYCODE_DPAD_RIGHT:
+                if (!m.inRows && !t.labels.isEmpty()) { m.inRows = true; listener.onCue(Sfx.MOVE); invalidate(); }
+                return true;
+            case KeyEvent.KEYCODE_DPAD_LEFT:
+                if (m.inRows) { m.inRows = false; listener.onCue(Sfx.MOVE); invalidate(); }
+                return true;
+            case KeyEvent.KEYCODE_BUTTON_A: case KeyEvent.KEYCODE_ENTER: case KeyEvent.KEYCODE_DPAD_CENTER: case KeyEvent.KEYCODE_BUTTON_START:
+                listener.onCue(Sfx.OPEN);
+                menuPick();
+                return true;
+            case KeyEvent.KEYCODE_BUTTON_B: case KeyEvent.KEYCODE_BACK: case KeyEvent.KEYCODE_ESCAPE:
+                listener.onCue(Sfx.BACK);
+                if (m.inRows) { m.inRows = false; invalidate(); } else menuBack();
+                return true;
+            default:
+                return true;
+        }
+    }
+
+    private void setTab(Menu m, int i) {
+        int n = Math.max(0, Math.min(m.tabs.size() - 1, i));
+        if (n == m.tab) return;
+        listener.onCue(Sfx.MOVE);
+        m.tab = n;
+        if (m.onTab != null) m.onTab.accept(n);
+    }
+
+    /** Rows of a category that fit on the page. */
+    private int pageRows() {
+        RectF a = new RectF();
+        pageRowsArea(a);
+        return Math.max(1, (int) (a.height() / menuRowH()));
+    }
+
+    private void pageRowsArea(RectF out) {
+        float u = u();
+        out.set(pageSplit() + 18 * u, 128 * u, getWidth() - 40 * u, getHeight() - footerH() - 28 * u);
+    }
+
+    private float pageSplit() { return 40 * u() + 340 * u(); }
+
+    /** Settings: the categories on a card at the left, the rows of one on a card at the right, on the home backdrop. */
+    private void drawPage(Canvas c) {
+        float u = u(), w = getWidth(), h = getHeight();
+        Menu m = st.menu;
+        p.setShader(new LinearGradient(0, 0, 0, h, Palette.shelfTop(), Palette.shelfBottom(), Shader.TileMode.CLAMP));
+        c.drawRect(0, 0, w, h, p);
+        p.setShader(null);
+        Menu t = m.tabs.get(m.tab);
+        // title: "Settings" and the category shown
+        text(c, m.title, 44 * u, 74 * u, 38 * u, Palette.text(), true, Paint.Align.LEFT);
+        float tx = 44 * u + measure(m.title, 38 * u) + 22 * u;
+        p.setColor(t.color);
+        c.drawCircle(tx + 9 * u, 61 * u, 9 * u, p);
+        text(c, ellipsize(t.title, w * 0.45f, 28 * u), tx + 28 * u, 72 * u, 28 * u, Palette.text2(), true, Paint.Align.LEFT);
+        if (m.subtitle != null)
+            text(c, m.subtitle, w - 44 * u, 72 * u, 22 * u, Palette.text3(), false, Paint.Align.RIGHT);
+
+        float rowH = menuRowH(), split = pageSplit(), bottom = h - footerH() - 20 * u;
+        // the categories
+        RectF left = new RectF(28 * u, 112 * u, split, bottom);
+        card(c, left, 26 * u, Palette.card());
+        for (int i = 0; i < m.tabs.size(); i++) {
+            Menu tb = m.tabs.get(i);
+            float y = left.top + 14 * u + i * rowH;
+            r2.set(left.left + 12 * u, y, left.right - 12 * u, y + rowH - 8 * u);
+            boolean on = i == m.tab;
+            if (on) {
+                p.setColor(m.inRows ? (tb.color & 0x00FFFFFF) | 0x2A000000 : tb.color);
+                c.drawRoundRect(r2, 18 * u, 18 * u, p);
+            }
+            p.setColor(on && !m.inRows ? 0xFFFFFFFF : tb.color);
+            c.drawCircle(r2.left + 30 * u, r2.centerY(), 10 * u, p);
+            int fg = on && !m.inRows ? 0xFFFFFFFF : Palette.text();
+            text(c, ellipsize(tb.title, r2.width() - 70 * u, 27 * u), r2.left + 56 * u, r2.centerY() + 10 * u, 27 * u, fg, on, Paint.Align.LEFT);
+        }
+        // the rows, as one card with lines between them
+        RectF area = new RectF();
+        pageRowsArea(area);
+        int rows = Math.min(pageRows(), t.labels.size() - t.top);
+        RectF right = new RectF(area.left - 6 * u, left.top, area.right + 12 * u, bottom);
+        card(c, right, 26 * u, Palette.card());
+        for (int k = 0; k < rows; k++) {
+            int i = t.top + k;
+            float y = area.top + k * rowH - 2 * u;
+            r2.set(area.left + 6 * u, y, area.right, y + rowH - 8 * u);
+            boolean on = m.inRows && i == t.sel;
+            if (on) {
+                p.setColor(Palette.accent());
+                c.drawRoundRect(r2, 18 * u, 18 * u, p);
+            } else if (k > 0 && !(m.inRows && i - 1 == t.sel)) {
+                p.setColor(Palette.footerLine());
+                c.drawRect(r2.left + 20 * u, y - 5 * u, r2.right - 20 * u, y - 3 * u, p);
+            }
+            String label = t.labels.get(i), value = null;
+            int dot = label.indexOf("  ·  ");
+            if (dot > 0) { value = label.substring(dot + 5); label = label.substring(0, dot); }
+            int fg = on ? 0xFFFFFFFF : Palette.text();
+            float lx = r2.left + 26 * u, rx = r2.right - 24 * u;
+            if (t.toggles.contains(i)) {
+                // a switch instead of "On ✓"
+                boolean v = t.marks.get(i);
+                float sw = 64 * u, sh = 36 * u;
+                RectF tr = new RectF(rx - sw, r2.centerY() - sh / 2, rx, r2.centerY() + sh / 2);
+                p.setColor(v ? (on ? 0xFFFFFFFF : Palette.accent()) : on ? 0x66FFFFFF : Palette.footerLine());
+                c.drawRoundRect(tr, sh / 2, sh / 2, p);
+                p.setColor(v ? (on ? Palette.accent() : 0xFFFFFFFF) : 0xFFFFFFFF);
+                c.drawCircle(v ? tr.right - sh / 2 : tr.left + sh / 2, tr.centerY(), sh / 2 - 5 * u, p);
+                rx = tr.left - 18 * u;
+                value = null;
+            } else if (t.marks.get(i)) {
+                text(c, "✓", rx, r2.centerY() + 11 * u, 28 * u, on ? 0xFFFFFFFF : Palette.accent(), true, Paint.Align.RIGHT);
+                rx -= 40 * u;
+            } else if (t.actions.get(i) != null) {
+                text(c, "›", rx, r2.centerY() + 12 * u, 36 * u, on ? 0xFFFFFFFF : Palette.text3(), false, Paint.Align.RIGHT);
+                rx -= 34 * u;
+            }
+            float lw = Math.min(measure(label, 27 * u), (rx - lx) * (value == null ? 1f : 0.6f));
+            text(c, ellipsize(label, lw + 1, 27 * u), lx, r2.centerY() + 10 * u, 27 * u, fg, on, Paint.Align.LEFT);
+            if (value != null)
+                text(c, ellipsize(value, rx - lx - lw - 30 * u, 24 * u), rx, r2.centerY() + 9 * u, 24 * u, on ? 0xDDFFFFFF : Palette.text3(), false, Paint.Align.RIGHT);
+        }
+        if (t.top > 0) text(c, "▲", (area.left + area.right) / 2, right.top + 14 * u, 16 * u, Palette.text3(), false, Paint.Align.CENTER);
+        if (t.top + rows < t.labels.size()) text(c, "▼", (area.left + area.right) / 2, right.bottom - 4 * u, 16 * u, Palette.text3(), false, Paint.Align.CENTER);
+        // the keys, like the home footer
+        float top = h - footerH(), cy = top + footerH() / 2, x = pad();
+        p.setColor(Palette.footer());
+        c.drawRect(0, top, w, h, p);
+        p.setColor(Palette.footerLine());
+        c.drawRect(0, top, w, top + 2 * u, p);
+        x = hintItem(c, x, cy, "A", t(S.OPEN));
+        x = hintItem(c, x, cy, "B", t(S.BACK));
+        hintItem(c, x, cy, "L/R", t(S.PAGE_TABS));
     }
 
     /** Y: emulator choice (and folder actions) for a game, emulator default for a platform, or edit a custom folder. */
@@ -749,9 +963,10 @@ final class ShelfView extends View {
             String label = o == st.recent ? toolName(tool, t(S.RECENT)) : o == st.favorites ? toolName(tool, t(S.FAVORITES))
                     : o == CONTINUE ? toolName(tool, t(S.CONTINUE)) : o == ADD ? toolName(tool, t(S.NEW_FOLDER))
                     : o == SEARCH ? toolName(tool, t(S.SEARCH)) : o == SETTINGS ? toolName(tool, t(S.SETTINGS))
-                    : o == STATS ? toolName(tool, t(S.STATS)) : o == RANDOM ? toolName(tool, t(S.RANDOM_GAME)) : toolName(tool, t(S.ANDROID_DESKTOP));
+                    : o == STATS ? toolName(tool, t(S.STATS)) : o == RANDOM ? toolName(tool, t(S.RANDOM_GAME))
+                    : o == STORAGE ? toolName(tool, t(S.STORAGE)) : toolName(tool, t(S.ANDROID_DESKTOP));
             int def = o == st.recent ? RECENT_COLOR : o == st.favorites ? FAVORITES_COLOR : o == CONTINUE ? CONTINUE_COLOR
-                    : o == ADD ? ADD_COLOR : o == SEARCH ? SEARCH_COLOR : o == SETTINGS ? SETTINGS_COLOR : o == STATS ? STATS_COLOR : o == RANDOM ? RANDOM_COLOR : DESKTOP_COLOR;
+                    : o == ADD ? ADD_COLOR : o == SEARCH ? SEARCH_COLOR : o == SETTINGS ? SETTINGS_COLOR : o == STATS ? STATS_COLOR : o == RANDOM ? RANDOM_COLOR : o == STORAGE ? STORAGE_COLOR : DESKTOP_COLOR;
             listener.onEditTool(tool, label, toolColor(tool, def));
             return;
         }
@@ -882,6 +1097,7 @@ final class ShelfView extends View {
 
     boolean onKey(int code) {
         if (st.lib == null) return false;
+        if (st.menu != null && st.menu.isPage()) return pageKey(code);
         if (st.menu != null) {
             Menu m = st.menu;
             switch (code) {
@@ -1084,6 +1300,7 @@ final class ShelfView extends View {
         else if (o == CONTINUE) drawContinue(c, rad);
         else if (o == SETTINGS) drawSettings(c, rad);
         else if (o == STATS) drawStatsTile(c, rad);
+        else if (o == STORAGE) drawStorageTile(c, rad);
         else if (o == RANDOM) drawRandomTile(c, rad);
         else if (o == DESKTOP) {
             folderShape(c, rad, toolColor("desktop", DESKTOP_COLOR));
@@ -1192,7 +1409,7 @@ final class ShelfView extends View {
 
     /** Colours of the home-page tool folders. */
     static final int RECENT_COLOR = 0xFFF0943A, SEARCH_COLOR = 0xFF2F8BFF, SETTINGS_COLOR = 0xFF5E7186, ADD_COLOR = 0xFF9B7BE0,
-            FAVORITES_COLOR = 0xFFE8B52E, CONTINUE_COLOR = 0xFF2BAE66, DESKTOP_COLOR = 0xFF3D8B8B, STATS_COLOR = 0xFF6366F1, RANDOM_COLOR = 0xFFE07A3F;
+            FAVORITES_COLOR = 0xFFE8B52E, CONTINUE_COLOR = 0xFF2BAE66, DESKTOP_COLOR = 0xFF3D8B8B, STATS_COLOR = 0xFF6366F1, RANDOM_COLOR = 0xFFE07A3F, STORAGE_COLOR = 0xFF14A38B;
 
     /** Folder body (tab + front) in {@code color}, drawn into {@link #r}. */
     private void folderShape(Canvas c, float rad, int color) {
@@ -1335,6 +1552,29 @@ final class ShelfView extends View {
         }
     }
 
+    /** The storage tile: its picture, or a drawn gauge of how full the card is. */
+    private void drawStorageTile(Canvas c, float rad) {
+        folderShape(c, rad, toolColor("storage", STORAGE_COLOR));
+        Bitmap ic = Theme.toolIcon("storage");
+        String name = toolName("storage", t(S.STORAGE));
+        if (ic != null) {
+            folderContent(c, ic, "apps", name, null);
+            return;
+        }
+        float w = r.width(), h = r.height();
+        r2.set(r.left + w * 0.5f, r.top + h * 0.3f, r.right - w * 0.1f, r.top + h * 0.44f);
+        p.setColor(0x55FFFFFF);
+        c.drawRoundRect(r2, r2.height() / 2, r2.height() / 2, p);
+        float used = storageUsed < 0 ? 0.6f : storageUsed;
+        r2.right = r2.left + r2.width() * Math.max(0.08f, Math.min(1f, used));
+        p.setColor(0xFFFFFFFF);
+        c.drawRoundRect(r2, r2.height() / 2, r2.height() / 2, p);
+        text(c, ellipsize(name, w * 0.7f, h * 0.16f), r.left + w * 0.07f, r.bottom - h * 0.12f, h * 0.16f, 0xFFFFFFFF, true, Paint.Align.LEFT);
+    }
+
+    /** How full the games' card is (0-1), for the drawn storage gauge; negative while unknown. */
+    static float storageUsed = -1;
+
     private void drawStatsTile(Canvas c, float rad) {
         folderShape(c, rad, toolColor("stats", STATS_COLOR));
         Bitmap ic = Theme.toolIcon("stats");
@@ -1475,7 +1715,6 @@ final class ShelfView extends View {
             return;
         }
         x = hintItem(c, x, cy, "A", sel instanceof Library.Game ? t(S.PLAY) : t(S.OPEN));
-        if (st.current == null) x = hintItem(c, x, cy, "A", t(S.HOLD_TO_MOVE));
         if (st.current != null) x = hintItem(c, x, cy, "B", t(S.BACK));
         if (st.current == null && toolId(sel) != null) {
             x = hintItem(c, x, cy, "Y", t(S.EDIT_FOLDER));
@@ -1506,22 +1745,22 @@ final class ShelfView extends View {
                 hitSort.set(x0, top, x, getHeight());
             }
         }
-        askHint(c, x, cy);
+        x = askHint(c, x, cy);
+        if (st.current == null) hintItem(c, x, cy, "A", t(S.HOLD_TO_MOVE));   // the first to go when space runs out
     }
 
     /** "R  Hold: ask AI" at the end of the footer, when an AI key is set and it fits. */
-    private void askHint(Canvas c, float x, float cy) {
-        if (!st.askAi) return;
-        float u = u();
-        String label = t(S.R_ASK_AI);
-        if (x + 34 * u + 10 * u + measure(label, 25 * u) > getWidth() - pad()) return;
-        x = hintItem(c, x, cy, "R", label);
-        String l = t(S.L_VOICE_SEARCH);
-        if (!st.typing && x + 34 * u + 10 * u + measure(l, 25 * u) <= getWidth() - pad()) hintItem(c, x, cy, "L", l);
+    private float askHint(Canvas c, float x, float cy) {
+        if (!st.askAi) return x;
+        x = hintItem(c, x, cy, "R", t(S.R_ASK_AI));
+        if (!st.typing) x = hintItem(c, x, cy, "L", t(S.L_VOICE_SEARCH));
+        return x;
     }
 
+    /** One key and what it does; left out (with all after it) when it would run past the edge, as with large text. */
     private float hintItem(Canvas c, float x, float cy, String key, String label) {
         float u = u(), rad = 17 * u, kw = key.length() > 1 ? 56 * u : rad * 2;
+        if (x + kw + 10 * u + measure(label, 25 * u) > getWidth() - pad()) return getWidth();
         r2.set(x, cy - rad, x + kw, cy + rad);
         p.setColor(Palette.key());
         c.drawRoundRect(r2, rad, rad, p);
@@ -1541,8 +1780,17 @@ final class ShelfView extends View {
     }
 
     private void drawMenu(Canvas c) {
+        if (st.menu.isPage()) { drawPage(c); return; }
         float u = u();
         Menu m = st.menu;
+        // a menu opened from the settings page stays on top of it
+        Menu base = m.parent;
+        while (base != null && !base.isPage()) base = base.page != null ? base.page : base.parent;
+        if (base != null) {
+            st.menu = base;
+            drawPage(c);
+            st.menu = m;
+        }
         p.setColor(0x88000000);
         c.drawRect(0, 0, getWidth(), getHeight(), p);
         RectF cardR = new RectF();
@@ -1677,6 +1925,22 @@ final class ShelfView extends View {
     }
 
     private void tap(float x, float y) {
+        if (st.menu != null && st.menu.isPage()) {
+            Menu m = st.menu;
+            float u = u(), rowH = menuRowH();
+            if (y > getHeight() - footerH()) { menuBack(); return; }
+            if (x < pageSplit()) {
+                int i = (int) ((y - 126 * u) / rowH);
+                if (y >= 126 * u && i < m.tabs.size()) { setTab(m, i); m.inRows = false; invalidate(); }
+                return;
+            }
+            RectF a = new RectF();
+            pageRowsArea(a);
+            Menu t = m.tabs.get(m.tab);
+            int k = (int) ((y - a.top) / rowH), i = t.top + k;
+            if (y >= a.top && k < pageRows() && i < t.labels.size()) { m.inRows = true; t.sel = i; menuPick(); }
+            return;
+        }
         if (st.menu != null) {
             RectF cardR = new RectF();
             menuCard(cardR);
