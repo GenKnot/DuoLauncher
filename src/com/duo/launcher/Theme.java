@@ -321,6 +321,19 @@ final class Theme {
      */
     static Bitmap toolBackground(String name) { return backdrop("tool:" + name, name); }
 
+    /** The light-mode backdrop of an owner (a platform name, or "tool:<id>"), whatever mode is on: to redraw its dark cut from. */
+    static Bitmap lightBackdrop(String owner, String type) {
+        boolean was = Palette.dark;
+        Palette.dark = false;
+        try {
+            String key = owner + "/" + BACKGROUND;
+            Bitmap b = cache.get(key);
+            return b != null ? b : backdrop(owner, type);
+        } finally {
+            Palette.dark = was;
+        }
+    }
+
     static Bitmap console(Library.Platform p) { return get(p, CONSOLE, "consoles/" + p.type() + ".png"); }
 
     static final String BACKGROUND_DARK = "background-dark";
@@ -329,6 +342,16 @@ final class Theme {
     private static final java.util.Set<Bitmap> tintable = java.util.Collections.newSetFromMap(new java.util.WeakHashMap<>());
 
     static boolean isTintable(Bitmap b) { return b != null && tintable.contains(b); }
+
+    private static boolean greyscale(Bitmap b) {
+        int w = b.getWidth(), h = b.getHeight();
+        for (int i = 0; i < 400; i++) {
+            int c = b.getPixel((int) ((i * 7919L) % w), (int) ((i * 104729L) % h));
+            int r = (c >> 16) & 255, g = (c >> 8) & 255, bl = c & 255;
+            if (Math.abs(r - g) > 8 || Math.abs(g - bl) > 8) return false;
+        }
+        return true;
+    }
 
     /**
      * Upper-screen backdrop, first found wins. Dark mode: own dark picture, own picture, theme's
@@ -346,7 +369,12 @@ final class Theme {
         String ownName = owner.startsWith("tool:") ? "tool-" + owner.substring(5) : owner;
         if (dark) own.add(file(ownName, BACKGROUND_DARK));
         own.add(file(ownName, BACKGROUND));
-        for (File f : own) if (b == null && f.isFile()) b = BitmapFactory.decodeFile(f.getPath());
+        for (File f : own) {
+            if (b != null || !f.isFile()) continue;
+            b = BitmapFactory.decodeFile(f.getPath());
+            // an own dark cut in grey (as the AI redraw makes it) is coloured by the theme like the built-in ones
+            if (b != null && dark && f.getName().startsWith(BACKGROUND_DARK) && greyscale(b)) tintable.add(b);
+        }
         if (b == null && pack != null) {
             List<String> names = new ArrayList<>();
             if (dark) names.add("backgrounds/dark/" + t);

@@ -73,6 +73,7 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         // emulators such as DraStic take plain file paths in extras; allow file:// data too
         StrictMode.setVmPolicy(new StrictMode.VmPolicy.Builder().build());
         prefs = getSharedPreferences("duo", MODE_PRIVATE);
+        Usage.init(this);
         I18n.set(prefs.getString("lang", I18n.systemDefault()));
         applyDisplayMode();
         shelfState.hidden.addAll(prefs.getStringSet("hidden", new HashSet<>()));
@@ -467,6 +468,7 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         AiImage imgNow = AiImage.from(prefs);
         ai.add(t(S.AI_IMAGES) + "  ·  " + (imgNow == null ? t(S.OFF) : imgNow.model.isEmpty() ? AiImage.DEFAULT_MODEL : imgNow.model), imgNow != null, () -> showImageAiMenu(ai, 0));
         ai.add(t(S.TTS_REPLY) + "  ·  " + ttsName(Speaker.provider(prefs)), Speaker.ready(prefs), () -> showVoiceMenu(ai, 0));
+        ai.add(t(S.USAGE) + "  ·  " + t(S.USAGE_MONTH) + " " + Usage.money(Usage.since(Usage.monthStart(), null)[4]), false, () -> showUsageMenu(ai));
 
         // saves, transfer and sharing
         data.add(t(S.WIFI_TRANSFER) + (wifi != null && wifi.running() ? "  ·  " + t(S.ON) : ""), wifi != null && wifi.running(), this::showWifiMenu);
@@ -688,6 +690,14 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
             Theme.reset(tp.name, Theme.BACKGROUND);
             iconChanged.run();
         });
+        m.add(t(S.BACKGROUND_DARK) + "  ·  " + t(S.AI_FROM_LIGHT), false, () -> {
+            shelf.closeMenu();
+            aiDarkCut(tp.name, Theme.lightBackdrop("tool:" + id, id), iconChanged);
+        });
+        if (Theme.isCustom(tp.name, Theme.BACKGROUND_DARK)) m.add(t(S.BACKGROUND_DARK) + "  ·  " + t(S.RESET_DEFAULT), false, () -> {
+            Theme.reset(tp.name, Theme.BACKGROUND_DARK);
+            iconChanged.run();
+        });
         m.add(t(S.RENAME), false, () -> askText(t(S.RENAME), label, name -> {
             prefs.edit().putString("tool." + id + ".name", name).apply();
             loadToolLooks();
@@ -858,6 +868,12 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
                 else prefs.edit().putString(vk, v.trim()).apply();
                 showVoiceMenu(parent, voiceRow);
             }));
+            int paceRow = m.labels.size();
+            S[] paces = {S.SPEED_NORMAL, S.SPEED_FAST, S.SPEED_FASTER};
+            m.add(t(S.TTS_SPEED) + "  ·  " + t(paces[Speaker.pace(prefs)]), false, () -> {
+                prefs.edit().putInt("tts.pace", (Speaker.pace(prefs) + 1) % 3).apply();
+                showVoiceMenu(parent, paceRow);
+            });
             m.add(t(S.TTS_TEST), false, () -> {
                 if (!Speaker.ready(prefs)) { Toast.makeText(this, t(S.TTS_NEEDS_KEY), Toast.LENGTH_LONG).show(); return; }
                 speaker().say(t(S.TTS_TEST_TEXT), I18n.code(), err -> Toast.makeText(this, I18n.f(S.TTS_FAILED, String.valueOf(err)), Toast.LENGTH_LONG).show());
@@ -867,6 +883,64 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         if (!key.isEmpty()) m.add(t(S.REMOVE_KEY), false, () -> { prefs.edit().remove("soniox.key").apply(); showVoiceMenu(parent, 0); });
         m.sel = Math.max(0, Math.min(sel, m.labels.size() - 1));
         shelf.showMenu(m);
+    }
+
+    /** Settings → AI usage: requests, tokens, pictures, minutes of speech and an estimated cost, by period and service. */
+    private void showUsageMenu(ShelfView.Menu parent) {
+        ShelfView.Menu m = new ShelfView.Menu(t(S.USAGE), t(S.USAGE_HINT));
+        m.parent = parent;
+        String[][] periods = {{Usage.today(), t(S.USAGE_TODAY)}, {Usage.weekStart(), t(S.USAGE_WEEK)}, {Usage.monthStart(), t(S.USAGE_MONTH)}, {null, t(S.USAGE_ALL)}};
+        for (String[] pr : periods) {
+            double[] a = Usage.since(pr[0], null);
+            m.add(pr[1] + "  ·  " + I18n.f(S.USAGE_CALLS, (int) a[0]) + "  ·  ≈ " + Usage.money(a[4]), false, null);
+        }
+        String month = Usage.monthStart();
+        double[] tx = Usage.since(month, Usage.TEXT), im = Usage.since(month, Usage.IMAGE), st = Usage.since(month, Usage.STT), ts = Usage.since(month, Usage.TTS);
+        m.add(t(S.USAGE_TEXT) + "  ·  " + I18n.f(S.USAGE_CALLS, (int) tx[0]) + " · " + tokens(tx[1] + tx[2]) + " tokens · ≈ " + Usage.money(tx[4]), false, null);
+        m.add(t(S.USAGE_IMAGE) + "  ·  " + I18n.f(S.USAGE_PICTURES, (int) im[0]) + " · ≈ " + Usage.money(im[4]), false, null);
+        m.add(t(S.USAGE_STT) + "  ·  " + I18n.f(S.USAGE_MIN, String.format(Locale.ROOT, "%.1f", st[3] / 60)) + " · ≈ " + Usage.money(st[4]), false, null);
+        m.add(t(S.USAGE_TTS) + "  ·  " + I18n.f(S.USAGE_MIN, String.format(Locale.ROOT, "%.1f", ts[3] / 60)) + " · ≈ " + Usage.money(ts[4]), false, null);
+        // the prices used, each the player's own or the published one for the service in use
+        Ai aiNow = Ai.from(prefs);
+        String[][] rows = {
+                {Usage.TEXT, t(S.PRICE_TEXT), aiNow == null ? null : aiNow.model},
+                {Usage.IMAGE, t(S.PRICE_IMAGE), null},
+                {Usage.STT, t(S.PRICE_STT), null},
+                {Usage.TTS, t(S.PRICE_TTS), Speaker.provider(prefs)}};
+        for (String[] r : rows) {
+            double[] p = Usage.price(r[0], r[2]);
+            String shown = p == null ? t(S.NOT_SET) : p.length > 1 ? "$" + num(p[0]) + " / $" + num(p[1]) : "$" + num(p[0]);
+            boolean own = Usage.own(r[0]) != null;
+            int row = m.labels.size();
+            m.add(r[1] + "  ·  " + shown + (own ? "" : "  (" + t(S.DEFAULT) + ")"), own, () -> askText(r[1],
+                    p == null ? "" : p.length > 1 ? num(p[0]) + "/" + num(p[1]) : num(p[0]), v -> {
+                        if (v.trim().isEmpty() || v.trim().equalsIgnoreCase("default")) prefs.edit().remove("price." + r[0]).apply();
+                        else prefs.edit().putString("price." + r[0], v.trim()).apply();
+                        showUsageMenu(parent);
+                    }));
+        }
+        m.add(t(S.PRICE_RESET), false, () -> {
+            prefs.edit().remove("price.text").remove("price.image").remove("price.stt").remove("price.tts").apply();
+            showUsageMenu(parent);
+        });
+        m.add(t(S.USAGE_RESET), false, () -> {
+            ShelfView.Menu sure = new ShelfView.Menu(t(S.USAGE_RESET), null);
+            sure.parent = m;
+            sure.add(t(S.GO), false, () -> { Usage.clear(); showUsageMenu(parent); });
+            sure.add(t(S.CANCEL), false, () -> shelf.showMenu(m));
+            shelf.showMenu(sure);
+        });
+        m.sel = 2;
+        shelf.showMenu(m);
+    }
+
+    private static String num(double v) {
+        String s = String.format(Locale.ROOT, "%.4f", v).replaceAll("0+$", "");
+        return s.endsWith(".") ? s.substring(0, s.length() - 1) : s;
+    }
+
+    private static String tokens(double n) {
+        return n >= 1_000_000 ? String.format(Locale.ROOT, "%.1fM", n / 1e6) : n >= 1000 ? String.format(Locale.ROOT, "%.1fk", n / 1e3) : String.valueOf((long) n);
     }
 
     private Speaker speaker;
@@ -938,7 +1012,7 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         askText(t(S.AI_SUBJECT), subject, what -> {
             Toast.makeText(this, t(S.AI_DRAWING), Toast.LENGTH_LONG).show();
             new Thread(() -> {
-                android.graphics.Bitmap b = ai.generate(icon ? AiImage.iconPrompt(what) : AiImage.backdropPrompt(what), icon ? "1024x1024" : "1536x1024");
+                android.graphics.Bitmap b = ai.generate(icon ? AiImage.iconPrompt(what) : AiImage.backdropPrompt(what), icon ? "1024x1024" : "1536x1024", icon);
                 boolean ok = false;
                 if (b != null) {
                     try { ok = Theme.save(p.name, kind, new java.io.ByteArrayInputStream(AiImage.png(icon ? AiImage.cutOut(b) : b))); } catch (IOException ignored) { }
@@ -951,6 +1025,35 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
                 });
             }, "ai-picture").start();
         });
+    }
+
+    /** The dark-mode backdrop of an owner, redrawn by the image service from its light one as clean line art. */
+    private void aiDarkCut(String owner, android.graphics.Bitmap light, Runnable then) {
+        AiImage ai = AiImage.from(prefs);
+        if (ai == null) { Toast.makeText(this, t(S.AI_IMAGES_NEEDED), Toast.LENGTH_LONG).show(); return; }
+        if (light == null) { Toast.makeText(this, t(S.NONE_FOUND), Toast.LENGTH_SHORT).show(); return; }
+        Toast.makeText(this, t(S.AI_DRAWING), Toast.LENGTH_LONG).show();
+        new Thread(() -> {
+            android.graphics.Bitmap b = ai.edit(light, AiImage.darkCutPrompt(), "1536x1024");
+            boolean ok = false;
+            if (b != null) {
+                // greyscale, like the bundled cuts, so the theme can colour it
+                android.graphics.Bitmap g = android.graphics.Bitmap.createBitmap(b.getWidth(), b.getHeight(), android.graphics.Bitmap.Config.ARGB_8888);
+                android.graphics.Canvas cv = new android.graphics.Canvas(g);
+                android.graphics.ColorMatrix cm = new android.graphics.ColorMatrix();
+                cm.setSaturation(0);
+                android.graphics.Paint pt = new android.graphics.Paint();
+                pt.setColorFilter(new android.graphics.ColorMatrixColorFilter(cm));
+                cv.drawBitmap(b, 0, 0, pt);
+                try { ok = Theme.save(owner, Theme.BACKGROUND_DARK, new java.io.ByteArrayInputStream(AiImage.png(g))); } catch (IOException ignored) { }
+            }
+            boolean done = ok;
+            main.post(() -> {
+                Toast.makeText(this, done ? t(S.SAVED) : I18n.f(S.AI_FAILED, ai.error), Toast.LENGTH_LONG).show();
+                Theme.forgetPlatform(owner);
+                if (shelf != null) then.run();
+            });
+        }, "ai-dark-cut").start();
     }
 
     /** A cover for a game without one, kept in the launcher's own media folder. */
@@ -1063,7 +1166,7 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
                 if (kind.equals("box_front")) { b = ai.generate(AiImage.coverPrompt(g.title, g.original, platform), "1024x1536"); file = "cover.png"; }
                 else if (kind.equals("background")) { b = ai.generate(AiImage.gameBackdropPrompt(g.title, g.original, platform), "1536x1024"); file = "background.png"; }
                 else {
-                    b = ai.generate(AiImage.logoPrompt(g.original.trim()), "1536x1024");
+                    b = ai.generate(AiImage.logoPrompt(g.original.trim()), "1536x1024", true);
                     if (b != null) b = AiImage.cutOut(b);
                     file = "logo.png";
                 }
@@ -2208,7 +2311,7 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
             int done = 0, failed = 0;
             for (int i = 0; i < ids.size() && !stop.get(); i++) {
                 String name = "genre-" + ids.get(i);
-                android.graphics.Bitmap b = ai.generate(AiImage.iconPrompt(Genres.subject(ids.get(i))), "1024x1024");
+                android.graphics.Bitmap b = ai.generate(AiImage.iconPrompt(Genres.subject(ids.get(i))), "1024x1024", true);
                 boolean ok = false;
                 if (b != null) {
                     try { ok = Theme.save(name, Theme.CONSOLE, new java.io.ByteArrayInputStream(AiImage.png(AiImage.cutOut(b)))); } catch (IOException ignored) { }
@@ -2478,6 +2581,8 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
             showPlatformLookMenu(parent, p);
         });
         m.add(t(S.BACKGROUND_DARK) + " · " + t(S.PICK_IMAGE), false, () -> pickImage(p, Theme.BACKGROUND_DARK));
+        m.add(t(S.BACKGROUND_DARK) + " · ✦ " + t(S.AI_FROM_LIGHT), false,
+                () -> aiDarkCut(p.name, Theme.lightBackdrop(p.name, p.backdropType()), () -> showPlatformLookMenu(parent, p)));
         if (customDark) m.add(t(S.BACKGROUND_DARK) + " · " + t(S.RESET_DEFAULT), false, () -> {
             Theme.reset(p.name, Theme.BACKGROUND_DARK);
             top.showPlatform(p, Library.emulatorLabel(platformCmd(p)), null);

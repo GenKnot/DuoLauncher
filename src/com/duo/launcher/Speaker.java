@@ -46,6 +46,11 @@ final class Speaker {
 
     static String provider(SharedPreferences prefs) { return prefs.getString("tts.provider", OFF); }
 
+    /** Speaking pace: 0 normal, 1 brisk (the default; the services read Chinese slowly), 2 fast. */
+    static final float[] SPEEDS = {1.0f, 1.2f, 1.4f};
+
+    static int pace(SharedPreferences prefs) { return Math.max(0, Math.min(2, prefs.getInt("tts.pace", 1))); }
+
     /** Whether the chosen service has the key it needs. */
     static boolean ready(SharedPreferences prefs) {
         switch (provider(prefs)) {
@@ -72,6 +77,14 @@ final class Speaker {
                 if (audio == null || me != turn) break;
                 File f = new File(ctx.getCacheDir(), "say-" + me + "-" + i + ".mp3");
                 try (OutputStream o = new FileOutputStream(f)) { o.write(audio); } catch (Exception e) { break; }
+                try {
+                    android.media.MediaMetadataRetriever r = new android.media.MediaMetadataRetriever();
+                    r.setDataSource(f.getPath());
+                    String ms = r.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION);
+                    r.release();
+                    if (ms != null) Usage.textToSpeech(provider(prefs).equals(SONIOX), Long.parseLong(ms) / 1000.0);
+                } catch (Exception ignored) {
+                }
                 main.post(() -> {
                     if (me != turn) { f.delete(); return; }
                     queue.add(f);
@@ -151,6 +164,7 @@ final class Speaker {
                 body.put("language", lang.contains("-") ? lang.substring(0, lang.indexOf('-')) : lang);
                 body.put("voice", prefs.getString("tts.voice.soniox", SONIOX_VOICE));
                 body.put("audio_format", "mp3");
+                body.put("speed", Math.min(1.3f, SPEEDS[pace(prefs)]));   // Soniox takes 0.7 to 1.3
                 body.put("text", text);
             } else {
                 AiImage img = AiImage.from(prefs);
@@ -163,6 +177,11 @@ final class Speaker {
                 body.put("voice", prefs.getString("tts.voice.openai", OPENAI_VOICE));
                 body.put("input", text);
                 body.put("response_format", "mp3");
+                body.put("speed", SPEEDS[pace(prefs)]);
+                // the newer voice models follow instructions rather than the speed number
+                String[] how = {"Speak naturally, in a warm, friendly voice.", "Speak at a brisk, lively, natural pace, in a warm, friendly voice.",
+                        "Speak quickly and energetically, like a lively friend, without dragging any words."};
+                body.put("instructions", how[pace(prefs)]);
             }
             HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
             c.setConnectTimeout(15_000);

@@ -123,6 +123,7 @@ final class Voice {
                 error = "HTTP " + code + ": " + (msg.length() > 160 ? msg.substring(0, 160) : msg);
                 return null;
             }
+            Usage.speechToText(model, Math.max(0, wav.length - 44) / 32000.0);   // 16 kHz, 16-bit mono
             String text = new JSONObject(body).optString("text", "").trim();
             if (text.isEmpty()) { error = "nothing heard"; return null; }
             error = null;

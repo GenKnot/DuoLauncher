@@ -148,6 +148,9 @@ final class Ai {
                     return null;
                 }
                 JSONObject j = new JSONObject(text);
+                JSONObject use = j.optJSONObject("usage");
+                if (use != null) Usage.text(model, use.optLong(anthropic ? "input_tokens" : "prompt_tokens"),
+                        use.optLong(anthropic ? "output_tokens" : "completion_tokens"));
                 if (anthropic) {
                     JSONArray content = j.getJSONArray("content");
                     StringBuilder sb = new StringBuilder();
