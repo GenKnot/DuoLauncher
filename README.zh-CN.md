@@ -38,6 +38,28 @@ Duo Launcher 一开始只是一个玩家给自己的掌机做的启动器，到�
 
 <table>
   <tr>
+    <th>像 3DS 一样的设置页</th>
+    <th>设置页（深色）</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/zh_settings.png" alt="像 3DS 一样的设置页"></td>
+    <td><img src="docs/screenshots/zh_settings_dark.png" alt="设置页（深色）"></td>
+  </tr>
+  <tr>
+    <th>AI 用量与花费</th>
+    <th>导出、导入配置</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/zh_ai_usage.png" alt="AI 用量与花费"></td>
+    <td><img src="docs/screenshots/zh_config.png" alt="导出、导入配置"></td>
+  </tr>
+  <tr>
+    <th colspan="2">深色模式的手绘插画</th>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><img src="docs/screenshots/zh_dark_home.png" width="50%" alt="深色模式的手绘插画"></td>
+  </tr>
+  <tr>
     <th>按类型分组（黏土风格类型图标）</th>
     <th>按系列分组</th>
   </tr>

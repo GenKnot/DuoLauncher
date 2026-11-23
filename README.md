@@ -38,6 +38,28 @@ Suggestions and bug reports are welcome on the [issue tracker](https://github.co
 
 <table>
   <tr>
+    <th>Settings, 3DS-style</th>
+    <th>Settings in dark mode</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/en_settings.png" alt="Settings, 3DS-style"></td>
+    <td><img src="docs/screenshots/en_settings_dark.png" alt="Settings in dark mode"></td>
+  </tr>
+  <tr>
+    <th>AI usage and cost</th>
+    <th>Export and import your config</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/en_ai_usage.png" alt="AI usage and cost"></td>
+    <td><img src="docs/screenshots/en_config.png" alt="Export and import your config"></td>
+  </tr>
+  <tr>
+    <th colspan="2">Hand-drawn dark backdrops</th>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><img src="docs/screenshots/en_dark_home.png" width="50%" alt="Hand-drawn dark backdrops"></td>
+  </tr>
+  <tr>
     <th>Home by genre, with clay genre icons</th>
     <th>Home by series</th>
   </tr>

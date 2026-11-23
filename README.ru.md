@@ -38,6 +38,28 @@ Duo Launcher начинался как лаунчер одного игрока 
 
 <table>
   <tr>
+    <th>Настройки в стиле 3DS</th>
+    <th>Настройки в тёмной теме</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/en_settings.png" alt="Настройки в стиле 3DS"></td>
+    <td><img src="docs/screenshots/en_settings_dark.png" alt="Настройки в тёмной теме"></td>
+  </tr>
+  <tr>
+    <th>Расход и стоимость ИИ</th>
+    <th>Экспорт и импорт настроек</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/en_ai_usage.png" alt="Расход и стоимость ИИ"></td>
+    <td><img src="docs/screenshots/en_config.png" alt="Экспорт и импорт настроек"></td>
+  </tr>
+  <tr>
+    <th colspan="2">Рисованные фоны для тёмной темы</th>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><img src="docs/screenshots/en_dark_home.png" width="50%" alt="Рисованные фоны для тёмной темы"></td>
+  </tr>
+  <tr>
     <th>Главная по жанрам, с пластилиновыми значками жанров</th>
     <th>Главная по сериям</th>
   </tr>

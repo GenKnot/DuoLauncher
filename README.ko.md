@@ -38,6 +38,28 @@ Duo Launcher는 한 사람이 자기 기기 하나에 쓰려고 만든 런처에
 
 <table>
   <tr>
+    <th>3DS 스타일 설정</th>
+    <th>설정 (다크 모드)</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/en_settings.png" alt="3DS 스타일 설정"></td>
+    <td><img src="docs/screenshots/en_settings_dark.png" alt="설정 (다크 모드)"></td>
+  </tr>
+  <tr>
+    <th>AI 사용량과 비용</th>
+    <th>설정 내보내기와 가져오기</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/en_ai_usage.png" alt="AI 사용량과 비용"></td>
+    <td><img src="docs/screenshots/en_config.png" alt="설정 내보내기와 가져오기"></td>
+  </tr>
+  <tr>
+    <th colspan="2">다크 모드 전용 손그림 배경</th>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><img src="docs/screenshots/en_dark_home.png" width="50%" alt="다크 모드 전용 손그림 배경"></td>
+  </tr>
+  <tr>
     <th>장르별 홈, 점토 느낌의 장르 아이콘</th>
     <th>시리즈별 홈</th>
   </tr>

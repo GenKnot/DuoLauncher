@@ -38,6 +38,28 @@ Suggerimenti e segnalazioni di bug sono benvenuti nell'[issue tracker](https://g
 
 <table>
   <tr>
+    <th>Impostazioni in stile 3DS</th>
+    <th>Impostazioni in modalità scura</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/en_settings.png" alt="Impostazioni in stile 3DS"></td>
+    <td><img src="docs/screenshots/en_settings_dark.png" alt="Impostazioni in modalità scura"></td>
+  </tr>
+  <tr>
+    <th>Uso e costo dell'IA</th>
+    <th>Esporta e importa la configurazione</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/en_ai_usage.png" alt="Uso e costo dell'IA"></td>
+    <td><img src="docs/screenshots/en_config.png" alt="Esporta e importa la configurazione"></td>
+  </tr>
+  <tr>
+    <th colspan="2">Sfondi disegnati a mano per la modalità scura</th>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><img src="docs/screenshots/en_dark_home.png" width="50%" alt="Sfondi disegnati a mano per la modalità scura"></td>
+  </tr>
+  <tr>
     <th>Home per genere, con le icone dei generi in plastilina</th>
     <th>Home per serie</th>
   </tr>

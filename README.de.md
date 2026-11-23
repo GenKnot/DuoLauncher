@@ -38,6 +38,28 @@ Vorschläge und Fehlerberichte sind im [Issue-Tracker](https://github.com/GenKno
 
 <table>
   <tr>
+    <th>Einstellungen im 3DS-Stil</th>
+    <th>Einstellungen im dunklen Modus</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/en_settings.png" alt="Einstellungen im 3DS-Stil"></td>
+    <td><img src="docs/screenshots/en_settings_dark.png" alt="Einstellungen im dunklen Modus"></td>
+  </tr>
+  <tr>
+    <th>KI-Nutzung und Kosten</th>
+    <th>Konfiguration exportieren und importieren</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/en_ai_usage.png" alt="KI-Nutzung und Kosten"></td>
+    <td><img src="docs/screenshots/en_config.png" alt="Konfiguration exportieren und importieren"></td>
+  </tr>
+  <tr>
+    <th colspan="2">Handgezeichnete Hintergründe für den dunklen Modus</th>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><img src="docs/screenshots/en_dark_home.png" width="50%" alt="Handgezeichnete Hintergründe für den dunklen Modus"></td>
+  </tr>
+  <tr>
     <th>Startseite nach Genre, mit Genre-Symbolen im Knetlook</th>
     <th>Startseite nach Reihe</th>
   </tr>

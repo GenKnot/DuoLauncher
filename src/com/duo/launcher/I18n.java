@@ -46,7 +46,9 @@ final class I18n {
         CHAT_TITLE, CHAT_PICKS_BELOW, CHAT_KEY_SPEAK, CHAT_KEY_TYPE, CHAT_KEY_SCROLL, CHAT_KEY_CLOSE, CHAT_HELLO, CHAT_EXAMPLES, CHAT_FOUND, AI_SETUP_TITLE, AI_SETUP_HELP, OPEN_WIFI, WIFI_KEEP_ON, L_VOICE_SEARCH,
         TTS_REPLY, TTS_HINT, SONIOX_KEY, TTS_OPENAI_KEY, TTS_VOICE, TTS_TEST, TTS_TEST_TEXT, TTS_FAILED, TTS_NEEDS_KEY,
         TAB_LOOK, TAB_LIBRARY, TAB_PLAY, TAB_AI, TAB_DATA, TAB_SYSTEM, EXPORT_CONFIG, IMPORT_CONFIG, IMPORT_CONFIG_HINT, CONFIG_IMPORTED, PAGE_MOVE, PAGE_TABS, AI_FROM_LIGHT, TTS_SPEED, SPEED_NORMAL, SPEED_FAST, SPEED_FASTER,
-        USAGE, USAGE_HINT, USAGE_TODAY, USAGE_WEEK, USAGE_MONTH, USAGE_ALL, USAGE_TEXT, USAGE_IMAGE, USAGE_STT, USAGE_TTS, USAGE_CALLS, USAGE_PICTURES, USAGE_MIN, USAGE_RESET, PRICE_TEXT, PRICE_IMAGE, PRICE_STT, PRICE_TTS, PRICE_RESET
+        USAGE, USAGE_HINT, USAGE_TODAY, USAGE_WEEK, USAGE_MONTH, USAGE_ALL, USAGE_TEXT, USAGE_IMAGE, USAGE_STT, USAGE_TTS, USAGE_CALLS, USAGE_PICTURES, USAGE_MIN, USAGE_RESET, PRICE_TEXT, PRICE_IMAGE, PRICE_STT, PRICE_TTS, PRICE_RESET,
+        NEW_BADGES, MARK_SEEN, MARK_ALL_SEEN, MARKED_SEEN, CHAT_KEY_NEW, CHAT_KEY_HISTORY, CHAT_NEW_STARTED, CHAT_HISTORY, CHAT_HISTORY_HINT, CHAT_SAVE, CHAT_NO_HISTORY, CHAT_CLEAR_ALL, CHAT_CLEAR_SURE, CHAT_DELETE, AI_SKIPPED,
+        CHAT_NEW_ONLY, WRITE_FAILED
     }
 
     static final String[] CODES = {"zh-CN", "zh-TW", "en", "ja", "ko", "fr", "es", "de", "it", "pt", "ru"};
@@ -83,7 +85,9 @@ final class I18n {
             "AI 语音回复", "聊天时把 AI 的回答读出来。Soniox 用它自己的密钥；OpenAI 用「AI 生图」的密钥。", "Soniox 密钥", "先在「AI 生图」里填 OpenAI 密钥", "声音", "试听", "你好，我是你的游戏小助手。想玩什么、怎么过关，都可以问我。", "朗读失败：%s", "先填好所选语音服务的密钥",
             "外观与声音", "主页与游戏库", "游玩", "AI 与语音", "存档、传输与分享", "系统", "导出我的配置", "导入配置", "放在 DuoLauncher/exports 或「下载」里的配置；密钥和游玩记录不会被换掉", "已导入 %d 项设置", "选择", "切换分类", "AI 照浅色版重画", "语速", "正常", "快", "很快",
             "AI 用量与花费", "金额按各家公开价格估算，以服务商账单为准；记录只存在掌机上", "今天", "本周", "本月", "累计", "本月 AI 对话与整理", "本月 AI 生图", "本月 语音转文字", "本月 语音回复", "%d 次", "%d 张", "%s 分钟", "清空统计",
-            "价格：AI 对话（每百万 token 输入/输出）", "价格：AI 生图（每张）", "价格：语音转文字（每分钟）", "价格：语音回复（每分钟）", "价格恢复默认"
+            "价格：AI 对话（每百万 token 输入/输出）", "价格：AI 生图（每张）", "价格：语音转文字（每分钟）", "价格：语音回复（每分钟）", "价格恢复默认",
+            "NEW 标记", "标为已看过", "全部标为已看过（%d 款）", "已去掉 %d 款游戏的 NEW 标记", "X 新对话", "SELECT 聊天记录", "开始新对话（刚才的对话在聊天记录里）", "AI 聊天记录", "只保存在这台掌机上，不会随配置导出", "保存 AI 聊天记录", "还没有保存的聊天", "清除全部聊天记录", "删除全部 %d 段聊天？删除后不能恢复", "删除这段聊天", "%d 款没认出来，已跳过",
+            "开始新对话", "无法写入游戏资料文件"
         },
         { // zh-TW
             "正在讀取遊戲…", "找不到遊戲\n請在「設定 → 遊戲資料夾」中新增放遊戲的資料夾", "需要「所有檔案存取權限」才能讀取遊戲\n請在彈出的設定中允許後返回", "找不到第二個螢幕", "啟動失敗：%s",
@@ -115,7 +119,9 @@ final class I18n {
             "AI 語音回覆", "聊天時把 AI 的回答讀出來。Soniox 用它自己的金鑰；OpenAI 用「AI 生圖」的金鑰。", "Soniox 金鑰", "先在「AI 生圖」裡填 OpenAI 金鑰", "聲音", "試聽", "你好，我是你的遊戲小助手。想玩什麼、怎麼過關，都可以問我。", "朗讀失敗：%s", "先填好所選語音服務的金鑰",
             "外觀與聲音", "主頁與遊戲庫", "遊玩", "AI 與語音", "存檔、傳輸與分享", "系統", "匯出我的設定", "匯入設定", "放在 DuoLauncher/exports 或「下載」裡的設定；金鑰和遊玩紀錄不會被換掉", "已匯入 %d 項設定", "選擇", "切換分類", "AI 照淺色版重畫", "語速", "正常", "快", "很快",
             "AI 用量與花費", "金額按各家公開價格估算，以服務商帳單為準；紀錄只存在掌機上", "今天", "本週", "本月", "累計", "本月 AI 對話與整理", "本月 AI 生圖", "本月 語音轉文字", "本月 語音回覆", "%d 次", "%d 張", "%s 分鐘", "清空統計",
-            "價格：AI 對話（每百萬 token 輸入/輸出）", "價格：AI 生圖（每張）", "價格：語音轉文字（每分鐘）", "價格：語音回覆（每分鐘）", "價格恢復預設"
+            "價格：AI 對話（每百萬 token 輸入/輸出）", "價格：AI 生圖（每張）", "價格：語音轉文字（每分鐘）", "價格：語音回覆（每分鐘）", "價格恢復預設",
+            "NEW 標記", "標為已看過", "全部標為已看過（%d 款）", "已移除 %d 款遊戲的 NEW 標記", "X 新對話", "SELECT 聊天紀錄", "開始新對話（剛才的對話在聊天紀錄裡）", "AI 聊天紀錄", "只儲存在這台掌機上，不會隨設定匯出", "儲存 AI 聊天紀錄", "還沒有儲存的聊天", "清除全部聊天紀錄", "刪除全部 %d 段聊天？刪除後無法復原", "刪除這段聊天", "%d 款沒認出來，已跳過",
+            "開始新對話", "無法寫入遊戲資料檔"
         },
         { // en
             "Loading games…", "No games found\nAdd the folders with your games in Settings → Game folders", "All-files access is needed to read your games\nAllow it in the settings screen, then come back", "Second screen not found", "Couldn't start: %s",
@@ -147,7 +153,9 @@ final class I18n {
             "AI voice replies", "Reads the AI chat’s answers aloud. Soniox uses its own key; OpenAI uses the AI pictures key.", "Soniox key", "Enter an OpenAI key under AI pictures first", "Voice", "Try it", "Hi, I’m your game companion. Ask me what to play or how to get past a level.", "Could not read it aloud: %s", "Enter the key of the chosen voice service first",
             "Look and sound", "Home and library", "Playing", "AI and voice", "Saves, transfer, sharing", "System", "Export my config", "Import a config", "Configs in DuoLauncher/exports or Download; your keys and play history stay", "%d settings taken over", "Move", "Category", "AI redraw from the light one", "Pace", "Normal", "Brisk", "Fast",
             "AI usage and cost", "Costs are estimated from published prices – your provider’s bill is what counts; kept only on the handheld", "Today", "This week", "This month", "All time", "This month: AI chat and sorting", "This month: AI pictures", "This month: speech to text", "This month: voice replies", "%d requests", "%d pictures", "%s min", "Clear the record",
-            "Price: AI chat (per million tokens in/out)", "Price: AI pictures (each)", "Price: speech to text (per minute)", "Price: voice replies (per minute)", "Prices back to the published ones"
+            "Price: AI chat (per million tokens in/out)", "Price: AI pictures (each)", "Price: speech to text (per minute)", "Price: voice replies (per minute)", "Prices back to the published ones",
+            "NEW badges", "Mark as seen", "Mark all as seen (%d)", "NEW badge removed from %d games", "X new chat", "SELECT history", "New chat started (the last one is in the history)", "AI chat history", "Kept only on this handheld, never in an exported config", "Save AI chats", "No saved chats yet", "Clear all chats", "Delete all %d chats? This cannot be undone", "Delete this chat", "%d not recognised, skipped",
+            "New chat started", "could not write the game information file"
         },
         { // ja
             "ゲームを読み込み中…", "ゲームが見つかりません\n「設定 → ゲームフォルダー」でゲームのフォルダーを追加してください", "ゲームを読み込むには「すべてのファイルへのアクセス」が必要です\n設定画面で許可してから戻ってください", "2つ目の画面が見つかりません", "起動できませんでした：%s",
@@ -179,7 +187,9 @@ final class I18n {
             "AI の音声返答", "チャットの AI の返答を読み上げます。Soniox は専用キー、OpenAI は「AI 画像」のキーを使います。", "Soniox キー", "先に「AI 画像」に OpenAI キーを入れてください", "声", "試聴", "こんにちは、ゲームのお供です。何を遊ぶか、攻略など何でも聞いてください。", "読み上げに失敗しました：%s", "選んだ音声サービスのキーを先に入力してください",
             "外観とサウンド", "ホームとライブラリ", "プレイ", "AI と音声", "セーブ・転送・共有", "システム", "設定を書き出す", "設定を読み込む", "DuoLauncher/exports か Download の設定。キーとプレイ記録はそのまま", "%d 件の設定を読み込みました", "移動", "カテゴリ", "AI でライト版から描き直す", "話す速さ", "ふつう", "速め", "とても速い",
             "AI の利用量と費用", "金額は公開価格からの概算です。正確な額は各サービスの請求をご確認ください。記録は本体にのみ保存", "今日", "今週", "今月", "累計", "今月：AI 会話と整理", "今月：AI 画像", "今月：音声認識", "今月：音声返答", "%d 回", "%d 枚", "%s 分", "記録を消去",
-            "価格：AI 会話（100 万トークンあたり入力/出力）", "価格：AI 画像（1 枚）", "価格：音声認識（1 分あたり）", "価格：音声返答（1 分あたり）", "価格を既定に戻す"
+            "価格：AI 会話（100 万トークンあたり入力/出力）", "価格：AI 画像（1 枚）", "価格：音声認識（1 分あたり）", "価格：音声返答（1 分あたり）", "価格を既定に戻す",
+            "NEW マーク", "既読にする", "すべて既読にする（%d 本）", "%d 本の NEW マークを外しました", "X 新しい会話", "SELECT 履歴", "新しい会話を始めました（前の会話は履歴にあります）", "AI チャット履歴", "この本体にだけ保存され、設定のエクスポートには含まれません", "AI チャットを保存", "保存された会話はまだありません", "すべての会話を削除", "%d 件の会話をすべて削除しますか？元に戻せません", "この会話を削除", "%d 本は特定できずスキップしました",
+            "新しい会話を始めました", "ゲーム情報ファイルに書き込めません"
         },
         { // ko
             "게임 불러오는 중…", "게임을 찾을 수 없습니다\n설정 → 게임 폴더에서 게임이 있는 폴더를 추가하세요", "게임을 읽으려면 '모든 파일 접근' 권한이 필요합니다\n설정 화면에서 허용한 뒤 돌아오세요", "두 번째 화면을 찾을 수 없습니다", "실행 실패: %s",
@@ -211,7 +221,9 @@ final class I18n {
             "AI 음성 답변", "채팅의 AI 답변을 읽어 줘요. Soniox는 전용 키, OpenAI는 「AI 그림」 키를 써요.", "Soniox 키", "먼저 「AI 그림」에 OpenAI 키를 넣으세요", "목소리", "미리 듣기", "안녕하세요, 게임 도우미예요. 뭘 할지, 어떻게 깰지 물어보세요.", "읽어 주기 실패: %s", "선택한 음성 서비스의 키를 먼저 넣으세요",
             "화면과 소리", "홈과 라이브러리", "플레이", "AI와 음성", "세이브·전송·공유", "시스템", "내 설정 내보내기", "설정 가져오기", "DuoLauncher/exports나 Download의 설정. 키와 플레이 기록은 그대로", "설정 %d개를 가져왔어요", "이동", "분류", "AI로 밝은 버전에서 다시 그리기", "말하기 속도", "보통", "빠르게", "아주 빠르게",
             "AI 사용량과 비용", "금액은 공개 가격 기준 추정치이며 실제는 서비스 청구서를 따릅니다. 기록은 기기에만 저장", "오늘", "이번 주", "이번 달", "전체", "이번 달: AI 대화와 정리", "이번 달: AI 그림", "이번 달: 음성 인식", "이번 달: 음성 답변", "%d회", "%d장", "%s분", "기록 지우기",
-            "가격: AI 대화(백만 토큰당 입력/출력)", "가격: AI 그림(장당)", "가격: 음성 인식(분당)", "가격: 음성 답변(분당)", "가격 기본값으로"
+            "가격: AI 대화(백만 토큰당 입력/출력)", "가격: AI 그림(장당)", "가격: 음성 인식(분당)", "가격: 음성 답변(분당)", "가격 기본값으로",
+            "NEW 표시", "확인함으로 표시", "모두 확인함으로 표시 (%d개)", "게임 %d개의 NEW 표시를 지웠습니다", "X 새 대화", "SELECT 기록", "새 대화를 시작했습니다 (이전 대화는 기록에 있습니다)", "AI 대화 기록", "이 기기에만 저장되며 설정 내보내기에는 포함되지 않습니다", "AI 대화 저장", "저장된 대화가 아직 없습니다", "모든 대화 삭제", "대화 %d개를 모두 삭제할까요? 되돌릴 수 없습니다", "이 대화 삭제", "%d개는 인식하지 못해 건너뛰었습니다",
+            "새 대화를 시작했습니다", "게임 정보 파일에 쓸 수 없습니다"
         },
         { // fr
             "Chargement des jeux…", "Aucun jeu trouvé\nAjoutez vos dossiers de jeux dans Paramètres → Dossiers de jeux", "L'accès à tous les fichiers est nécessaire pour lire vos jeux\nAutorisez-le dans les paramètres puis revenez", "Second écran introuvable", "Échec du lancement : %s",
@@ -243,7 +255,9 @@ final class I18n {
             "Réponses vocales de l’IA", "Lit à voix haute les réponses de l’IA. Soniox utilise sa propre clé, OpenAI celle des Images IA.", "Clé Soniox", "Saisissez d’abord une clé OpenAI dans Images IA", "Voix", "Écouter", "Bonjour, je suis votre compagnon de jeu. Demandez-moi à quoi jouer ou comment passer un niveau.", "Lecture impossible : %s", "Saisissez d’abord la clé du service vocal choisi",
             "Apparence et son", "Accueil et bibliothèque", "Jeu", "IA et voix", "Sauvegardes, transfert, partage", "Système", "Exporter ma configuration", "Importer une configuration", "Dans DuoLauncher/exports ou Téléchargements ; vos clés et votre historique restent", "%d réglages importés", "Déplacer", "Catégorie", "IA : redessiner d’après la version claire", "Débit", "Normal", "Rapide", "Très rapide",
             "Utilisation et coût de l’IA", "Coûts estimés d’après les tarifs publics – seule la facture du service fait foi ; gardé sur la console", "Aujourd’hui", "Cette semaine", "Ce mois-ci", "Au total", "Ce mois-ci : discussion et tri IA", "Ce mois-ci : images IA", "Ce mois-ci : voix en texte", "Ce mois-ci : réponses vocales", "%d requêtes", "%d images", "%s min", "Effacer l’historique",
-            "Prix : discussion IA (par million de jetons entrée/sortie)", "Prix : images IA (l’unité)", "Prix : voix en texte (par minute)", "Prix : réponses vocales (par minute)", "Revenir aux prix publics"
+            "Prix : discussion IA (par million de jetons entrée/sortie)", "Prix : images IA (l’unité)", "Prix : voix en texte (par minute)", "Prix : réponses vocales (par minute)", "Revenir aux prix publics",
+            "Badges NEW", "Marquer comme vu", "Tout marquer comme vu (%d)", "Badge NEW retiré de %d jeux", "X nouvelle discussion", "SELECT historique", "Nouvelle discussion (la précédente est dans l'historique)", "Historique des discussions IA", "Gardé uniquement sur cette console, jamais exporté avec la configuration", "Enregistrer les discussions IA", "Aucune discussion enregistrée", "Effacer toutes les discussions", "Supprimer les %d discussions ? C'est définitif", "Supprimer cette discussion", "%d non reconnus, ignorés",
+            "Nouvelle discussion", "impossible d'écrire le fichier d'informations"
         },
         { // es
             "Cargando juegos…", "No se encontraron juegos\nAñade las carpetas con tus juegos en Ajustes → Carpetas de juegos", "Se necesita acceso a todos los archivos para leer tus juegos\nPermítelo en los ajustes y vuelve", "No se encontró la segunda pantalla", "No se pudo iniciar: %s",
@@ -275,7 +289,9 @@ final class I18n {
             "Respuestas de voz de la IA", "Lee en voz alta las respuestas de la IA. Soniox usa su propia clave; OpenAI, la de Imágenes IA.", "Clave de Soniox", "Primero pon una clave de OpenAI en Imágenes IA", "Voz", "Probar", "Hola, soy tu compañero de juegos. Pregúntame a qué jugar o cómo pasar un nivel.", "No se pudo leer en voz alta: %s", "Primero pon la clave del servicio de voz elegido",
             "Aspecto y sonido", "Inicio y biblioteca", "Juego", "IA y voz", "Partidas, transferencia, compartir", "Sistema", "Exportar mi configuración", "Importar una configuración", "En DuoLauncher/exports o Descargas; tus claves e historial se mantienen", "%d ajustes importados", "Mover", "Categoría", "IA: redibujar desde la versión clara", "Velocidad", "Normal", "Rápido", "Muy rápido",
             "Uso y coste de la IA", "Costes estimados según precios públicos; lo que cuenta es la factura del servicio; solo en la consola", "Hoy", "Esta semana", "Este mes", "En total", "Este mes: chat y orden con IA", "Este mes: imágenes IA", "Este mes: voz a texto", "Este mes: respuestas de voz", "%d solicitudes", "%d imágenes", "%s min", "Borrar el registro",
-            "Precio: chat IA (por millón de tokens entrada/salida)", "Precio: imágenes IA (cada una)", "Precio: voz a texto (por minuto)", "Precio: respuestas de voz (por minuto)", "Volver a los precios públicos"
+            "Precio: chat IA (por millón de tokens entrada/salida)", "Precio: imágenes IA (cada una)", "Precio: voz a texto (por minuto)", "Precio: respuestas de voz (por minuto)", "Volver a los precios públicos",
+            "Etiquetas NEW", "Marcar como visto", "Marcar todo como visto (%d)", "Etiqueta NEW quitada de %d juegos", "X nueva charla", "SELECT historial", "Nueva charla (la anterior está en el historial)", "Historial de charlas con la IA", "Solo se guarda en esta consola, nunca en una configuración exportada", "Guardar charlas con la IA", "Aún no hay charlas guardadas", "Borrar todas las charlas", "¿Borrar las %d charlas? No se puede deshacer", "Borrar esta charla", "%d sin reconocer, omitidos",
+            "Nueva charla", "no se pudo escribir el archivo de información"
         },
         { // de
             "Spiele werden geladen…", "Keine Spiele gefunden\nFüge deine Spielordner unter Einstellungen → Spielordner hinzu", "Zum Lesen der Spiele wird Zugriff auf alle Dateien benötigt\nBitte in den Einstellungen erlauben und zurückkehren", "Zweiter Bildschirm nicht gefunden", "Start fehlgeschlagen: %s",
@@ -307,7 +323,9 @@ final class I18n {
             "KI-Sprachantworten", "Liest die Antworten der KI vor. Soniox nutzt einen eigenen Schlüssel, OpenAI den von KI-Bilder.", "Soniox-Schlüssel", "Erst einen OpenAI-Schlüssel bei KI-Bilder eintragen", "Stimme", "Anhören", "Hallo, ich bin dein Spielbegleiter. Frag mich, was du spielen sollst oder wie du ein Level schaffst.", "Vorlesen fehlgeschlagen: %s", "Erst den Schlüssel des gewählten Sprachdienstes eintragen",
             "Aussehen und Ton", "Start und Bibliothek", "Spielen", "KI und Sprache", "Spielstände, Übertragung, Teilen", "System", "Meine Konfiguration exportieren", "Konfiguration importieren", "Aus DuoLauncher/exports oder Download; Schlüssel und Spielverlauf bleiben", "%d Einstellungen übernommen", "Bewegen", "Kategorie", "KI: aus der hellen Version neu zeichnen", "Sprechtempo", "Normal", "Zügig", "Schnell",
             "KI-Nutzung und Kosten", "Kosten nach öffentlichen Preisen geschätzt – maßgeblich ist die Rechnung des Dienstes; nur auf dem Gerät", "Heute", "Diese Woche", "Diesen Monat", "Insgesamt", "Diesen Monat: KI-Chat und Sortieren", "Diesen Monat: KI-Bilder", "Diesen Monat: Sprache zu Text", "Diesen Monat: Sprachantworten", "%d Anfragen", "%d Bilder", "%s Min.", "Aufzeichnung löschen",
-            "Preis: KI-Chat (pro Million Tokens Ein/Aus)", "Preis: KI-Bilder (pro Bild)", "Preis: Sprache zu Text (pro Minute)", "Preis: Sprachantworten (pro Minute)", "Preise zurücksetzen"
+            "Preis: KI-Chat (pro Million Tokens Ein/Aus)", "Preis: KI-Bilder (pro Bild)", "Preis: Sprache zu Text (pro Minute)", "Preis: Sprachantworten (pro Minute)", "Preise zurücksetzen",
+            "NEW-Markierung", "Als gesehen markieren", "Alle als gesehen markieren (%d)", "NEW-Markierung bei %d Spielen entfernt", "X neues Gespräch", "SELECT Verlauf", "Neues Gespräch (das letzte ist im Verlauf)", "KI-Gesprächsverlauf", "Nur auf diesem Handheld gespeichert, nie im Konfigurationsexport", "KI-Gespräche speichern", "Noch keine gespeicherten Gespräche", "Alle Gespräche löschen", "Alle %d Gespräche löschen? Das lässt sich nicht rückgängig machen", "Dieses Gespräch löschen", "%d nicht erkannt, übersprungen",
+            "Neues Gespräch", "Spielinfo-Datei konnte nicht geschrieben werden"
         },
         { // it
             "Caricamento giochi…", "Nessun gioco trovato\nAggiungi le cartelle dei giochi in Impostazioni → Cartelle dei giochi", "Serve l'accesso a tutti i file per leggere i giochi\nConsentilo nelle impostazioni e torna qui", "Secondo schermo non trovato", "Avvio non riuscito: %s",
@@ -339,7 +357,9 @@ final class I18n {
             "Risposte vocali dell’IA", "Legge ad alta voce le risposte dell’IA. Soniox usa la sua chiave; OpenAI quella di Immagini IA.", "Chiave Soniox", "Prima inserisci una chiave OpenAI in Immagini IA", "Voce", "Ascolta", "Ciao, sono il tuo compagno di gioco. Chiedimi a cosa giocare o come superare un livello.", "Lettura non riuscita: %s", "Prima inserisci la chiave del servizio vocale scelto",
             "Aspetto e suono", "Home e libreria", "Gioco", "IA e voce", "Salvataggi, trasferimento, condivisione", "Sistema", "Esporta la mia configurazione", "Importa una configurazione", "In DuoLauncher/exports o Download; chiavi e cronologia restano", "%d impostazioni importate", "Sposta", "Categoria", "IA: ridisegna dalla versione chiara", "Velocità", "Normale", "Svelto", "Veloce",
             "Uso e costo dell’IA", "Costi stimati dai prezzi pubblici – conta la fattura del servizio; salvato solo sulla console", "Oggi", "Questa settimana", "Questo mese", "In totale", "Questo mese: chat e ordinamento IA", "Questo mese: immagini IA", "Questo mese: voce in testo", "Questo mese: risposte vocali", "%d richieste", "%d immagini", "%s min", "Cancella il registro",
-            "Prezzo: chat IA (per milione di token in/out)", "Prezzo: immagini IA (ciascuna)", "Prezzo: voce in testo (al minuto)", "Prezzo: risposte vocali (al minuto)", "Ripristina i prezzi pubblici"
+            "Prezzo: chat IA (per milione di token in/out)", "Prezzo: immagini IA (ciascuna)", "Prezzo: voce in testo (al minuto)", "Prezzo: risposte vocali (al minuto)", "Ripristina i prezzi pubblici",
+            "Etichette NEW", "Segna come visto", "Segna tutti come visti (%d)", "Etichetta NEW tolta da %d giochi", "X nuova chat", "SELECT cronologia", "Nuova chat (la precedente è nella cronologia)", "Cronologia chat IA", "Salvata solo su questa console, mai nella configurazione esportata", "Salva le chat IA", "Nessuna chat salvata", "Cancella tutte le chat", "Eliminare tutte le %d chat? Non si può annullare", "Elimina questa chat", "%d non riconosciuti, saltati",
+            "Nuova chat", "impossibile scrivere il file delle informazioni"
         },
         { // pt
             "Carregando jogos…", "Nenhum jogo encontrado\nAdicione as pastas dos seus jogos em Configurações → Pastas de jogos", "É preciso acesso a todos os arquivos para ler seus jogos\nPermita nas configurações e volte", "Segunda tela não encontrada", "Falha ao iniciar: %s",
@@ -371,7 +391,9 @@ final class I18n {
             "Respostas de voz da IA", "Lê em voz alta as respostas da IA. Soniox usa sua própria chave; OpenAI, a de Imagens IA.", "Chave Soniox", "Primeiro coloque uma chave OpenAI em Imagens IA", "Voz", "Ouvir", "Olá, sou seu companheiro de jogos. Pergunte o que jogar ou como passar de fase.", "Não foi possível ler: %s", "Primeiro coloque a chave do serviço de voz escolhido",
             "Aparência e som", "Início e biblioteca", "Jogo", "IA e voz", "Saves, transferência, partilha", "Sistema", "Exportar minha configuração", "Importar uma configuração", "Em DuoLauncher/exports ou Download; suas chaves e histórico ficam", "%d configurações importadas", "Mover", "Categoria", "IA: redesenhar a partir da versão clara", "Velocidade", "Normal", "Rápido", "Muito rápido",
             "Uso e custo da IA", "Custos estimados pelos preços públicos – vale a fatura do serviço; guardado só no portátil", "Hoje", "Esta semana", "Este mês", "No total", "Este mês: chat e organização com IA", "Este mês: imagens IA", "Este mês: voz para texto", "Este mês: respostas de voz", "%d pedidos", "%d imagens", "%s min", "Limpar o registro",
-            "Preço: chat IA (por milhão de tokens entrada/saída)", "Preço: imagens IA (cada)", "Preço: voz para texto (por minuto)", "Preço: respostas de voz (por minuto)", "Voltar aos preços públicos"
+            "Preço: chat IA (por milhão de tokens entrada/saída)", "Preço: imagens IA (cada)", "Preço: voz para texto (por minuto)", "Preço: respostas de voz (por minuto)", "Voltar aos preços públicos",
+            "Selos NEW", "Marcar como visto", "Marcar todos como vistos (%d)", "Selo NEW removido de %d jogos", "X nova conversa", "SELECT histórico", "Nova conversa (a anterior está no histórico)", "Histórico de conversas com a IA", "Guardado só neste portátil, nunca numa configuração exportada", "Guardar conversas com a IA", "Ainda não há conversas guardadas", "Apagar todas as conversas", "Apagar as %d conversas? Não dá para desfazer", "Apagar esta conversa", "%d não reconhecidos, ignorados",
+            "Nova conversa", "não foi possível gravar o ficheiro de informações"
         },
         { // ru
             "Загрузка игр…", "Игры не найдены\nДобавьте папки с играми в Настройки → Папки с играми", "Для чтения игр нужен доступ ко всем файлам\nРазрешите его в настройках и вернитесь", "Второй экран не найден", "Не удалось запустить: %s",
@@ -403,7 +425,9 @@ final class I18n {
             "Голосовые ответы ИИ", "Озвучивает ответы ИИ в чате. Soniox использует свой ключ, OpenAI — ключ «ИИ-картинок».", "Ключ Soniox", "Сначала укажите ключ OpenAI в «ИИ-картинках»", "Голос", "Прослушать", "Привет, я ваш игровой помощник. Спросите, во что поиграть или как пройти уровень.", "Не удалось озвучить: %s", "Сначала укажите ключ выбранной голосовой службы",
             "Вид и звук", "Главная и библиотека", "Игра", "ИИ и голос", "Сохранения, передача, обмен", "Система", "Экспорт моих настроек", "Импорт настроек", "Из DuoLauncher/exports или «Загрузок»; ключи и история остаются", "Импортировано настроек: %d", "Выбор", "Раздел", "ИИ: перерисовать по светлой версии", "Темп", "Обычный", "Быстрый", "Очень быстрый",
             "Использование и расходы ИИ", "Расходы оценены по публичным ценам — точную сумму смотрите в счёте сервиса; хранится только на консоли", "Сегодня", "На этой неделе", "В этом месяце", "Всего", "За месяц: чат и сортировка ИИ", "За месяц: ИИ-картинки", "За месяц: распознавание речи", "За месяц: голосовые ответы", "запросов: %d", "картинок: %d", "%s мин", "Очистить статистику",
-            "Цена: чат ИИ (за млн токенов вход/выход)", "Цена: ИИ-картинки (за штуку)", "Цена: распознавание речи (за минуту)", "Цена: голосовые ответы (за минуту)", "Вернуть цены по умолчанию"
+            "Цена: чат ИИ (за млн токенов вход/выход)", "Цена: ИИ-картинки (за штуку)", "Цена: распознавание речи (за минуту)", "Цена: голосовые ответы (за минуту)", "Вернуть цены по умолчанию",
+            "Метки NEW", "Отметить как просмотренное", "Отметить все как просмотренные (%d)", "Метка NEW снята с игр: %d", "X — новый чат", "SELECT — история", "Новый чат (предыдущий сохранён в истории)", "История чатов с ИИ", "Хранится только на этой консоли и не попадает в экспорт настроек", "Сохранять чаты с ИИ", "Сохранённых чатов пока нет", "Удалить все чаты", "Удалить все чаты (%d)? Это нельзя отменить", "Удалить этот чат", "Не распознано и пропущено: %d",
+            "Новый чат", "не удалось записать файл с данными игр"
         },
     };
 
@@ -428,6 +452,13 @@ final class I18n {
     static String t(S s) { return T[lang][s.ordinal()]; }
 
     static String f(S s, Object... args) { return String.format(Locale.ROOT, t(s), args); }
+
+    /** Whether text is this string in any of the languages (a default name saved under another language). */
+    static boolean anyLanguage(S s, String text) {
+        if (text == null) return false;
+        for (String[] row : T) if (row[s.ordinal()].equals(text)) return true;
+        return false;
+    }
 
     /** Best match for the device locale, used until the user picks a language. */
     static String systemDefault() {

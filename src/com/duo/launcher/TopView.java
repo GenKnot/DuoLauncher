@@ -70,6 +70,14 @@ final class TopView extends ViewGroup {
         shown = null;
     }
 
+    /** While the AI chat covers this screen: no video previews (their sound would drown out the spoken reply). */
+    private boolean quiet;
+
+    void setQuiet(boolean q) {
+        quiet = q;
+        if (q) stopVideo();
+    }
+
     private void stopVideo() {
         if (video == null) return;
         if (startVideo != null) removeCallbacks(startVideo);
@@ -413,7 +421,7 @@ final class TopView extends ViewGroup {
         refreshGameImages(g);
         if (fresh && wantsVideo(g)) {
             startVideo = () -> {
-                File v = shown == g ? g.asset("video") : null;
+                File v = shown == g && !quiet ? g.asset("video") : null;
                 if (v != null) video.play(v);
             };
             postDelayed(startVideo, displayMode(g).equals("video") ? 500 : 1800);

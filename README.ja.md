@@ -38,6 +38,28 @@ Duo Launcher は、ひとりのプレイヤーが自分の携帯機のために�
 
 <table>
   <tr>
+    <th>3DS 風の設定画面</th>
+    <th>設定画面（ダーク）</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/en_settings.png" alt="3DS 風の設定画面"></td>
+    <td><img src="docs/screenshots/en_settings_dark.png" alt="設定画面（ダーク）"></td>
+  </tr>
+  <tr>
+    <th>AI の使用量と費用</th>
+    <th>設定のエクスポートとインポート</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/en_ai_usage.png" alt="AI の使用量と費用"></td>
+    <td><img src="docs/screenshots/en_config.png" alt="設定のエクスポートとインポート"></td>
+  </tr>
+  <tr>
+    <th colspan="2">ダークモード用の手描きイラスト</th>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><img src="docs/screenshots/en_dark_home.png" width="50%" alt="ダークモード用の手描きイラスト"></td>
+  </tr>
+  <tr>
     <th>ジャンル別のホーム（粘土風のジャンルアイコン）</th>
     <th>シリーズ別のホーム</th>
   </tr>

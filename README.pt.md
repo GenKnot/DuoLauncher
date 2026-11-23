@@ -38,6 +38,28 @@ Sugestões e relatos de bugs são bem-vindos no [issue tracker](https://github.c
 
 <table>
   <tr>
+    <th>Definições ao estilo 3DS</th>
+    <th>Definições no modo escuro</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/en_settings.png" alt="Definições ao estilo 3DS"></td>
+    <td><img src="docs/screenshots/en_settings_dark.png" alt="Definições no modo escuro"></td>
+  </tr>
+  <tr>
+    <th>Uso e custo da IA</th>
+    <th>Exportar e importar a configuração</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/en_ai_usage.png" alt="Uso e custo da IA"></td>
+    <td><img src="docs/screenshots/en_config.png" alt="Exportar e importar a configuração"></td>
+  </tr>
+  <tr>
+    <th colspan="2">Ilustrações desenhadas para o modo escuro</th>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><img src="docs/screenshots/en_dark_home.png" width="50%" alt="Ilustrações desenhadas para o modo escuro"></td>
+  </tr>
+  <tr>
     <th>Início por gênero, com ícones de massinha</th>
     <th>Início por série</th>
   </tr>

@@ -38,6 +38,28 @@ Las sugerencias y los informes de errores son bienvenidos en el [gestor de incid
 
 <table>
   <tr>
+    <th>Ajustes al estilo 3DS</th>
+    <th>Ajustes en modo oscuro</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/en_settings.png" alt="Ajustes al estilo 3DS"></td>
+    <td><img src="docs/screenshots/en_settings_dark.png" alt="Ajustes en modo oscuro"></td>
+  </tr>
+  <tr>
+    <th>Uso y coste de la IA</th>
+    <th>Exportar e importar la configuración</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/en_ai_usage.png" alt="Uso y coste de la IA"></td>
+    <td><img src="docs/screenshots/en_config.png" alt="Exportar e importar la configuración"></td>
+  </tr>
+  <tr>
+    <th colspan="2">Ilustraciones a mano para el modo oscuro</th>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><img src="docs/screenshots/en_dark_home.png" width="50%" alt="Ilustraciones a mano para el modo oscuro"></td>
+  </tr>
+  <tr>
     <th>Inicio por género, con iconos de plastilina</th>
     <th>Inicio por saga</th>
   </tr>

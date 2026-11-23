@@ -91,7 +91,11 @@ final class Speaker {
                     if (player == null) playNext(me);
                 });
             }
-            main.post(() -> { if (me == turn) fetching = false; });
+            main.post(() -> {
+                if (me != turn) return;
+                fetching = false;
+                if (player == null && queue.isEmpty()) { releaseBoost(); abandonFocus(); }
+            });
         }, "speak").start();
     }
 
@@ -103,31 +107,76 @@ final class Speaker {
             player.release();
             player = null;
         }
+        releaseBoost();
+        abandonFocus();
         for (File f : queue) f.delete();
         queue.clear();
+    }
+
+    // The reply plays on the media stream (the assistant stream has its own, usually low, volume), holds audio
+    // focus so other apps duck, and gets a loudness boost: the speech services deliver it rather quietly.
+    private static final int BOOST_MB = 900;
+    private android.media.audiofx.LoudnessEnhancer boost;
+    private android.media.AudioFocusRequest focus;
+    private static final AudioAttributes ATTRS = new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build();
+
+    private void takeFocus() {
+        if (focus != null) return;
+        android.media.AudioManager am = ctx.getSystemService(android.media.AudioManager.class);
+        if (am == null) return;
+        focus = new android.media.AudioFocusRequest.Builder(android.media.AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
+                .setAudioAttributes(ATTRS).build();
+        am.requestAudioFocus(focus);
+    }
+
+    private void abandonFocus() {
+        if (focus == null) return;
+        android.media.AudioManager am = ctx.getSystemService(android.media.AudioManager.class);
+        if (am != null) am.abandonAudioFocusRequest(focus);
+        focus = null;
+    }
+
+    private void releaseBoost() {
+        if (boost == null) return;
+        try { boost.release(); } catch (Exception ignored) { }
+        boost = null;
     }
 
     boolean speaking() { return player != null || fetching; }
 
     private void playNext(int me) {
-        if (me != turn || queue.isEmpty()) return;
+        if (me != turn) return;
+        if (queue.isEmpty()) {
+            if (!fetching) { releaseBoost(); abandonFocus(); }   // the whole reply has been said
+            return;
+        }
         File f = queue.remove(0);
         MediaPlayer mp = new MediaPlayer();
         try {
-            mp.setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ASSISTANT)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build());
+            mp.setAudioAttributes(ATTRS);
             mp.setDataSource(f.getPath());
             mp.setOnCompletionListener(x -> {
                 x.release();
                 f.delete();
                 if (player == x) player = null;
+                releaseBoost();
                 playNext(me);
             });
             mp.prepare();
+            takeFocus();
+            try {
+                boost = new android.media.audiofx.LoudnessEnhancer(mp.getAudioSessionId());
+                boost.setTargetGain(BOOST_MB);
+                boost.setEnabled(true);
+            } catch (Exception e) {
+                boost = null;   // not every device offers the effect; play as is
+            }
             mp.start();
             player = mp;
         } catch (Exception e) {
             mp.release();
+            releaseBoost();
             f.delete();
             playNext(me);
         }

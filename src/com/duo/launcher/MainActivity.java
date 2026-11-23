@@ -85,6 +85,7 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         applyTextScale();
         TopView.videoEnabled = prefs.getBoolean("videoPreview", true);
         TopView.prefs = prefs;
+        loadSeenNew();
         // RetroArch keeps the config file the game's launch line names (its own retroarch.cfg): that one shows Retroid's
         // per-system frames at full size. Retroid's per-screen retroarch1920x1080.cfg draws every game small inside
         // a TV frame on the Duo's upper screen, so it is not used.
@@ -455,6 +456,16 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         games.add(t(S.HIDDEN_FOLDERS) + (shelfState.hidden.isEmpty() ? "" : "  ·  " + shelfState.hidden.size()), false, () -> showHiddenMenu(games, 0));
         if (!hiddenGames.isEmpty())
             games.add(t(S.HIDDEN_GAMES) + "  ·  " + hiddenGames.size(), false, () -> showHiddenGamesMenu(games, 0));
+        boolean badges = prefs.getBoolean("newBadges", true);
+        games.toggle(t(S.NEW_BADGES), badges, () -> {
+            prefs.edit().putBoolean("newBadges", !badges).apply();
+            ShelfView.newBadges = !badges;
+            shelf.invalidate();
+            onSettings();
+        });
+        List<Library.Game> freshNow = allNewGames();
+        if (badges && !freshNow.isEmpty())
+            games.add(I18n.f(S.MARK_ALL_SEEN, freshNow.size()), false, () -> { onMarkSeen(freshNow); onSettings(); });
 
         // playing
         play.add(t(S.BUTTONS), false, () -> showButtonsMenu(0));
@@ -469,6 +480,13 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         ai.add(t(S.AI_IMAGES) + "  ·  " + (imgNow == null ? t(S.OFF) : imgNow.model.isEmpty() ? AiImage.DEFAULT_MODEL : imgNow.model), imgNow != null, () -> showImageAiMenu(ai, 0));
         ai.add(t(S.TTS_REPLY) + "  ·  " + ttsName(Speaker.provider(prefs)), Speaker.ready(prefs), () -> showVoiceMenu(ai, 0));
         ai.add(t(S.USAGE) + "  ·  " + t(S.USAGE_MONTH) + " " + Usage.money(Usage.since(Usage.monthStart(), null)[4]), false, () -> showUsageMenu(ai));
+        int chats = ChatHistory.count(getFilesDir());
+        ai.add(t(S.CHAT_HISTORY) + (chats == 0 ? "" : "  ·  " + chats), false, () -> showChatHistory(ai));
+        boolean saving = chatSaving();
+        ai.toggle(t(S.CHAT_SAVE), saving, () -> {
+            prefs.edit().putBoolean("chat.save", !saving).apply();
+            onSettings();
+        });
 
         // saves, transfer and sharing
         data.add(t(S.WIFI_TRANSFER) + (wifi != null && wifi.running() ? "  ·  " + t(S.ON) : ""), wifi != null && wifi.running(), this::showWifiMenu);
@@ -2160,7 +2178,11 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         if (v == null) return;
         voice = null;
         byte[] wav = v.stop();
-        if (wav == null) { if (kb != null) kb.setStatus(null); return; }
+        if (wav == null) {
+            if (kb != null) kb.setStatus(null);
+            if (chat != null) chat.setStatus(null);
+            return;
+        }
         if (kb != null) kb.setStatus(t(S.TRANSCRIBING));
         else Toast.makeText(this, t(S.TRANSCRIBING), Toast.LENGTH_SHORT).show();
         AiImage ai = AiImage.from(prefs);
@@ -2172,6 +2194,7 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
             main.post(() -> {
                 if (text == null || text.isEmpty()) {
                     if (kb != null) kb.setStatus(null);
+                    if (chat != null) chat.setStatus(null);   // no "transcribing…" left behind in the chat
                     Toast.makeText(this, I18n.f(S.VOICE_FAILED, String.valueOf(v.error)), Toast.LENGTH_LONG).show();
                     return;
                 }
@@ -2335,29 +2358,37 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         }, "genre-icons").start();
     }
 
+    private boolean gameTextRunning;
+
     private void runGameText(List<Library.Platform> ps, Ai ai, String lang) {
         shelf.closeMenu();
+        if (gameTextRunning) { Toast.makeText(this, t(S.WORKING), Toast.LENGTH_SHORT).show(); return; }
+        gameTextRunning = true;
         int total = 0;
         for (Library.Platform p : ps) total += GameText.todo(p, lang).size();
         int all = total;
         Toast.makeText(this, I18n.f(S.AI_GAME_TEXT_PROGRESS, 0, all), Toast.LENGTH_SHORT).show();
         new Thread(() -> {
-            int done = 0;
+            int done = 0, skipped = 0, seen = 0;
             outer:
             for (Library.Platform p : ps) {
                 for (java.util.Map.Entry<Library.Platform, List<Library.Game>> e : byPlatform(GameText.todo(p, lang)).entrySet()) {
                     List<Library.Game> gs = e.getValue();
-                    int base = done;
+                    int base = seen;
                     int n = GameText.translate(ai, e.getKey(), gs, lang, k -> main.post(() ->
                             Toast.makeText(this, I18n.f(S.AI_GAME_TEXT_PROGRESS, base + k, all), Toast.LENGTH_SHORT).show()));
                     done += n;
-                    if (n < gs.size() && ai.error != null) break outer;
+                    skipped += GameText.skipped;
+                    seen += gs.size();
+                    if (GameText.gaveUp) break outer;   // failing again and again (a wrong key, no network): stop
                 }
             }
-            int finished = done;
-            String err = ai.error;
+            int finished = done, left = skipped;
+            String err = GameText.gaveUp ? ai.error : null;
             main.post(() -> {
-                Toast.makeText(this, I18n.f(S.TRANSLATED, finished) + (err != null ? "\n" + I18n.f(S.AI_FAILED, err) : ""), Toast.LENGTH_LONG).show();
+                gameTextRunning = false;
+                Toast.makeText(this, I18n.f(S.TRANSLATED, finished) + (left > 0 ? "  ·  " + I18n.f(S.AI_SKIPPED, left) : "")
+                        + (err != null ? "\n" + I18n.f(S.AI_FAILED, err) : ""), Toast.LENGTH_LONG).show();
                 if (finished > 0) load();
             });
         }, "game-text").start();
@@ -2915,6 +2946,8 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
             p.art = prefs.getString(fk(id, "art"), "custom");
             p.bgArt = prefs.getString(fk(id, "bg"), "custom");
             p.smart = prefs.getString(fk(id, "smart"), null);
+            // a smart folder still called by its default name (in whatever language it was made) follows the UI language
+            if (p.smart != null && I18n.anyLanguage(smartKey(p.smart), p.label)) p.label = smartName(p.smart);
             if (p.smart != null) p.games.addAll(smartGames(p.smart));
             else for (String k : folderItems(id)) {
                 Library.Game g = lib.byKey.get(k);
@@ -2993,15 +3026,17 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         shelf.showMenu(m);
     }
 
-    private static String smartName(String kind) {
+    private static String smartName(String kind) { return t(smartKey(kind)); }
+
+    private static S smartKey(String kind) {
         switch (kind) {
-            case "new": return t(S.SMART_NEW);
-            case "unplayed": return t(S.SMART_UNPLAYED);
-            case "playing": return t(S.STATUS_PLAYING);
-            case "wish": return t(S.STATUS_WISH);
-            case "done": return t(S.STATUS_DONE);
-            case "top": return t(S.SMART_TOP);
-            default: return t(S.SMART_MOST);
+            case "new": return S.SMART_NEW;
+            case "unplayed": return S.SMART_UNPLAYED;
+            case "playing": return S.STATUS_PLAYING;
+            case "wish": return S.STATUS_WISH;
+            case "done": return S.STATUS_DONE;
+            case "top": return S.SMART_TOP;
+            default: return S.SMART_MOST;
         }
     }
 
@@ -3104,6 +3139,8 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         String id = idOf(pl);
         ShelfView.Menu m = new ShelfView.Menu(t(S.EDIT_FOLDER), pl.title());
         if (pl.smart != null) m.add(t(S.SMART_RULE) + "  ·  " + smartName(pl.smart), false, null);
+        List<Library.Game> fresh = shelf.newIn(pl);
+        if (!fresh.isEmpty()) m.add(I18n.f(S.MARK_ALL_SEEN, fresh.size()), false, () -> { shelf.closeMenu(); onMarkSeen(fresh); });
         m.add(t(S.RENAME), false, () -> askText(t(S.FOLDER_NAME), pl.title(), name -> {
             prefs.edit().putString(fk(id, "name"), name).apply();
             foldersChanged();
@@ -3360,9 +3397,10 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         String e = g.path == null ? "" : g.ext();
         if (!prefs.getBoolean("bannerMusic", true) || !(e.equals("3ds") || e.equals("cci") || e.equals("cxi") || e.equals("app"))) return;
         if (TopView.wantsVideo(g)) return; // the video brings its own sound
+        if (chat != null) return;          // the AI chat is open: its spoken reply must be heard
         int seq = bannerSeq;
         main.postDelayed(() -> {
-            if (seq != bannerSeq) return;
+            if (seq != bannerSeq || chat != null) return;
             new Thread(() -> {
                 BannerSound s = BannerSound.load(g.path);
                 if (s != null) main.post(() -> {
@@ -3643,6 +3681,7 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
     }
 
     @Override public void onCue(int cue) {
+        if (chat != null || (speaker != null && speaker.speaking())) return;   // keep the spoken AI reply clear
         if (sfx != null) sfx.play(cue);
     }
 
@@ -3958,6 +3997,42 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
     @Override public void onDisplayModeChanged(Library.Game g) {
         top.reset();
         onFocus(shelf.selected());
+    }
+
+    // ---- NEW badges: games marked as seen are kept in files/seennew.txt (one key per line) ----
+
+    private void loadSeenNew() {
+        ShelfView.newBadges = prefs.getBoolean("newBadges", true);
+        ShelfView.seenNew.clear();
+        File f = new File(getFilesDir(), "seennew.txt");
+        if (!f.isFile()) return;
+        try (java.io.BufferedReader r = new java.io.BufferedReader(new java.io.InputStreamReader(new java.io.FileInputStream(f), java.nio.charset.StandardCharsets.UTF_8))) {
+            for (String line; (line = r.readLine()) != null; ) if (!line.isEmpty()) ShelfView.seenNew.add(line);
+        } catch (java.io.IOException ignored) {
+        }
+    }
+
+    @Override public void onMarkSeen(List<Library.Game> games) {
+        StringBuilder add = new StringBuilder();
+        int n = 0;
+        for (Library.Game g : games) if (ShelfView.seenNew.add(g.key())) { add.append(g.key()).append('\n'); n++; }
+        if (add.length() > 0) {
+            try (java.io.Writer w = new java.io.OutputStreamWriter(new java.io.FileOutputStream(new File(getFilesDir(), "seennew.txt"), true), java.nio.charset.StandardCharsets.UTF_8)) {
+                w.write(add.toString());
+            } catch (java.io.IOException ignored) {
+            }
+        }
+        Toast.makeText(this, I18n.f(S.MARKED_SEEN, n), Toast.LENGTH_SHORT).show();
+        if (shelf != null) shelf.invalidate();
+        if (top != null && shelf != null) { top.reset(); onFocus(shelf.selected()); }
+    }
+
+    /** Every game that shows a NEW badge right now. */
+    private List<Library.Game> allNewGames() {
+        List<Library.Game> out = new ArrayList<>();
+        if (lib == null || shelf == null) return out;
+        for (Library.Game g : lib.byKey.values()) if (g.pkg == null && shelf.isNew(g)) out.add(g);
+        return out;
     }
 
     @Override public void onHideGame(Library.Game g) {
@@ -4325,6 +4400,83 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
     private ChatPanel chat;
     private final List<ChatPanel.Msg> chatMsgs = new ArrayList<>();
     private long chatAt;
+    /** The saved file of the conversation on screen (null until its first message is saved). */
+    private String chatId;
+    /** Bumped whenever the conversation on screen is replaced or deleted, so a reply still on its way is dropped. */
+    private int chatSeq;
+
+    /** Empties the chat on screen (a new conversation, or the one shown was deleted). */
+    private void resetChat() {
+        stopSpeaking();
+        chatSeq++;
+        chatMsgs.clear();
+        chatId = null;
+        if (chat != null) { chat.setStatus(null); chat.invalidate(); }
+    }
+
+    private boolean chatSaving() { return prefs.getBoolean("chat.save", true); }
+
+    private void saveChat() {
+        if (!chatSaving() || chatMsgs.isEmpty()) return;
+        if (chatId == null) chatId = String.valueOf(System.currentTimeMillis());
+        List<ChatPanel.Msg> copy = new ArrayList<>(chatMsgs);
+        String id = chatId;
+        File dir = getFilesDir();
+        ChatHistory.WRITER.execute(() -> ChatHistory.save(dir, id, copy));
+    }
+
+    /** X in the chat: put this conversation away (it stays in the history) and start a fresh one. */
+    private void newChat() {
+        boolean kept = chatSaving() && !chatMsgs.isEmpty();
+        resetChat();
+        Toast.makeText(this, t(kept ? S.CHAT_NEW_STARTED : S.CHAT_NEW_ONLY), Toast.LENGTH_SHORT).show();
+    }
+
+    /** The saved conversations on the lower screen; picking one opens it in the chat. */
+    private void showChatHistory(ShelfView.Menu parent) {
+        if (shelf == null) return;
+        List<ChatHistory.Entry> all = ChatHistory.list(getFilesDir());
+        ShelfView.Menu m = new ShelfView.Menu(t(S.CHAT_HISTORY), t(S.CHAT_HISTORY_HINT));
+        m.parent = parent;
+        if (all.isEmpty()) m.add(t(S.CHAT_NO_HISTORY), false, null);
+        java.text.DateFormat df = android.text.format.DateFormat.getMediumDateFormat(this), tf = android.text.format.DateFormat.getTimeFormat(this);
+        for (ChatHistory.Entry e : all) {
+            java.util.Date d = new java.util.Date(e.updated);
+            String when = df.format(d) + " " + tf.format(d);
+            m.add(e.title + "  ·  " + when, e.id.equals(chatId), () -> {
+                ShelfView.Menu one = new ShelfView.Menu(e.title, when);
+                one.parent = m;
+                one.add(t(S.OPEN), false, () -> {
+                    shelf.closeMenu();
+                    if (!openChat()) return;
+                    resetChat();
+                    chatMsgs.addAll(ChatHistory.load(getFilesDir(), e.id));
+                    chatId = e.id;
+                    chatAt = SystemClock.uptimeMillis();
+                    if (chat != null) { chat.setStatus(null); chat.invalidate(); }
+                });
+                one.add("✕  " + t(S.CHAT_DELETE), false, () -> {
+                    ChatHistory.delete(getFilesDir(), e.id);
+                    if (e.id.equals(chatId)) resetChat();   // or the next message would save it again
+                    showChatHistory(parent);
+                });
+                shelf.showMenu(one);
+            });
+        }
+        if (!all.isEmpty()) m.add("✕  " + t(S.CHAT_CLEAR_ALL), false, () -> {
+            ShelfView.Menu sure = new ShelfView.Menu(t(S.CHAT_CLEAR_ALL), I18n.f(S.CHAT_CLEAR_SURE, all.size()));
+            sure.parent = m;
+            sure.add("✕  " + t(S.CHAT_CLEAR_ALL), false, () -> {
+                ChatHistory.clearAll(getFilesDir());
+                if (chatId != null) resetChat();
+                Toast.makeText(this, t(S.DELETED), Toast.LENGTH_SHORT).show();
+                showChatHistory(parent);
+            });
+            sure.add(t(S.BACK), false, () -> showChatHistory(parent));
+            shelf.showMenu(sure);
+        });
+        shelf.showMenu(m);
+    }
 
     /** Opens the chat (carrying on a conversation from the last half hour); false with a setup help when there is no AI key. */
     private boolean openChat() {
@@ -4334,10 +4486,13 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         }
         if (shelf != null) shelf.closeMenu();
         closeKeyboard();
-        if (SystemClock.uptimeMillis() - chatAt > 30 * 60_000L) chatMsgs.clear();
+        if (SystemClock.uptimeMillis() - chatAt > 30 * 60_000L) { chatMsgs.clear(); chatId = null; chatSeq++; }
         if (chat == null) {
             chat = new ChatPanel(this, chatMsgs, AiImage.from(prefs) != null);
             top.setOverlay(chat);
+            // the chat covers the upper screen: no video sound or banner tune under the spoken replies
+            stopBanner();
+            top.setQuiet(true);
         }
         return true;
     }
@@ -4346,15 +4501,24 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         stopSpeaking();
         if (chat == null) return;
         chat = null;
-        if (top != null) top.setOverlay(null);
+        // a failed voice message leaves R aimed at the chat (to try again); once it is closed, R opens it anew
+        if (voice == null) voiceTo = null;
+        if (top != null) {
+            top.setOverlay(null);
+            top.setQuiet(false);
+            top.reset();   // so the selected game is drawn again and its video can start
+        }
         if (shelf != null) onFocus(shelf.selected());
     }
 
     /** Keys of the chat; everything else drives the lower screen, where its games are. */
     private boolean chatKey(int code) {
+        if (shelf != null && shelf.menuOpen()) return false;   // the history list on the lower screen has the keys
         switch (code) {
             case KeyEvent.KEYCODE_BUTTON_B: closeChat(); return true;
             case KeyEvent.KEYCODE_BUTTON_Y: askText(t(S.CHAT_TITLE), "", this::chatSend); return true;
+            case KeyEvent.KEYCODE_BUTTON_X: newChat(); return true;
+            case KeyEvent.KEYCODE_BUTTON_SELECT: showChatHistory(null); return true;
             case KeyEvent.KEYCODE_BUTTON_L2: chat.scrollBy(-1); return true;
             case KeyEvent.KEYCODE_BUTTON_R2: chat.scrollBy(1); return true;
             default: return false;
@@ -4369,6 +4533,7 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         stopSpeaking();
         chatAt = SystemClock.uptimeMillis();
         chatMsgs.add(new ChatPanel.Msg(true, text, null));
+        saveChat();
         if (chat != null) chat.setStatus(t(S.THINKING));
         List<Library.Game> all = new ArrayList<>();
         for (Library.Game g : lib.byKey.values()) if (g.pkg == null && g.path != null) all.add(g);
@@ -4395,6 +4560,7 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
                     + (g.original == null || g.original.isEmpty() ? "" : " (" + g.original + ")");
         }
         String lang = I18n.name(), context = here;
+        int seq = chatSeq;
         new Thread(() -> {
             String a = ai.chat("You are a friendly, knowledgeable game companion on the user's retro handheld, chatting with them. "
                     + "Their own game library is listed below. Answer the latest message of the conversation in " + lang
@@ -4429,6 +4595,7 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
             }
             String said = reply, err = ai.error, look = find;
             main.post(() -> {
+                if (seq != chatSeq) return;   // the conversation was replaced or deleted meanwhile
                 if (chat != null) chat.setStatus(null);
                 if (said == null) {
                     chatMsgs.add(new ChatPanel.Msg(false, I18n.f(S.AI_FAILED, err != null ? err : "unexpected answer"), null));
@@ -4459,6 +4626,7 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
                 ChatPanel.Msg m = new ChatPanel.Msg(false, answer, names);
                 if (chat != null) chat.add(m);
                 else chatMsgs.add(m);
+                saveChat();
             });
         }, "ai-chat").start();
     }

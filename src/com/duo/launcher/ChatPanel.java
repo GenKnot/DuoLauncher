@@ -103,7 +103,8 @@ final class ChatPanel extends View {
         // footer: the keys
         p.setTextAlign(Paint.Align.CENTER);
         p.setTextSize(27 * ts);
-        String keys = (voice ? t(S.CHAT_KEY_SPEAK) + " · " : "") + t(S.CHAT_KEY_TYPE) + " · " + t(S.CHAT_KEY_SCROLL) + " · " + t(S.CHAT_KEY_CLOSE);
+        String keys = (voice ? t(S.CHAT_KEY_SPEAK) + " · " : "") + t(S.CHAT_KEY_TYPE) + " · " + t(S.CHAT_KEY_NEW) + " · "
+                + t(S.CHAT_KEY_HISTORY) + " · " + t(S.CHAT_KEY_SCROLL) + " · " + t(S.CHAT_KEY_CLOSE);
         c.drawText(keys, panel.centerX(), panel.bottom - 28 * u, p);
 
         float bodyTop = headY + 30 * u, bodyBottom = panel.bottom - 72 * u;

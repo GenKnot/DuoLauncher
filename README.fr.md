@@ -38,6 +38,28 @@ Suggestions et rapports de bugs sont les bienvenus sur le [suivi des tickets](ht
 
 <table>
   <tr>
+    <th>Réglages façon 3DS</th>
+    <th>Réglages en mode sombre</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/en_settings.png" alt="Réglages façon 3DS"></td>
+    <td><img src="docs/screenshots/en_settings_dark.png" alt="Réglages en mode sombre"></td>
+  </tr>
+  <tr>
+    <th>Utilisation et coût de l'IA</th>
+    <th>Exporter et importer la configuration</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/en_ai_usage.png" alt="Utilisation et coût de l'IA"></td>
+    <td><img src="docs/screenshots/en_config.png" alt="Exporter et importer la configuration"></td>
+  </tr>
+  <tr>
+    <th colspan="2">Illustrations dessinées pour le mode sombre</th>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><img src="docs/screenshots/en_dark_home.png" width="50%" alt="Illustrations dessinées pour le mode sombre"></td>
+  </tr>
+  <tr>
     <th>Accueil par genre, avec les icônes de genre en pâte à modeler</th>
     <th>Accueil par série</th>
   </tr>

@@ -45,6 +45,8 @@ final class ShelfView extends View {
         void onRemoveFromFolder(Library.Platform folder, Library.Game g);
         void onHideFolder(Library.Platform folder);
         void onHideGame(Library.Game g);
+        /** Takes the NEW badge off these games. */
+        void onMarkSeen(List<Library.Game> games);
         boolean isFavorite(Library.Game g);
         void onToggleFavorite(Library.Game g);
         /** Last-played time (mode SORT_RECENT) or total play time (SORT_PLAYTIME), for sorting. */
@@ -984,6 +986,8 @@ final class ShelfView extends View {
             }
             m.add(t(S.RENAME), false, () -> listener.onRenamePlatform(pl));
             if (!isNative(pl)) m.add(t(S.MERGE_FOLDER), false, () -> listener.onMergePlatform(pl, m));
+            List<Library.Game> fresh = newIn(pl);
+            if (!fresh.isEmpty()) m.add(I18n.f(S.MARK_ALL_SEEN, fresh.size()), false, () -> { closeMenu(); listener.onMarkSeen(fresh); });
             m.add(t(S.HIDE_FOLDER), false, () -> { closeMenu(); listener.onHideFolder(pl); });
             showMenu(m);
             return;
@@ -1001,6 +1005,7 @@ final class ShelfView extends View {
         boolean fav = listener.isFavorite(g);
         m.add(t(fav ? S.REMOVE_FAVORITE : S.ADD_FAVORITE), false, () -> { closeMenu(); listener.onToggleFavorite(g); });
         m.add(t(S.ADD_TO_FOLDER), false, () -> listener.onAddToFolder(g, m));
+        if (isNew(g)) m.add(t(S.MARK_SEEN), false, () -> { closeMenu(); listener.onMarkSeen(java.util.Collections.singletonList(g)); });
         Library.Platform here = st.current;
         if (here != null && here.isCustom() && here.smart == null)
             m.add(t(S.REMOVE_FROM_FOLDER), false, () -> { closeMenu(); listener.onRemoveFromFolder(here, g); });
@@ -1365,9 +1370,21 @@ final class ShelfView extends View {
     /** Margin around game pictures for Settings → Cover margin (fill, small, medium, large). */
     static final float[] TILE_PAD = {0f, 0.05f, 0.09f, 0.13f};
 
-    /** Added in the last week and not played yet. */
-    private boolean isNew(Library.Game g) {
-        return g.added > 0 && System.currentTimeMillis() - g.added < NEW_MS && listener.playedLine(g) == null;
+    /** Settings → NEW badges; and the games the player marked as seen. */
+    static boolean newBadges = true;
+    static final java.util.Set<String> seenNew = new java.util.HashSet<>();
+
+    /** Added in the last week, not played yet and not marked as seen. */
+    boolean isNew(Library.Game g) {
+        return newBadges && g.added > 0 && System.currentTimeMillis() - g.added < NEW_MS && !seenNew.contains(g.key())
+                && listener.playedLine(g) == null;
+    }
+
+    /** The games of a folder that still show a NEW badge. */
+    List<Library.Game> newIn(Library.Platform pl) {
+        List<Library.Game> out = new ArrayList<>();
+        for (Library.Game g : pl.games) if (isNew(g)) out.add(g);
+        return out;
     }
 
     private void newBadge(Canvas c) {
