@@ -2,7 +2,7 @@
 
 # Duo Launcher
 
-<p align="center"><a href="README.md">English</a> · <b>简体中文</b></p>
+<p align="center"><a href="README.md">English</a> · <a href="README.fr.md">Français</a> · <b>简体中文</b> · <a href="README.zh-TW.md">繁體中文</a> · <a href="README.ja.md">日本語</a> · <a href="README.ko.md">한국어</a> · <a href="README.es.md">Español</a> · <a href="README.de.md">Deutsch</a> · <a href="README.it.md">Italiano</a> · <a href="README.pt.md">Português</a> · <a href="README.ru.md">Русский</a></p>
 
 一款给 **Retroid Pocket Duo** 以及其他带副屏的安卓掌机用的双屏游戏启动器，思路参考了 3DS 的主菜单。
 告诉它你的 ROM 放在哪，它会自己找出游戏，按主机、类型和系列分好，在下屏列出游戏、上屏显示图片，再用你选好的模拟器把游戏打开。
