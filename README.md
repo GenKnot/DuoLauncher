@@ -218,7 +218,7 @@ Suggestions and bug reports are welcome on the [issue tracker](https://github.co
 | SELECT | On the home page: consoles / genres / series; in a folder: sort and language filter |
 | R3 | Search |
 | In the search keyboard | A types, B deletes, X space, Y system keyboard, SELECT clears, START or R3 done, hold L to speak |
-| In the AI chat | Hold R to speak, Y to type, L2 / R2 to scroll back, B to close; the d-pad and A pick from the games below |
+| In the AI chat | Hold R to speak, Y to type, X for a new conversation, SELECT for the history, L2 / R2 to scroll back, B to close; the d-pad and A pick from the games below |
 
 Everything also works by touch: tap to select, tap again to open, flick to scroll, and tap the pills along the top instead of L, R, X, SELECT or Search. A/B and X/Y can be swapped for Nintendo- or Xbox-style confirm buttons (Settings → Playing → Buttons).
 
@@ -229,7 +229,7 @@ Everything also works by touch: tap to select, tap again to open, flick to scrol
 - **Multi-disc games as one.** `Disc A/B`, `Disc 1/2`, `CD1/CD2`, `(Disc 2 of 3)` in one folder, or a Pegasus `files:` list, become a single entry. RetroArch and DuckStation get an `.m3u` playlist of the discs so you can change discs in-game.
 - **Android games and apps** – installed games get their own folder automatically; any other apps (video, browser …) can be added to an Apps folder.
 - **Works with what you already have.** It reads Pegasus `metadata.pegasus.txt`, ES-DE / EmulationStation `gamelist.xml` and `downloaded_media`, RetroArch thumbnails, and `media/`, `covers/` and `images/` folders next to the games. Nothing of theirs is changed; the launcher's own additions go into its own `DuoLauncher` folder (see [Your own game info](#your-own-game-info)).
-- **Notices new games.** Copy games to the card and the next scan finds them; they carry a NEW badge for a week (until played) and are offered for sorting into genres and series. The question can be turned off.
+- **Notices new games.** Copy games to the card and the next scan finds them; they carry a NEW badge for a week (until played) and are offered for sorting into genres and series. The question can be turned off. Y → Mark as seen takes the badge off one game; Mark all as seen (Y on a console or folder, or Settings → Home and library) clears many at once, and the NEW badges switch there turns them off entirely.
 - **Merge folders.** Two folders of the same console from different places (two PS1 folders, say) can be shown as one: Y → Merge folders on a console. Each game keeps its own emulator, folders with the same name merge by themselves, and "Split off" undoes it.
 - **Your own folders.** The New folder tile makes a folder with its own name, colour, icon and backdrop. Add any game or app to it with Y, and take it out again with Y → Remove from this folder.
 - **Smart folders** fill themselves: recently added (the last 30 days), not played yet, most played, playing, want to play, finished and top rated. Y on one shows its rule.
@@ -294,6 +294,8 @@ All of this is optional and uses the AI service you choose with your own key (se
 
 - **Talk to it anywhere.** Hold R on the home page, in a folder or in the search keyboard and speak – or press Y to type. The conversation fills the upper screen; the games it recommends or finds fill the lower one, ready to start with A. Ask what to play ("a relaxed RPG, not too long"), narrow it down ("something with more action"), ask how to get past the part of the game you have selected, about a story or a character, or just chat. It remembers the conversation for half an hour.
   *Why:* the lower screen is where games are chosen, so the AI's picks land there; the upper screen is free for reading. And on a handheld, holding a shoulder button and talking is quicker than any menu.
+- **New conversation, saved history.** X in the chat starts a new conversation; SELECT lists the earlier ones, newest first, to open again, delete one by one or clear all (also Settings → AI and voice → AI chat history). While the chat is open, video previews, 3DS banner tunes and click sounds stay quiet, and spoken answers play at media volume.
+  *Why:* a new question should not drag the old topic along, an answer worth keeping should not vanish with a restart, and a spoken reply is no use when a game trailer plays over it. The history stays on the handheld, is never part of an exported config, and Save AI chats turns it off.
 - **Answers read aloud** – Settings → AI and voice → AI voice replies: Soniox (its own key) or OpenAI (the image key), with a choice of voice and pace and a test button. Off unless you turn it on.
 - **What to play today** – Y on the What to play? tile has the AI pick six games from your library to match your taste, with a reason for each. A plain press of the tile picks one at random, favouring games you have never played.
 - **Ask about a game** (Y → Ask AI) – a question about the selected game, typed or spoken, answered on the upper screen.
