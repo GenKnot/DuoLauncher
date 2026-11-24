@@ -29,6 +29,16 @@ final class StatsView extends View {
         final List<Integer> platformColors = new ArrayList<>();
         final List<Library.Game> top = new ArrayList<>();
         final List<Long> topTimes = new ArrayList<>();
+        /** Set for one game's play history (Y → Game info): the page then shows that game only. */
+        Library.Game game;
+        final long[] month = new long[30];        // oldest first, today last
+        final String[] monthLabels = new String[30];
+        int plays;
+        long longest;
+        String last;
+        /** Set for a play report: the page of it shown. */
+        PlayReport report;
+        int page;
     }
 
     private final Icons icons;
@@ -38,9 +48,12 @@ final class StatsView extends View {
     private final Path path = new Path();
     private Stats s;
 
+    private final ReportPainter painter;
+
     StatsView(Context c, Icons icons) {
         super(c);
         this.icons = icons;
+        painter = new ReportPainter(g -> icons.tile(g, this::invalidate));
         setVisibility(GONE);
     }
 
@@ -52,6 +65,12 @@ final class StatsView extends View {
     static String duration(long ms) {
         long min = ms / 60_000;
         return min >= 60 ? I18n.f(S.PLAYED_HM, min / 60, min % 60) : I18n.f(S.PLAYED_M, min);
+    }
+
+    /** A length of time without the "Played" words; under a minute reads "< 1 min" rather than "0 min". */
+    static String span(long ms) {
+        String one = duration(Math.max(ms, 60_000)).replaceFirst("^\\D+", "");
+        return ms > 0 && ms < 60_000 ? "< " + one : one;
     }
 
     private void text(Canvas c, String str, float x, float y, float size, int color, boolean bold, Paint.Align a) {
@@ -76,6 +95,61 @@ final class StatsView extends View {
         p.clearShadowLayer();
     }
 
+    /** One game's play history: the game and its total, the last 30 days, and three numbers. */
+    private void drawGame(Canvas c, float u, int title, int sub, int accent, int card) {
+        Library.Game g = s.game;
+        // header: cover, title, console and the total
+        r.set(100 * u, 90 * u, 1820 * u, 320 * u);
+        card(c, r, card, u);
+        RectF ic = new RectF(r.left + 36 * u, r.top + 30 * u, r.left + 36 * u + 170 * u, r.top + 200 * u);
+        Bitmap b = icons.tile(g, this::invalidate);
+        c.save();
+        path.reset();
+        path.addRoundRect(ic, 22 * u, 22 * u, Path.Direction.CW);
+        c.clipPath(path);
+        if (b != null) {
+            src.set(0, 0, b.getWidth(), b.getHeight());
+            c.drawBitmap(b, src, ic, p);
+        } else {
+            p.setColor(Palette.cardSoft());
+            c.drawRect(ic, p);
+        }
+        c.restore();
+        float tx = ic.right + 40 * u, maxW = r.right - tx - 40 * u;
+        text(c, fit(g.title, maxW, 50 * u), tx, r.top + 86 * u, 50 * u, title, true, Paint.Align.LEFT);
+        text(c, fit(g.platform.title(), maxW, 28 * u), tx, r.top + 132 * u, 28 * u, sub, false, Paint.Align.LEFT);
+        text(c, s.total > 0 ? span(s.total) : t(S.NO_PLAY_YET), tx, r.top + 196 * u, 44 * u, accent, true, Paint.Align.LEFT);
+
+        // the last 30 days: one bar a day, today in the accent colour
+        r.set(100 * u, 350 * u, 1820 * u, 750 * u);
+        card(c, r, card, u);
+        text(c, t(S.LAST_30_DAYS), r.left + 36 * u, r.top + 62 * u, 32 * u, title, true, Paint.Align.LEFT);
+        long max = 1;
+        for (long v : s.month) max = Math.max(max, v);
+        float gap = 12 * u, bw = (r.width() - 72 * u - 29 * gap) / 30, base = r.bottom - 70 * u, top = r.top + 110 * u;
+        for (int i = 0; i < 30; i++) {
+            float x = r.left + 36 * u + i * (bw + gap), bh = (base - top) * s.month[i] / max;
+            RectF bar = new RectF(x, base - Math.max(bh, 6 * u), x + bw, base);
+            p.setColor(i == 29 ? accent : s.month[i] > 0 ? (accent & 0x00FFFFFF) | 0x99000000 : (accent & 0x00FFFFFF) | 0x26000000);
+            c.drawRoundRect(bar, 8 * u, 8 * u, p);
+            // a date under every seventh bar, counted back from today
+            if ((29 - i) % 7 == 0) text(c, s.monthLabels[i], x + bw / 2, base + 46 * u, 24 * u, sub, i == 29, Paint.Align.CENTER);
+        }
+
+        // three numbers
+        String[][] cells = {{t(S.TIMES_PLAYED), String.valueOf(s.plays)},
+                {t(S.LONGEST_SESSION), s.longest > 0 ? span(s.longest) : "–"},
+                {t(S.LAST_TIME), s.last}};
+        float cw = (1720 * u - 2 * 30 * u) / 3;
+        for (int i = 0; i < 3; i++) {
+            float x = 100 * u + i * (cw + 30 * u);
+            r.set(x, 780 * u, x + cw, 990 * u);
+            card(c, r, card, u);
+            text(c, fit(cells[i][0], cw - 72 * u, 28 * u), r.left + 36 * u, r.top + 70 * u, 28 * u, sub, false, Paint.Align.LEFT);
+            text(c, fit(cells[i][1], cw - 72 * u, 46 * u), r.left + 36 * u, r.top + 150 * u, 46 * u, title, true, Paint.Align.LEFT);
+        }
+    }
+
     @Override protected void onDraw(Canvas c) {
         float w = getWidth(), h = getHeight(), u = w / 1920f;
         int paper = Palette.backdropPaper(), ink = Palette.backdropInk();
@@ -98,6 +172,8 @@ final class StatsView extends View {
         if (s == null) return;
         int title = Palette.topTitle(), sub = Palette.topText(), accent = Palette.accent();
         int card = Palette.dark ? 0xEE1E2530 : 0xF5FFFFFF;
+        if (s.report != null) { painter.draw(c, w, s.report, s.page); return; }
+        if (s.game != null) { drawGame(c, u, title, sub, accent, card); return; }
 
         // header: title and the total, with the accent as a side stripe
         r.set(100 * u, 90 * u, 940 * u, 320 * u);

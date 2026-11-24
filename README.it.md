@@ -24,6 +24,8 @@ Oltre a trovare i tuoi giochi e avviarli, ecco cosa vogliono dire, in concreto, 
 - **Trucchi, dal download al primo fotogramma.** Quando un gioco non ha trucchi sulla console, li scarica dai grandi database della community (Sharkive per 3DS, libretro per NDS e GBA, CWCheat per PSP), ti lascia spuntare solo quelli che vuoi, ne traduce i nomi nella tua lingua con un tocco (con una chiave IA, perfino con i nomi ufficiali di personaggi e oggetti del gioco) e li scrive nei file dei trucchi di ciascun emulatore: Azahar e Citra, DraStic, PPSSPP e RetroArch. Vedi [Trucchi](#trucchi).
 - **Un'IA che conosce la tua libreria.** Tieni premuto R e chiedi a cosa giocare dopo, come superare un boss o di cosa parla una storia: risponde partendo dai giochi che hai davvero. La stessa IA traduce nomi e descrizioni dei giochi, assegna ogni gioco a un genere e a una serie e disegna le copertine, i loghi e gli sfondi che mancano. Usa il servizio che scegli *tu*, con la tua chiave, e ogni richiesta viene contata nelle impostazioni con un costo stimato. Vedi [Il tuo compagno IA](#il-tuo-compagno-ia) e [IA](#ia).
 - **Si configura dal telefono.** Attiva il trasferimento Wi-Fi e sullo schermo superiore compare un codice QR. Inquadralo e si apre una pagina nella lingua del tuo telefono, da cui puoi inviare giochi, scrivere le chiavi API su una tastiera vera, importare ed esportare configurazioni e scaricare i backup. Niente cavi, niente file manager. Vedi [Strumenti utili](#strumenti-utili).
+- **La tua collezione, in mostra.** Duo Library apre l'intera libreria nel browser di un computer o di un telefono, in tre stili (quello della console, un negozio scuro e un museo con una sala per ogni console, copertine incorniciate e targhette), e ti permette di rinominare, ordinare, dare un voto, prendere note, cambiare le copertine trascinandoci sopra un'immagine o modificare un intero gruppo di giochi in una volta. Ogni modifica viene salvata sulla console. Vedi [Duo Library](#duo-library-i-tuoi-giochi-nel-browser).
+- **Il tuo modo di giocare, raccontato.** Ogni mese e ogni anno diventano poche pagine curate: il totale rispetto al mese prima, un calendario dei giorni in cui hai giocato, i tuoi giochi, console e generi preferiti, e se sei più mattiniero o nottambulo. Se ti va, il tutto si salva in un'unica immagine da condividere. Ogni gioco ha anche la sua cronologia degli ultimi 30 giorni. Vedi [Giocare](#giocare).
 - **Un solo posto per tutto ciò che va controllato.** «Problemi rilevati» raccoglie i file che non è riuscito a riconoscere, le console senza emulatore, i giochi senza copertina e i doppioni, e risolve quasi tutto lì per lì. Vedi [Strumenti utili](#strumenti-utili).
 - **I dati di ogni frontend, usati e lasciati in pace.** Legge fianco a fianco metadati e immagini di Pegasus ed ES-DE, tiene le sue aggiunte nella sua cartella `DuoLauncher` e non riscrive mai i file di un altro frontend, così possono convivere tutti sulla stessa scheda. Vedi [Da dove arrivano nomi, immagini e dettagli](#da-dove-arrivano-nomi-immagini-e-dettagli).
 - **Tuo da modificare, fin nei dettagli.** Temi di colore e pacchetti di temi da condividere, modalità chiara e scura, un'immagine e un colore a tua scelta per ogni riquadro, dimensione del testo, margini delle copertine, regole per ripulire i nomi, un ordine dei giochi tutto tuo, dove salvare i dati e Duo Lite per alleggerire ogni schermo. L'intera configurazione si può esportare in un unico file da passare a un amico, senza le tue chiavi e senza la tua cronologia di gioco. Vedi [Aspetto](#aspetto) e [Temi](#temi).
@@ -41,6 +43,8 @@ E alcune idee che lo attraversano tutto:
 | Trucchi scaricati, scelti, tradotti e preparati per ogni emulatore | ✅ | raro |
 | IA integrata che conosce la tua libreria | ✅ | raro |
 | Configurazione dal telefono via Wi-Fi, con un codice QR | ✅ | raro |
+| Tutta la libreria nel browser, in tre stili, modificabile | ✅ | raro |
+| Resoconti di gioco mensili e annuali, salvati come immagine | ✅ | raro |
 | «Problemi rilevati» | ✅ | raro |
 | Dati di Pegasus ed ES-DE letti fianco a fianco | ✅ | raro |
 | Giochi raggruppati per serie | ✅ | raro |
@@ -56,16 +60,127 @@ Suggerimenti e segnalazioni di bug sono benvenuti nell'[issue tracker](https://g
 
 - **Trucchi pronti all'uso**: migliaia di trucchi per 3DS, NDS, PSP, GBA e tutti i sistemi RetroArch, presi dalla console stessa o, se un gioco non ne ha, scaricati dai grandi database (Sharkive, libretro, CWCheat), dove spunti solo quelli che vuoi. I nomi si traducono nella tua lingua con un tocco, ogni trucco si può modificare e tutto viene scritto nei file dei trucchi dell'emulatore, quindi funziona appena il gioco parte.
 - **Un compagno IA**: tieni premuto R ovunque e parla. Ti consiglia giochi della tua libreria, ti spiega come superare un punto difficile, ti racconta una trama o fa due chiacchiere. Le risposte possono essere lette ad alta voce.
+- **Duo Library nel browser**: tutta la libreria su computer o telefono in tre stili (Duo, Negozio, Museo), con nomi, generi, stato, voti, note e immagini da modificare lì stesso e salvati sulla console.
 - **Due schermi, un launcher**: scegli sullo schermo inferiore; su quello superiore vedi loghi, copertine, anteprime video, tempo di gioco e descrizioni.
 - **Tutti gli emulatori in un posto solo**: 3DS, NDS, GBA, GB/GBC, NES, SNES, N64, GameCube, Wii, Mega Drive, PS1, PS2, PSP, PS Vita e Switch, più 22 console più vecchie tramite RetroArch (da Master System a Dreamcast, PC Engine, Neo Geo, WonderSwan, Atari, arcade, DOS…), con l'emulatore scelto per console o per singolo gioco. I giochi su più dischi compaiono come uno solo.
 - **Già in ordine**: ogni gioco finisce in uno di 14 generi e nella sua serie (Ys, Castlevania, Super Robot Wars …). La Home mostra la libreria per console, per genere o per serie, e le cartelle smart tengono aggiornati «Aggiunti di recente», «In corso», «Da giocare», «Finito» e «I più votati».
 - **Completa ciò che manca**: vere copertine dai set di miniature di libretro, titoli ufficiali in inglese e copertine, loghi e sfondi disegnati dall'IA nello stile del launcher.
-- **Fatto per una portatile**: salvaschermo sicuro per gli OLED, trasferimento Wi-Fi dal browser, backup dei salvataggi, statistiche di gioco, progressi RetroAchievements, una panoramica dello spazio e una Home pronta in un secondo.
+- **Fatto per una portatile**: salvaschermo sicuro per gli OLED, trasferimento Wi-Fi dal browser, backup dei salvataggi, statistiche di gioco con resoconti mensili e annuali, progressi RetroAchievements, una panoramica dello spazio e una Home pronta in un secondo.
 - **Tuo da modificare**: temi di colore e pacchetti di temi, modalità chiara e scura, dimensione del testo, margini delle copertine, una pagina delle impostazioni come quella di una console e configurazioni da esportare e condividere. 11 lingue dell'interfaccia.
 
 ## Screenshot
 
 <p align="center"><img src="docs/screenshots/light-dark.png" alt="Light and dark mode"></p>
+
+### Duo Library
+
+Aprila da un computer o da un telefono collegato alla stessa Wi-Fi. Tre stili, la stessa libreria: quello della console, un negozio scuro e un museo. Vedi [Duo Library](#duo-library-i-tuoi-giochi-nel-browser).
+
+<table>
+  <tr>
+    <th>Stile Duo: la console sul suo sfondo</th>
+    <th>Stile Negozio: scuro, copertine grandi, tempo registrato</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/zh_web_duo.png" alt="Stile Duo: la console sul suo sfondo"></td>
+    <td><img src="docs/screenshots/zh_web_store.png" alt="Stile Negozio: scuro, copertine grandi, tempo registrato"></td>
+  </tr>
+  <tr>
+    <th>Stile Museo: i giochi più giocati sui piedistalli</th>
+    <th>Una sala per console, copertine incorniciate e targhette</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/zh_web_museum.png" alt="Stile Museo: i giochi più giocati sui piedistalli"></td>
+    <td><img src="docs/screenshots/zh_web_hall.png" alt="Una sala per console, copertine incorniciate e targhette"></td>
+  </tr>
+  <tr>
+    <th>Ogni gioco: dettagli, modifiche, cambio immagini</th>
+    <th>Su un telefono</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/zh_web_detail.png" alt="Ogni gioco: dettagli, modifiche, cambio immagini"></td>
+    <td><img src="docs/screenshots/zh_web_phone.png" alt="Su un telefono"></td>
+  </tr>
+</table>
+
+### Resoconti di gioco mensili e annuali
+
+<table>
+  <tr>
+    <th>Il mese in un colpo d'occhio, e il tuo preferito</th>
+    <th>Ogni giorno del mese</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/zh_report.png" alt="Il mese in un colpo d'occhio, e il tuo preferito"></td>
+    <td><img src="docs/screenshots/zh_report_days.png" alt="Ogni giorno del mese"></td>
+  </tr>
+  <tr>
+    <th>Console e generi</th>
+    <th>Come giochi: mattiniero o nottambulo</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/zh_report_consoles.png" alt="Console e generi"></td>
+    <td><img src="docs/screenshots/zh_report_habits.png" alt="Come giochi: mattiniero o nottambulo"></td>
+  </tr>
+  <tr>
+    <th colspan="2">Salvato in un'unica immagine, pronto da condividere</th>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><img src="docs/screenshots/zh_report_share.jpg" width="38%" alt="Salvato in un'unica immagine, pronto da condividere"></td>
+  </tr>
+</table>
+
+### Trucchi, dal download al primo fotogramma
+
+<table>
+  <tr>
+    <th>Scegli i trucchi prima di importarli, nomi già tradotti</th>
+    <th>Trucchi 3DS, tradotti con un tocco</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/zh_cheat_pick.png" alt="Choosing cheats"></td>
+    <td><img src="docs/screenshots/zh_cheats.png" alt="3DS cheats"></td>
+  </tr>
+  <tr>
+    <th>Trucchi NDS per DraStic, database cinese</th>
+    <th>Trucchi RetroArch (GBA)</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/zh_cheats_nds.png" alt="NDS cheats"></td>
+    <td><img src="docs/screenshots/zh_cheats_gba.png" alt="GBA cheats"></td>
+  </tr>
+  <tr>
+    <th>Modifica, aggiungi, scarica</th>
+    <th>Rinomina o elimina un trucco</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/zh_cheat_menu.png" alt="Cheat menu"></td>
+    <td><img src="docs/screenshots/zh_cheat_edit.png" alt="Edit a cheat"></td>
+  </tr>
+</table>
+
+### Cronologia di gioco, «Problemi rilevati», Wi-Fi e i tuoi dati
+
+<table>
+  <tr>
+    <th>Gli ultimi 30 giorni di un gioco, partite, sessione più lunga</th>
+    <th>«Problemi rilevati»: tutto ciò che va controllato</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/zh_play_history.png" alt="Gli ultimi 30 giorni di un gioco, partite, sessione più lunga"></td>
+    <td><img src="docs/screenshots/zh_problems.png" alt="«Problemi rilevati»: tutto ciò che va controllato"></td>
+  </tr>
+  <tr>
+    <th>Wi-Fi: inquadra il codice con il telefono</th>
+    <th>Dove stanno i dati del launcher, con una copia automatica</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/zh_wifi_qr.png" alt="Wi-Fi: inquadra il codice con il telefono"></td>
+    <td><img src="docs/screenshots/zh_data_home.png" alt="Dove stanno i dati del launcher, con una copia automatica"></td>
+  </tr>
+</table>
+
+### Altro
 
 <table>
   <tr>
@@ -171,35 +286,11 @@ Suggerimenti e segnalazioni di bug sono benvenuti nell'[issue tracker](https://g
     <td><img src="docs/screenshots/zh_move.png" alt="Moving a folder"></td>
   </tr>
   <tr>
-    <th>Scegli i trucchi prima di importarli, nomi già tradotti</th>
     <th>Dettagli del gioco: dimensione, dischi, screenshot</th>
-  </tr>
-  <tr>
-    <td><img src="docs/screenshots/zh_cheat_pick.png" alt="Choosing cheats"></td>
-    <td><img src="docs/screenshots/zh_details.png" alt="Game details"></td>
-  </tr>
-  <tr>
-    <th>Trucchi 3DS, tradotti con un tocco</th>
-    <th>Trucchi NDS per DraStic, database cinese</th>
-  </tr>
-  <tr>
-    <td><img src="docs/screenshots/zh_cheats.png" alt="3DS cheats"></td>
-    <td><img src="docs/screenshots/zh_cheats_nds.png" alt="NDS cheats"></td>
-  </tr>
-  <tr>
-    <th>Trucchi RetroArch (GBA)</th>
-    <th>Modifica, aggiungi, scarica</th>
-  </tr>
-  <tr>
-    <td><img src="docs/screenshots/zh_cheats_gba.png" alt="GBA cheats"></td>
-    <td><img src="docs/screenshots/zh_cheat_menu.png" alt="Cheat menu"></td>
-  </tr>
-  <tr>
-    <th>Rinomina o elimina un trucco</th>
     <th>Traduci tutti i trucchi in una volta</th>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/zh_cheat_edit.png" alt="Edit a cheat"></td>
+    <td><img src="docs/screenshots/zh_details.png" alt="Game details"></td>
     <td><img src="docs/screenshots/zh_tools.png" alt="Tools"></td>
   </tr>
   <tr>
@@ -238,7 +329,7 @@ Suggerimenti e segnalazioni di bug sono benvenuti nell'[issue tracker](https://g
 
 **Lo schermo superiore** segue quello che hai selezionato: una console sul suo sfondo con il numero di giochi e l'emulatore; il logo di un gioco sopra la copertina sfocata, con console, genere · serie, emulatore, tempo di gioco e una breve descrizione, dopo un attimo un'anteprima video oppure l'immagine del punto in cui ti eri fermato.
 
-**Y** apre il menu dell'elemento selezionato. Su un gioco è corto, e le voci meno usate stanno una porta più in là: emulatore, preferito, aggiungi a / rimuovi da una cartella, Trucchi ›, Aiuto IA › (chiedi all'IA, come si gioca), Info sul gioco › (dettagli, genere, stato e voto, nota, cosa mostra lo schermo superiore, immagini IA per questo gioco) e Altro › (salvataggi, segna come visto, nascondi, elimina il file). Su una cartella console: emulatore predefinito, rinomina, Unisci cartelle ›, segna tutti come visti, nascondi. Su un riquadro integrato: nome, colore, icona e sfondo. La riga selezionata si spiega da sola con una frase in fondo al menu.
+**Y** apre il menu dell'elemento selezionato. Su un gioco è corto, e le voci meno usate stanno una porta più in là: emulatore, preferito, aggiungi a / rimuovi da una cartella, Trucchi ›, Aiuto IA › (chiedi all'IA, come si gioca), Info sul gioco › (dettagli, genere, stato e voto, cronologia di gioco, nota, cosa mostra lo schermo superiore, immagini IA per questo gioco) e Altro › (salvataggi, segna come visto, nascondi, elimina il file). Su una cartella console: emulatore predefinito, rinomina, Unisci cartelle ›, segna tutti come visti, nascondi. Su un riquadro integrato: nome, colore, icona e sfondo. La riga selezionata si spiega da sola con una frase in fondo al menu.
 
 *Perché:* un menu da quindici righe è difficile da leggere su una console portatile. Le porte tengono davanti le voci di tutti i giorni, e il suggerimento di una riga evita di dover indovinare cosa fa una voce prima di premerla.
 
@@ -357,7 +448,8 @@ R3, il riquadro «Cerca» o il pulsante di ricerca aprono sullo schermo superior
   Un `metadata.pegasus.txt` di Pegasus di solito porta con sé una propria riga di avvio per ogni console; viene usata per prima, e i core qui sopra vengono proposti accanto.
 
 - **Citra MMJ (modalità prestazioni)**: la stessa build di Citra MMJ ripacchettizzata con il nome di pacchetto del benchmark AnTuTu, che molti sistemi Android fanno girare alla massima frequenza. Viene proposta solo se quel pacchetto è davvero Citra.
-- **Tempo di gioco e statistiche**: quanto e quando hai giocato l'ultima volta a ogni gioco, come su Switch; con l'accesso ai dati di utilizzo conta solo il tempo in cui il gioco era davvero sullo schermo. Il riquadro «Statistiche» mostra il totale, la settimana in corso giorno per giorno, il tempo per console e i giochi più giocati.
+- **Tempo di gioco e statistiche**: quanto e quando hai giocato l'ultima volta a ogni gioco, come su Switch; con l'accesso ai dati di utilizzo conta solo il tempo in cui il gioco era davvero sullo schermo. Il riquadro «Statistiche» mostra il totale, la settimana in corso giorno per giorno, il tempo per console e i giochi più giocati. Per un singolo gioco, Y → «Info sul gioco» → «Cronologia di gioco» mostra gli ultimi 30 giorni giorno per giorno, quante volte ci hai giocato, la sessione più lunga e quando hai giocato l'ultima volta, e permette di cancellare la cronologia di quel gioco («Annulla» viene per primo).
+- **Resoconti di gioco mensili e annuali**: A sul riquadro «Statistiche» apre questo mese, il mese scorso, quest'anno e ogni mese o anno precedente in cui hai giocato. Ogni resoconto è fatto di cinque pagine sullo schermo superiore, che sfogli spostando il cursore: il totale con la differenza rispetto al mese o all'anno prima e il tuo gioco preferito; un calendario (o i dodici mesi) con il giorno in cui hai giocato di più; i tuoi cinque giochi più giocati; le console in un anello e i generi in barre; e come giochi – più di mattina, di pomeriggio, di sera o a notte fonda, la sessione più lunga e i giochi provati per la prima volta. «Salva come immagine» mette tutte le pagine in un'unica immagine in Pictures/DuoLauncher, pronta da condividere. All'inizio di ogni mese il launcher avvisa una volta che il resoconto del mese scorso è pronto. In «Impostazioni → Gioco → Resoconti di gioco» puoi attivare o disattivare i resoconti mensili e annuali e quell'avviso; con entrambi i resoconti disattivati, il riquadro porta dritto all'elenco dei giochi giocati. *Perché:* il tempo di gioco viene già contato, tanto vale che racconti una storia da riguardare – e solo quando ti va.
 - **Dove ti eri fermato**: lo screenshot o l'immagine dello stato di salvataggio più recente di un gioco diventa il suo sfondo sullo schermo superiore.
 - **Stato, voto e note**: segna un gioco come in corso, da giocare, finito o abbandonato e dagli da una a cinque stelle (Y → «Stato»); scrivi o detta una riga su dove sei arrivato e cosa fare dopo (Y → «Nota»). Tutto compare sullo schermo superiore la prossima volta che riprendi il gioco.
 - **Dettagli del gioco** (Y → «Dettagli»): file, dimensione, dischi, cartella, emulatore, tempo di gioco, titolo ufficiale inglese e gli screenshot del gioco sullo schermo superiore.
@@ -451,6 +543,22 @@ Y → «Trucchi» su un gioco elenca i suoi trucchi; A ne attiva o disattiva uno
 - **Riordina**: «Problemi rilevati», «Spazio», «Scarica copertine», «Traduci tutti i trucchi» e una pagina di «Diagnostica». «Giochi doppi» e «Giochi senza copertina» ora stanno dentro «Problemi rilevati». Gli strumenti IA (nomi e descrizioni per un'intera console, generi, serie, icone dei generi, immagini per ciò che ne è privo) si trovano in «IA e voce → Fai riordinare la libreria all’IA».
 - **Aggiornamenti**: «Impostazioni → Sistema → Informazioni» controlla una volta al giorno l'ultima release su GitHub e ti dà il link.
 - **Schermata Home**: impostalo come app Home predefinita per farlo partire con la console; il riquadro «Home di Android» (o «Impostazioni → Sistema → Esci alla Home di Android») riporta alla schermata Home di sistema, e «Impostazioni → Sistema → Impostazioni Android» apre le impostazioni del sistema.
+
+## Duo Library: i tuoi giochi nel browser
+
+Vai in «Impostazioni → Salvataggi, trasferimento, condivisione → Trasferimento Wi-Fi», apri la pagina su un computer o un telefono (inquadra il codice QR sullo schermo superiore) e inserisci la password che compare sulla console. La scheda «Libreria giochi» apre Duo Library: tutti i giochi con copertina, tempo di gioco e stato, su uno schermo abbastanza grande da vederli tutti insieme.
+
+- **Tre stili, una libreria.** Si cambia in alto a destra, e il browser si ricorda la scelta.
+  - **Duo**: lo stile della console stessa, con le icone in argilla delle console nell'elenco e, sopra i giochi, la console selezionata sul suo sfondo illustrato, che fluttua leggera come sullo schermo superiore. Segue la modalità chiara o scura del computer.
+  - **Negozio**: scuro, con grandi copertine verticali che si sollevano e si illuminano sotto il puntatore, un banner per il gioco a cui stai giocando e il tempo registrato sotto ogni gioco.
+  - **Museo**: un ingresso con i tuoi tre giochi più giocati su piedistalli illuminati, poi una sala per ogni console («Sala Game Boy Advance · 582 pezzi esposti»), con ogni copertina in una cornice dorata su uno scaffale di legno e una piccola targhetta.
+- **Trovi tutto.** Cerca per nome (contano anche il titolo inglese e la serie), filtra per console, genere e stato, e ordina per nome, tempo di gioco, giocati di recente, aggiunti di recente o voto.
+- **Ogni gioco, in ogni dettaglio.** Fai clic su un gioco per vederne copertina e sfondo, descrizione, tempo di gioco, ultima partita e dimensione del file. Lì puoi cambiarne nome, genere, stato, voto, nota e descrizione, e trascinare un'immagine su «Copertina», «Sfondo» o «Logo del titolo» per sostituirla. Viene salvato solo ciò che hai cambiato, direttamente nei file del launcher, così la console lo mostra subito e la modifica resta anche dopo una nuova scansione. Un nome che dai vale nella lingua in cui l'hai scritto; le altre lingue tengono il loro.
+- **Tanti giochi in una volta.** Selezionane diversi e imposta genere o stato in un colpo solo.
+- **Sta anche su un telefono.** Su uno schermo stretto le console diventano una fila di etichette da scorrere col dito, e i filtri si mettono uno accanto all'altro.
+- **Veloce, e solo tua.** La libreria viene preparata appena parte il trasferimento Wi-Fi, quindi la pagina si apre in un attimo anche con migliaia di giochi. Come le impostazioni e i download, chiede la password che compare sulla console.
+
+*Perché:* lo schermo di una portatile è il posto giusto per giocare, non per riordinare duemila giochi. E una collezione costruita in anni merita di essere guardata: su un grande schermo, con uno stile che le renda giustizia.
 
 ## IA
 

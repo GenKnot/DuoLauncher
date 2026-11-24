@@ -24,6 +24,8 @@ Además de encontrar tus juegos y arrancarlos, esto es lo que dan de sí esas pr
 - **Trucos, de la descarga al primer fotograma.** Si un juego no tiene trucos en la portátil, los busca en las grandes bases de datos de la comunidad (Sharkive para 3DS, libretro para NDS y GBA, CWCheat para PSP), te deja marcar solo los que quieras, traduce sus nombres a tu idioma con un toque (con una clave de IA, incluso con los nombres oficiales de los personajes y objetos del juego) y los escribe en los archivos de trucos de cada emulador: Azahar y Citra, DraStic, PPSSPP y RetroArch. Más en [Trucos](#trucos).
 - **Una IA que conoce tu biblioteca.** Mantén R y pregúntale a qué jugar ahora, cómo pasarte un jefe o de qué va una historia: te responde a partir de los juegos que tienes de verdad. La misma IA traduce los nombres y las descripciones, coloca cada juego en un género y una saga, y dibuja las portadas, logos y fondos que falten. Funciona con el servicio que *tú* eliges y con tu propia clave, y cada solicitud queda registrada en los ajustes con un coste estimado. Más en [Tu compañero con IA](#tu-compañero-con-ia) y en [IA](#ia).
 - **Se configura desde el móvil.** Activa la transferencia Wi-Fi y aparece un código QR en la pantalla de arriba. Escanéalo y una página en el idioma de tu móvil te deja enviar juegos, escribir las claves de API con un teclado de verdad, importar y exportar configuraciones y descargar copias de seguridad, sin cables ni gestor de archivos. Más en [Herramientas útiles](#herramientas-útiles).
+- **Tu colección, a la vista.** Duo Library abre toda tu biblioteca en el navegador de un ordenador o de un móvil, con tres aspectos (el de la propia portátil, una tienda oscura y un museo con una sala por consola, portadas enmarcadas y placas), y te deja cambiar nombres, ordenar, valorar, tomar notas, cambiar portadas arrastrando una imagen o modificar un montón de juegos a la vez. Cada cambio se guarda en la portátil. Más en [Duo Library](#duo-library-tus-juegos-en-el-navegador).
+- **Tu forma de jugar, contada.** Cada mes y cada año se convierten en unas cuantas páginas bien presentadas: el total frente al mes anterior, un calendario con los días que jugaste, tus juegos, consolas y géneros favoritos, y si eres más de madrugar o de trasnochar. Si quieres, todo se guarda en una sola imagen para compartirla. Además, cada juego tiene su propio historial de 30 días. Más en [Jugar](#jugar).
 - **Un solo sitio para todo lo que merece un vistazo.** «Problemas detectados» reúne los archivos que no ha sabido reconocer, las consolas sin emulador, los juegos sin portada y los duplicados, y arregla la mayoría ahí mismo. Más en [Herramientas útiles](#herramientas-útiles).
 - **Aprovecha los datos de cada frontend sin tocarlos.** Lee a la vez los metadatos y las imágenes de Pegasus y de ES-DE, guarda lo que añade en su propia carpeta `DuoLauncher` y nunca reescribe los archivos de otro frontend, así que todos pueden compartir la misma tarjeta. Más en [De dónde salen los nombres, las imágenes y los detalles](#de-dónde-salen-los-nombres-las-imágenes-y-los-detalles).
 - **A tu gusto, hasta el último detalle.** Combinaciones de colores y paquetes de temas para compartir, modo claro y oscuro, tu propia imagen y color para cualquier casilla, tamaño del texto, márgenes de las portadas, reglas para limpiar los nombres, tu propio orden de juegos, dónde se guardan los datos y Duo Lite para aligerar cada pantalla. Toda tu configuración se puede exportar en un solo archivo y pasársela a un amigo, sin tus claves ni tu historial de juego. Más en [Aspecto](#aspecto) y [Temas](#temas).
@@ -40,6 +42,8 @@ Y hay unas cuantas ideas detrás de todo:
 | Trucos descargados, elegidos, traducidos y preparados para cada emulador | ✅ | poco común |
 | IA integrada que conoce tu biblioteca | ✅ | poco común |
 | Configuración desde el móvil por Wi-Fi, con un código QR | ✅ | poco común |
+| Toda la biblioteca en el navegador, con tres aspectos y editable | ✅ | poco común |
+| Resúmenes de juego mensuales y anuales, guardados como imagen | ✅ | poco común |
 | «Problemas detectados» | ✅ | poco común |
 | Datos de Pegasus y de ES-DE leídos a la vez | ✅ | poco común |
 | Agrupado por saga | ✅ | poco común |
@@ -55,16 +59,127 @@ Las sugerencias y los informes de errores son bienvenidos en el [gestor de incid
 
 - **Trucos listos para usar**: miles de trucos para 3DS, NDS, PSP, GBA y todos los sistemas de RetroArch, tomados de la propia consola o, si un juego no tiene, descargados de las grandes bases de datos (Sharkive, libretro, CWCheat), donde marcas solo los que quieres. Los nombres se traducen a tu idioma con un toque, cada truco se puede editar y todo se escribe en los archivos de trucos del propio emulador, así que funcionan desde que arranca el juego.
 - **Un compañero con IA**: mantén R en cualquier sitio y habla. Te recomienda juegos de tu propia biblioteca, te explica cómo pasar una parte de un juego, te cuenta una historia o simplemente charla contigo. Las respuestas se pueden leer en voz alta.
+- **Duo Library en el navegador**: toda la biblioteca en un ordenador o un móvil con tres aspectos (Duo, Tienda, Museo); nombres, géneros, estado, valoraciones, notas e imágenes se editan ahí mismo y se guardan en la portátil.
 - **Dos pantallas, un launcher**: eliges en la pantalla de abajo; en la de arriba ves logos, portadas, vídeos de muestra, tiempo de juego y descripciones.
 - **Todos los emuladores en un sitio**: 3DS, NDS, GBA, GB/GBC, NES, SNES, N64, GameCube, Wii, Mega Drive, PS1, PS2, PSP, PS Vita y Switch, más 22 consolas más antiguas a través de RetroArch (de Master System a Dreamcast, PC Engine, Neo Geo, WonderSwan, Atari, arcade, DOS…), con el emulador elegido por consola o por juego. Los juegos de varios discos aparecen como uno solo.
 - **Se ordena solo**: cada juego queda archivado en uno de 14 géneros y en su saga (Ys, Castlevania, Super Robot Wars…). El inicio muestra tu biblioteca por consola, por género o por saga, y las carpetas inteligentes mantienen al día «añadidos recientemente», «jugando», «pendiente», «terminado» y «mejor valorados».
 - **Completa lo que falta**: portadas reales de los paquetes de miniaturas de libretro, títulos oficiales en inglés y portadas, logos y fondos dibujados por IA con el estilo propio del launcher.
-- **Hecho para una portátil**: salvapantallas seguro para OLED, transferencia por Wi-Fi desde un navegador, copias de las partidas guardadas, estadísticas de juego, progreso de RetroAchievements, un resumen del almacenamiento y una pantalla de inicio que está lista en un segundo.
+- **Hecho para una portátil**: salvapantallas seguro para OLED, transferencia por Wi-Fi desde un navegador, copias de las partidas guardadas, estadísticas de juego con resúmenes mensuales y anuales, progreso de RetroAchievements, un resumen del almacenamiento y una pantalla de inicio que está lista en un segundo.
 - **A tu gusto**: temas de color y paquetes de temas, modo claro y oscuro, tamaño del texto, márgenes de las portadas, una página de ajustes como la de una consola y configuraciones que puedes exportar y compartir. 11 idiomas de interfaz.
 
 ## Capturas de pantalla
 
 <p align="center"><img src="docs/screenshots/light-dark.png" alt="Light and dark mode"></p>
+
+### Duo Library
+
+Ábrela desde un ordenador o un móvil conectado a la misma Wi-Fi. Tres aspectos, la misma biblioteca: el estilo de la propia portátil, una tienda oscura y un museo. Más en [Duo Library](#duo-library-tus-juegos-en-el-navegador).
+
+<table>
+  <tr>
+    <th>Aspecto Duo: la consola sobre su propio fondo</th>
+    <th>Aspecto Tienda: oscuro, portadas grandes, tiempo registrado</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/zh_web_duo.png" alt="Aspecto Duo: la consola sobre su propio fondo"></td>
+    <td><img src="docs/screenshots/zh_web_store.png" alt="Aspecto Tienda: oscuro, portadas grandes, tiempo registrado"></td>
+  </tr>
+  <tr>
+    <th>Aspecto Museo: tus juegos más jugados sobre pedestales</th>
+    <th>Una sala por consola, con portadas enmarcadas y placas</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/zh_web_museum.png" alt="Aspecto Museo: tus juegos más jugados sobre pedestales"></td>
+    <td><img src="docs/screenshots/zh_web_hall.png" alt="Una sala por consola, con portadas enmarcadas y placas"></td>
+  </tr>
+  <tr>
+    <th>Cada juego: detalles, edición y cambio de imágenes</th>
+    <th>En un móvil</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/zh_web_detail.png" alt="Cada juego: detalles, edición y cambio de imágenes"></td>
+    <td><img src="docs/screenshots/zh_web_phone.png" alt="En un móvil"></td>
+  </tr>
+</table>
+
+### Resúmenes de juego mensuales y anuales
+
+<table>
+  <tr>
+    <th>El mes de un vistazo, y tu favorito</th>
+    <th>Cada día del mes</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/zh_report.png" alt="El mes de un vistazo, y tu favorito"></td>
+    <td><img src="docs/screenshots/zh_report_days.png" alt="Cada día del mes"></td>
+  </tr>
+  <tr>
+    <th>Consolas y géneros</th>
+    <th>Cómo juegas: madrugador o noctámbulo</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/zh_report_consoles.png" alt="Consolas y géneros"></td>
+    <td><img src="docs/screenshots/zh_report_habits.png" alt="Cómo juegas: madrugador o noctámbulo"></td>
+  </tr>
+  <tr>
+    <th colspan="2">Guardado en una sola imagen, listo para compartir</th>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><img src="docs/screenshots/zh_report_share.jpg" width="38%" alt="Guardado en una sola imagen, listo para compartir"></td>
+  </tr>
+</table>
+
+### Trucos, de la descarga al primer fotograma
+
+<table>
+  <tr>
+    <th>Elige los trucos antes de importarlos, con los nombres traducidos</th>
+    <th>Trucos de 3DS, traducidos con un toque</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/zh_cheat_pick.png" alt="Choosing cheats"></td>
+    <td><img src="docs/screenshots/zh_cheats.png" alt="3DS cheats"></td>
+  </tr>
+  <tr>
+    <th>Trucos de NDS para DraStic, base de datos en chino</th>
+    <th>Trucos de RetroArch (GBA)</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/zh_cheats_nds.png" alt="NDS cheats"></td>
+    <td><img src="docs/screenshots/zh_cheats_gba.png" alt="GBA cheats"></td>
+  </tr>
+  <tr>
+    <th>Editar, añadir, descargar</th>
+    <th>Renombrar o borrar un truco</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/zh_cheat_menu.png" alt="Cheat menu"></td>
+    <td><img src="docs/screenshots/zh_cheat_edit.png" alt="Edit a cheat"></td>
+  </tr>
+</table>
+
+### Historial de juego, «Problemas detectados», Wi-Fi y tus datos
+
+<table>
+  <tr>
+    <th>Los últimos 30 días de un juego, veces jugadas, sesión más larga</th>
+    <th>«Problemas detectados»: todo lo que merece un vistazo</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/zh_play_history.png" alt="Los últimos 30 días de un juego, veces jugadas, sesión más larga"></td>
+    <td><img src="docs/screenshots/zh_problems.png" alt="«Problemas detectados»: todo lo que merece un vistazo"></td>
+  </tr>
+  <tr>
+    <th>Wi-Fi: escanea el código con el móvil</th>
+    <th>Dónde se guardan los datos del launcher, con copia automática</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/zh_wifi_qr.png" alt="Wi-Fi: escanea el código con el móvil"></td>
+    <td><img src="docs/screenshots/zh_data_home.png" alt="Dónde se guardan los datos del launcher, con copia automática"></td>
+  </tr>
+</table>
+
+### Más
 
 <table>
   <tr>
@@ -170,35 +285,11 @@ Las sugerencias y los informes de errores son bienvenidos en el [gestor de incid
     <td><img src="docs/screenshots/zh_move.png" alt="Moving a folder"></td>
   </tr>
   <tr>
-    <th>Elige los trucos antes de importarlos, con los nombres traducidos</th>
     <th>Detalles del juego: tamaño, discos, capturas</th>
-  </tr>
-  <tr>
-    <td><img src="docs/screenshots/zh_cheat_pick.png" alt="Choosing cheats"></td>
-    <td><img src="docs/screenshots/zh_details.png" alt="Game details"></td>
-  </tr>
-  <tr>
-    <th>Trucos de 3DS, traducidos con un toque</th>
-    <th>Trucos de NDS para DraStic, base de datos en chino</th>
-  </tr>
-  <tr>
-    <td><img src="docs/screenshots/zh_cheats.png" alt="3DS cheats"></td>
-    <td><img src="docs/screenshots/zh_cheats_nds.png" alt="NDS cheats"></td>
-  </tr>
-  <tr>
-    <th>Trucos de RetroArch (GBA)</th>
-    <th>Editar, añadir, descargar</th>
-  </tr>
-  <tr>
-    <td><img src="docs/screenshots/zh_cheats_gba.png" alt="GBA cheats"></td>
-    <td><img src="docs/screenshots/zh_cheat_menu.png" alt="Cheat menu"></td>
-  </tr>
-  <tr>
-    <th>Renombrar o borrar un truco</th>
     <th>Traducir todos los trucos de una vez</th>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/zh_cheat_edit.png" alt="Edit a cheat"></td>
+    <td><img src="docs/screenshots/zh_details.png" alt="Game details"></td>
     <td><img src="docs/screenshots/zh_tools.png" alt="Tools"></td>
   </tr>
   <tr>
@@ -237,7 +328,7 @@ Las sugerencias y los informes de errores son bienvenidos en el [gestor de incid
 
 **La pantalla superior** sigue a lo que tengas seleccionado: una consola sobre su fondo, con su número de juegos y su emulador; o el logo de un juego sobre su portada difuminada, con su consola, género · saga, emulador, tiempo de juego y una descripción breve, un vídeo de muestra pasado un momento, o la imagen del punto donde lo dejaste.
 
-**Y** abre el menú de lo que tengas seleccionado. En un juego es corto, y lo que se usa menos queda una puerta más adentro: emulador, favorito, añadir a una carpeta / quitar de una carpeta, Trucos ›, Ayuda de la IA › (preguntar a la IA, cómo se juega), Información del juego › (detalles, género, estado y valoración, nota, qué muestra la pantalla superior, imágenes con IA para este juego) y Más › (partidas, marcar como visto, ocultar, borrar el archivo). En la carpeta de una consola: emulador predeterminado, cambiar nombre, Unir carpetas ›, marcar todo como visto y ocultar. En una casilla integrada: nombre, color, icono e imagen de fondo. La fila seleccionada se explica a sí misma en una línea al pie del menú.
+**Y** abre el menú de lo que tengas seleccionado. En un juego es corto, y lo que se usa menos queda una puerta más adentro: emulador, favorito, añadir a una carpeta / quitar de una carpeta, Trucos ›, Ayuda de la IA › (preguntar a la IA, cómo se juega), Información del juego › (detalles, género, estado y valoración, historial de juego, nota, qué muestra la pantalla superior, imágenes con IA para este juego) y Más › (partidas, marcar como visto, ocultar, borrar el archivo). En la carpeta de una consola: emulador predeterminado, cambiar nombre, Unir carpetas ›, marcar todo como visto y ocultar. En una casilla integrada: nombre, color, icono e imagen de fondo. La fila seleccionada se explica a sí misma en una línea al pie del menú.
 
 *Por qué:* un menú de quince filas cuesta de leer en una consola portátil. Las puertas dejan delante las filas de cada día, y la pista de una línea hace que nadie tenga que adivinar qué hace una fila antes de pulsarla.
 
@@ -356,7 +447,8 @@ R3, la casilla «Buscar» o el botón de búsqueda abren en la pantalla superior
   Un `metadata.pegasus.txt` de Pegasus suele traer su propia línea de arranque para cada consola; esa se usa primero, y los cores de arriba se ofrecen junto a ella.
 
 - **Citra MMJ (modo rendimiento)**: la misma versión de Citra MMJ reempaquetada con el nombre de paquete del benchmark AnTuTu, que muchos sistemas Android ejecutan a frecuencia máxima. Solo se ofrece cuando ese paquete es realmente Citra.
-- **Tiempo de juego y estadísticas**: cuánto tiempo has jugado a cada juego y cuándo fue la última vez, al estilo de Switch; con el acceso a los datos de uso concedido, solo cuenta el tiempo en que el juego estuvo de verdad en pantalla. La casilla «Estadísticas» muestra el total, esta semana día a día, el tiempo por consola y los juegos más jugados.
+- **Tiempo de juego y estadísticas**: cuánto tiempo has jugado a cada juego y cuándo fue la última vez, al estilo de Switch; con el acceso a los datos de uso concedido, solo cuenta el tiempo en que el juego estuvo de verdad en pantalla. La casilla «Estadísticas» muestra el total, esta semana día a día, el tiempo por consola y los juegos más jugados. Para un juego concreto, «Y → Información del juego → Historial de juego» muestra sus últimos 30 días día a día, cuántas veces has jugado, tu sesión más larga y cuándo jugaste por última vez, y permite borrar el registro de ese juego («Cancelar» aparece primero).
+- **Resúmenes de juego mensuales y anuales**: A sobre la casilla «Estadísticas» abre este mes, el mes pasado, este año y cada mes o año anterior en el que jugaste. Cada resumen son cinco páginas en la pantalla superior, que vas pasando al mover el cursor: el total, cuánto ha cambiado respecto al mes o al año anterior y tu juego favorito; un calendario (o los doce meses) con el día en que más jugaste; tus cinco juegos más jugados; las consolas en un anillo y los géneros en barras; y cómo juegas: si más por la mañana, por la tarde, por la noche o de madrugada, tu sesión más larga y los juegos que probaste por primera vez. «Guardar como imagen» junta todas las páginas en una sola imagen en Pictures/DuoLauncher, lista para compartir. Al empezar cada mes, el launcher avisa una vez de que el resumen del mes pasado ya está listo. En «Ajustes → Juego → Resúmenes de juego» puedes activar o desactivar los resúmenes mensuales y anuales y ese aviso; con los dos resúmenes desactivados, la casilla va directamente a la lista de juegos jugados. *Por qué:* el tiempo de juego ya se cuenta, así que también puede contar una historia a la que volver, y solo cuando tú quieras.
 - **Donde lo dejaste**: la captura o la imagen del estado guardado más reciente de un juego que ya has jugado pasa a ser su fondo en la pantalla superior.
 - **Estado, valoración y notas**: marca un juego como jugando, pendiente, terminado o abandonado y dale de una a cinco estrellas («Y → Estado»); escribe o dicta una frase sobre dónde vas y qué te toca hacer después («Y → Nota»). Todo aparece en la pantalla superior la próxima vez que vuelvas al juego.
 - **Detalles del juego** («Y → Detalles»): archivo, tamaño, discos, carpeta, emulador, tiempo de juego, el título oficial en inglés y las capturas del juego en la pantalla superior.
@@ -450,6 +542,22 @@ Todo esto es opcional y usa el servicio de IA que elijas con tu propia clave (co
 - **Ordenar**: «Problemas detectados», «Almacenamiento», «Descargar portadas», «Traducir todos los trucos» y una página de «Diagnóstico». «Juegos duplicados» y «Juegos sin portada» ahora están dentro de «Problemas detectados». Las herramientas de IA (nombres y descripciones de una consola entera, géneros, sagas, iconos de géneros, imágenes para lo que no tiene) están en «IA y voz → Que la IA ordene la biblioteca».
 - **Actualizaciones**: «Ajustes → Sistema → Acerca de» comprueba una vez al día la última versión publicada en GitHub y enlaza a ella.
 - **Pantalla de inicio**: ponlo como aplicación de inicio predeterminada para que arranque con la portátil; la casilla «Inicio de Android» (o «Ajustes → Sistema → Salir al inicio de Android») te devuelve a la pantalla de inicio del sistema, y «Ajustes → Sistema → Ajustes de Android» abre los ajustes del propio sistema.
+
+## Duo Library: tus juegos en el navegador
+
+Entra en «Ajustes → Partidas, transferencia, compartir → Transferencia Wi-Fi», abre la página en un ordenador o un móvil (escanea el código QR de la pantalla superior) y escribe la contraseña que aparece en la portátil. La tarjeta «Biblioteca de juegos» abre Duo Library: todos tus juegos con su portada, su tiempo de juego y su estado, en una pantalla lo bastante grande para verlo todo de un vistazo.
+
+- **Tres aspectos, una biblioteca.** Se cambia arriba a la derecha, y el navegador recuerda tu elección.
+  - **Duo**: el estilo de la propia portátil, con los iconos de arcilla de las consolas en la lista y, encima de los juegos, la consola seleccionada sobre su fondo ilustrado, flotando suavemente como en la pantalla superior. Sigue el modo claro u oscuro del ordenador.
+  - **Tienda**: oscura, con portadas verticales grandes que se elevan y brillan al pasar el puntero, un banner para el juego al que estás jugando y el tiempo registrado debajo de cada juego.
+  - **Museo**: una entrada con tus tres juegos más jugados sobre pedestales iluminados y, después, una sala por consola («Sala Game Boy Advance · 582 piezas expuestas»), con cada portada en un marco dorado sobre una estantería de madera y una pequeña placa.
+- **Encuentra cualquier cosa.** Busca por nombre (también valen el título en inglés y la saga), filtra por consola, género y estado, y ordena por nombre, tiempo de juego, jugados recientemente, añadidos recientemente o valoración.
+- **Cada juego, con todo detalle.** Haz clic en un juego para ver su portada y su fondo, la descripción, el tiempo de juego, cuándo jugaste por última vez y el tamaño del archivo. Ahí mismo puedes cambiar su nombre, género, estado, valoración, nota y descripción, y arrastrar una imagen a «Portada», «Fondo» o «Logo del título» para sustituirla. Solo se guarda lo que cambias, directamente en los archivos del propio launcher, así que la portátil lo muestra al momento y se conserva aunque vuelvas a escanear. Un nombre que pongas se usa en el idioma en que lo escribiste; los demás idiomas conservan el suyo.
+- **Muchos juegos a la vez.** Selecciona varios y ponles el género o el estado de una sola vez.
+- **Cabe en un móvil.** En una pantalla estrecha, las consolas se convierten en una fila de etiquetas que se desliza con el dedo, y los filtros se colocan uno al lado del otro.
+- **Rápida, y solo tuya.** La biblioteca se prepara en cuanto arranca la transferencia Wi-Fi, así que la página se abre en un momento aunque tengas miles de juegos. Igual que los ajustes y las descargas, pide la contraseña que aparece en la portátil.
+
+*Por qué:* la pantalla de una portátil es el sitio ideal para jugar, no para ordenar dos mil juegos. Y una colección que alguien ha tardado años en reunir merece que se la mire: en una pantalla grande y con un estilo a su altura.
 
 ## IA
 

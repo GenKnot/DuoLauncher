@@ -67,6 +67,13 @@ final class Icons {
 
     Bitmap tile(Library.Game g, Runnable done) { return get("tile:" + g.key(), () -> loadTile(g), done); }
 
+    /** The game's tile picture, loaded right here if it is not in memory yet (for a background thread). */
+    Bitmap tileNow(Library.Game g) {
+        Bitmap b = mem.get("tile:" + g.key());
+        if (b != null) return b;
+        try { return loadTile(g); } catch (Throwable e) { return null; }
+    }
+
     Bitmap romIcon(Library.Game g, Runnable done) { return get("icon:" + g.key(), () -> romIconSync(g), done); }
 
     Bitmap image(File f, int maxPx, Runnable done) {

@@ -32,6 +32,8 @@ final class WifiServer {
     /** Exports and save backups the page offers for download (after the password), newest first. */
     private final java.util.function.Supplier<List<File>> downloads;
     private ServerSocket server;
+    /** The game library pages and their data (set by the launcher), or null. */
+    volatile WebLibrary library;
 
     /** The AI translation settings, filled in from a computer or phone instead of typing a long key on the handheld. */
     interface AiSettings {
@@ -135,6 +137,73 @@ final class WifiServer {
                     LANG.set(I18n.forBrowser(line.substring(k + 1)));
             }
             boolean admin = ai != null && cookie.contains("duo=" + token);
+            WebLibrary lib = library;
+            if (lib != null && (path.equals("/library") || path.startsWith("/library?") || path.startsWith("/api/") || path.startsWith("/img?") || path.startsWith("/art?"))) {
+                // the library, like the settings, only after the password
+                if (!admin) {
+                    if (path.startsWith("/library")) reply(out, "303 See Other", "text/plain", "", "Location: /");
+                    else reply(out, "403 Forbidden", "text/plain", "enter the password first");
+                    return;
+                }
+                Map<String, String> q = path.indexOf('?') < 0 ? new LinkedHashMap<>() : query(path.substring(path.indexOf('?') + 1));
+                String route = path.indexOf('?') < 0 ? path : path.substring(0, path.indexOf('?'));
+                // /library?lang=zh-CN: a language other than the browser's
+                if (q.containsKey("lang")) { int li = java.util.Arrays.asList(I18n.CODES).indexOf(q.get("lang")); if (li >= 0) LANG.set(li); }
+                if (method.equals("GET") && route.equals("/library")) { reply(out, "200 OK", "text/html; charset=utf-8", lib.page(lang())); return; }
+                if (method.equals("GET") && route.equals("/api/library")) {
+                    String json = lib.libraryJson();
+                    if (json == null) reply(out, "503 Service Unavailable", "text/plain", "busy, try again");
+                    else reply(out, "200 OK", "application/json; charset=utf-8", json);
+                    return;
+                }
+                if (method.equals("GET") && route.equals("/api/game")) { reply(out, "200 OK", "application/json; charset=utf-8", lib.gameDetails(q.get("k"))); return; }
+                if (method.equals("GET") && route.equals("/img")) {
+                    int wd;
+                    try { wd = Integer.parseInt(q.getOrDefault("w", "360")); } catch (NumberFormatException e) { wd = 360; }
+                    byte[] img = lib.picture(q.get("k"), q.getOrDefault("kind", "box_front"), wd);
+                    if (img == null) { reply(out, "404 Not Found", "text/plain", "no picture"); return; }
+                    boolean png = img.length > 4 && img[1] == 'P' && img[2] == 'N' && img[3] == 'G';
+                    out.write(("HTTP/1.1 200 OK\r\nContent-Type: " + (png ? "image/png" : "image/jpeg") + "\r\nContent-Length: " + img.length
+                            + "\r\nCache-Control: private, max-age=600\r\nConnection: close\r\n\r\n").getBytes(StandardCharsets.UTF_8));
+                    out.write(img);
+                    out.flush();
+                    return;
+                }
+                if (method.equals("GET") && route.equals("/art")) {
+                    byte[] a = lib.art(q.get("f"));
+                    if (a == null) { reply(out, "404 Not Found", "text/plain", "no picture"); return; }
+                    out.write(("HTTP/1.1 200 OK\r\nContent-Type: " + (q.get("f").endsWith(".png") ? "image/png" : "image/jpeg") + "\r\nContent-Length: " + a.length
+                            + "\r\nCache-Control: private, max-age=86400\r\nConnection: close\r\n\r\n").getBytes(StandardCharsets.UTF_8));
+                    out.write(a);
+                    out.flush();
+                    return;
+                }
+                if (method.equals("PUT") && route.equals("/api/picture")) {
+                    String err = lib.savePicture(q.get("k"), q.getOrDefault("kind", "box_front"), in, length);
+                    if (err == null) reply(out, "200 OK", "application/json; charset=utf-8", lib.gameJson(q.get("k")));
+                    else reply(out, "400 Bad Request", "text/plain", err);
+                    return;
+                }
+                if (method.equals("POST") && (route.equals("/api/game") || route.equals("/api/batch")) && length >= 0 && length < 512 * 1024) {
+                    byte[] body = new byte[(int) length];
+                    int got = 0;
+                    while (got < body.length) {
+                        int r = in.read(body, got, body.length - got);
+                        if (r < 0) break;
+                        got += r;
+                    }
+                    Map<String, String> f = WebLibrary.form(body, got);
+                    String[] keys = route.equals("/api/game") ? new String[]{f.getOrDefault("k", "")} : f.getOrDefault("keys", "").split("\n");
+                    f.remove("k");
+                    f.remove("keys");
+                    String err = lib.edit(keys, f);
+                    if (err == null) reply(out, "200 OK", "application/json; charset=utf-8", keys.length == 1 ? lib.gameJson(keys[0]) : "{}");
+                    else reply(out, "400 Bad Request", "text/plain", err);
+                    return;
+                }
+                reply(out, "404 Not Found", "text/plain", "not found");
+                return;
+            }
             if (method.equals("POST") && (path.equals("/ai") || path.equals("/login")) && ai != null && length >= 0 && length < 16384) {
                 byte[] body = new byte[(int) length];
                 int got = 0;
@@ -285,7 +354,7 @@ final class WifiServer {
             + "header{display:flex;align-items:center;gap:14px;margin:6px 4px 20px}"
             + ".mark{width:52px;height:52px;border-radius:16px;background:linear-gradient(135deg,#6c8cff,#9b5de5);display:grid;place-items:center;flex:none;box-shadow:0 6px 16px #6c5ce740}"
             + "header h1{font-size:21px;margin:0}header p{margin:3px 0 0;font-size:13px;color:var(--sub)}"
-            + ".card{background:var(--card);border-radius:22px;padding:22px;margin-bottom:16px;box-shadow:0 6px 24px #0000000d}"
+            + ".card{background:var(--card);border-radius:22px;padding:22px;margin-bottom:16px;box-shadow:0 6px 24px #0000000d}.libcard{display:block;text-decoration:none;color:inherit;border:2px solid #9b5de533}.libcard:hover{border-color:#9b5de5}"
             + "h2{font-size:17px;margin:0 0 6px;display:flex;align-items:center;gap:12px}"
             + ".sub{font-size:14px;color:var(--sub);line-height:1.6;margin:8px 0 4px}"
             + "label{display:block;font-size:13px;margin:16px 0 6px;color:var(--sub)}"
@@ -443,6 +512,8 @@ final class WifiServer {
                 + "<label>" + w(I18n.S.W_SEND_TO) + "</label><select id=to>" + opts + "</select>"
                 + "<div id=drop>" + svg(I_UPLOAD, 28, "currentColor") + "<br>" + w(I18n.S.W_DROP_FILES_HERE_OR)
                 + "<input id=f type=file multiple hidden></div><div id=list></div></div>"
+                + (library != null ? "<a class='card libcard' href=/library><h2>" + dot(I_BOX, "#9b5de5") + w(I18n.S.L_OPEN) + "</h2><p class=sub>"
+                        + w(I18n.S.L_OPEN_SUB) + "</p></a>" : "")
                 + (ai != null ? aiForm() + downloadsCard() : "")
                 + foot()
                 + "<script>const d=document.getElementById('drop'),f=document.getElementById('f');"

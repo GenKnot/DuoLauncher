@@ -91,6 +91,9 @@ final class Library {
 
         String ext() { return extension(file); }
 
+        /** A picture was just added to the game's own media folder (from the library page): look there, and look again. */
+        synchronized void useOwnMedia(File dir) { ownMedia = dir; resolved.clear(); }
+
         String baseName() {
             int i = file.lastIndexOf('.');
             return i < 0 ? file : file.substring(0, i);
@@ -647,6 +650,7 @@ final class Library {
                     if (g.titleId != null) byId.put(g.titleId, g);
                     if (g.path != null) {
                         File m = new File(dir, "media/" + new File(g.baseName()).getName());
+                        if (!m.isDirectory() && g.mediaBase != null) m = new File(dir, "media/" + g.mediaBase);
                         if (m.isDirectory()) { g.ownMedia = m; g.resolved.clear(); }
                     }
                 }
@@ -668,8 +672,10 @@ final class Library {
                         Game g = e.titleId != null ? byId.get(e.titleId.toUpperCase(Locale.ROOT)) : null;
                         if (g == null && e.file != null) g = byFile.get(new File(e.file).getName());
                         if (g == null) continue;
-                        if (e.title != null && !e.title.isEmpty()) g.title = e.title;
-                        if (!e.description.isEmpty()) g.description = e.description;
+                        // "-": an entry from the library page that sets nothing in this language
+                        if (e.title != null && !e.title.isEmpty() && !e.title.equals("-")) g.title = e.title;
+                        if (e.description.equals("-")) g.description = "";
+                        else if (!e.description.isEmpty()) g.description = e.description;
                         if (!e.developer.isEmpty()) g.developer = e.developer;
                         if (e.original != null) g.original = e.original;
                         if (e.genre != null && g.genre == null) g.genre = e.genre;

@@ -342,6 +342,7 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         }
         // not again while the guide or the restore offer is already on screen (a rescan lands here too)
         if (!prefs.contains("lang") && guideStep < 0) showGuide(G_LANG);
+        else if (prefs.contains("lang") && guideStep < 0) maybeReportReady();
     }
 
     private List<String> folders() {
@@ -512,6 +513,7 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         play.add(t(S.BUTTONS), false, () -> showButtonsMenu(0));
         boolean ra = Achievements.configured(prefs);
         play.add("RetroAchievements  ·  " + (ra ? prefs.getString("ra.user", "") : t(S.OFF)), ra, () -> showRaMenu(play));
+        play.add(t(S.REPORTS), false, () -> showReportSettings(0)).hint(t(S.H_REPORTS));
 
         // AI: the two things to do with it, then three doors (services, library jobs, chat history) and the cost
         aiTab = ai;
@@ -1497,8 +1499,11 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
                     main.post(() -> Toast.makeText(MainActivity.this, t(S.AI_SAVED), Toast.LENGTH_LONG).show());
                 }
             }, this::wifiDownloads);
+            wifi.library = new WebLibrary(webHost);
             new Thread(() -> {
                 try { wifi.start(); } catch (IOException e) { wifi = null; }
+                WifiServer w = wifi;
+                if (w != null && w.library != null) new Thread(w.library::warmUp, "library-warm").start();
                 main.post(this::showWifiMenu2);
             }, "wifi-start").start();
             return;
@@ -2008,6 +2013,301 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
             shelf.closeMenu();
             onFocus(shelf.selected());
         }
+    }
+
+    // ---- one game's play history ----
+
+    /** A game's play time per day ("yyyyMMdd" → ms), from "gday:<key>". */
+    private java.util.TreeMap<String, Long> gameDays(String key) {
+        java.util.TreeMap<String, Long> m = new java.util.TreeMap<>();
+        for (String kv : prefs.getString("gday:" + key, "").split(",")) {
+            int e = kv.indexOf('=');
+            if (e == 8) try { m.put(kv.substring(0, 8), Long.parseLong(kv.substring(9))); } catch (NumberFormatException ignored) { }
+        }
+        return m;
+    }
+
+    private static String joinDays(java.util.TreeMap<String, Long> m) {
+        StringBuilder b = new StringBuilder();
+        for (java.util.Map.Entry<String, Long> e : m.entrySet()) b.append(b.length() == 0 ? "" : ",").append(e.getKey()).append('=').append(e.getValue());
+        return b.toString();
+    }
+
+    @Override public String playLine(Library.Game g) {
+        long ms = prefs.getLong("time:" + g.key(), 0);
+        return ms <= 0 ? t(S.NOT_PLAYED) : StatsView.span(ms);
+    }
+
+    private StatsView.Stats collectGameStats(Library.Game g) {
+        String key = g.key();
+        StatsView.Stats s = new StatsView.Stats();
+        s.game = g;
+        s.total = prefs.getLong("time:" + key, 0);
+        java.text.SimpleDateFormat ymd = new java.text.SimpleDateFormat("yyyyMMdd", Locale.ROOT);
+        java.util.TreeMap<String, Long> days = gameDays(key);
+        java.util.Set<String> recorded = new java.util.HashSet<>(days.keySet());
+        int sessions = 0;
+        for (String x : prefs.getString("sessions:" + key, "").split(",")) {
+            int d = x.indexOf('-'), e = x.indexOf('~');
+            if (d <= 0) continue;
+            try {
+                long a = Long.parseLong(x.substring(0, d)), b = Long.parseLong(x.substring(d + 1, e < 0 ? x.length() : e));
+                long spent = e < 0 ? Math.max(0, Math.min(b - a, MAX_SESSION)) : Long.parseLong(x.substring(e + 1));
+                sessions++;
+                s.longest = Math.max(s.longest, spent);
+                // sessions from before the day record existed still show up in the chart
+                if (e < 0) { String dk = ymd.format(new Date(b)); if (!recorded.contains(dk)) days.merge(dk, spent, Long::sum); }
+            } catch (NumberFormatException ignored) { }
+        }
+        s.plays = prefs.getInt("plays:" + key, sessions);
+        java.util.Calendar cal = java.util.Calendar.getInstance();
+        java.text.SimpleDateFormat label = new java.text.SimpleDateFormat("M/d", Locale.ROOT);
+        cal.add(java.util.Calendar.DAY_OF_YEAR, -29);
+        for (int i = 0; i < 30; i++) {
+            Long v = days.get(ymd.format(cal.getTime()));
+            s.month[i] = v == null ? 0 : v;
+            s.monthLabels[i] = label.format(cal.getTime());
+            cal.add(java.util.Calendar.DAY_OF_YEAR, 1);
+        }
+        long last = prefs.getLong("last:" + key, 0);
+        s.last = last == 0 ? t(S.NOT_PLAYED) : android.text.format.DateFormat.getMediumDateFormat(this).format(new Date(last));
+        return s;
+    }
+
+    @Override public void onPlayHistory(Library.Game g, ShelfView.Menu parent) {
+        if (shelf == null) return;
+        top.showStats(collectGameStats(g));
+        ShelfView.Menu m = new ShelfView.Menu(t(S.PLAY_HISTORY), g.title);
+        m.parent = parent;
+        // B: the game menu again (with fresh numbers), and the game back on the upper screen
+        m.onBack = () -> {
+            if (parent != null && parent.reopen != null) parent.reopen.run(); else shelf.closeMenu();
+            onFocus(g);
+        };
+        String key = g.key();
+        boolean any = prefs.getLong("time:" + key, 0) > 0 || !prefs.getString("sessions:" + key, "").isEmpty();
+        if (!any) m.add(t(S.NO_PLAY_YET), false, null);
+        else m.add(t(S.CLEAR_PLAY_HISTORY), false, () -> {
+            ShelfView.Menu c = new ShelfView.Menu(t(S.CLEAR_PLAY_SURE), g.title);
+            c.parent = m;
+            c.add(t(S.CANCEL), false, () -> shelf.showMenu(m));
+            c.add(t(S.CLEAR_PLAY_HISTORY), false, () -> {
+                clearPlay(g);
+                Toast.makeText(this, t(S.PLAY_CLEARED), Toast.LENGTH_SHORT).show();
+                onPlayHistory(g, parent);
+            });
+            shelf.showMenu(c);
+        });
+        shelf.showMenu(m);
+    }
+
+    /** Removes a game's play time, sessions and day record; its share of the daily totals goes with it. */
+    private void clearPlay(Library.Game g) {
+        String k = g.key();
+        java.util.TreeMap<String, Long> days = gameDays(k);
+        prefs.edit().remove("time:" + k).remove("last:" + k).remove("sessions:" + k).remove("gday:" + k).remove("plays:" + k).apply();
+        File files = getFilesDir();
+        java.util.Map<String, Library.Game> byKey = lib != null ? lib.byKey : null;
+        PlayLog.later(() -> {
+            PlayLog.backfill(files, prefs, byKey);
+            // per day the larger of what the game's own record and its logged sessions say
+            java.text.SimpleDateFormat ymd = new java.text.SimpleDateFormat("yyyyMMdd", Locale.ROOT);
+            java.util.Map<String, Long> logged = new java.util.HashMap<>();
+            for (PlayLog.Entry x : PlayLog.read(files)) if (x.key.equals(k)) logged.merge(ymd.format(new Date(x.end)), x.spent, Long::sum);
+            for (java.util.Map.Entry<String, Long> d : logged.entrySet()) days.merge(d.getKey(), d.getValue(), Math::max);
+            SharedPreferences.Editor e = prefs.edit();
+            for (java.util.Map.Entry<String, Long> d : days.entrySet()) {
+                long v = prefs.getLong("day:" + d.getKey(), 0) - d.getValue();
+                if (v > 0) e.putLong("day:" + d.getKey(), v); else e.remove("day:" + d.getKey());
+            }
+            e.apply();
+            PlayLog.remove(files, k);
+        });
+        lastShots.remove(k);
+        playedCache.clear();
+        applyCustomFolders();
+        // and out of Recently played
+        List<String> rk = new ArrayList<>();
+        for (String x : prefs.getString("recent", "").split("\n")) if (!x.isEmpty() && !x.equals(k)) rk.add(x);
+        prefs.edit().putString("recent", String.join("\n", rk)).apply();
+        if (shelf != null) shelf.setRecent(recentGames());
+    }
+
+    // ---- the game library in a browser ----
+
+    private String libraryPage;
+
+    private final WebLibrary.Host webHost = new WebLibrary.Host() {
+        @Override public Library library() { return lib; }
+
+        @Override public SharedPreferences prefs() { return prefs; }
+
+        @Override public boolean onMain(Runnable r) {
+            if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) { r.run(); return true; }
+            java.util.concurrent.CountDownLatch done = new java.util.concurrent.CountDownLatch(1);
+            main.post(() -> { try { r.run(); } finally { done.countDown(); } });
+            try { return done.await(10, java.util.concurrent.TimeUnit.SECONDS); } catch (InterruptedException e) { return false; }
+        }
+
+        @Override public void changed(boolean rescan) {
+            main.post(() -> {
+                playedCache.clear();
+                applyCustomFolders();
+                if (shelf != null) { shelf.refresh(); if (shelfState.menu == null) onFocus(shelf.selected()); }
+                if (rescan) { quietScan = true; load(); }
+            });
+        }
+
+        @Override public File mediaDir(Library.Game g) { return ownMediaDir(g); }
+
+        @Override public File cacheDir() { return getCacheDir(); }
+
+        @Override public String statusName(String id) { return MainActivity.this.statusName(id); }
+
+        @Override public byte[] asset(String path) {
+            try (java.io.InputStream in = getAssets().open(path)) { return readAll(in); } catch (IOException e) { return null; }
+        }
+
+        @Override public String pageHtml() {
+            if (libraryPage == null) {
+                try (java.io.InputStream in = getAssets().open("web/library.html")) {
+                    libraryPage = new String(readAll(in), java.nio.charset.StandardCharsets.UTF_8);
+                } catch (IOException e) {
+                    return "<!doctype html><title>Duo Library</title><p>library page missing</p>";
+                }
+            }
+            return libraryPage;
+        }
+    };
+
+    private static byte[] readAll(java.io.InputStream in) throws IOException {
+        java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+        byte[] buf = new byte[64 * 1024];
+        int r;
+        while ((r = in.read(buf)) > 0) out.write(buf, 0, r);
+        return out.toByteArray();
+    }
+
+    // ---- monthly and yearly play reports ----
+
+    /** A row that opens a smaller menu, marked like the doors on the lower screen. */
+    private static String door(String label) { return label + "  ›"; }
+
+    /** Builds a report in the background, then shows its first page on the upper screen with the pages below. */
+    private void showReport(int year, int month, ShelfView.Menu parent, int page) {
+        if (shelf == null) return;
+        java.util.Map<String, Library.Game> byKey = lib != null ? lib.byKey : null;
+        File files = getFilesDir();
+        runInBackground(() -> {
+            PlayLog.backfill(files, prefs, byKey);
+            PlayReport rep = PlayReport.build(prefs, PlayLog.read(files), byKey, year, month);
+            return () -> { if (shelf != null && shelfState.menu == parent) openReport(rep, parent, page); };
+        });
+    }
+
+    private void openReport(PlayReport rep, ShelfView.Menu parent, int page) {
+        if (shelf == null) return;
+        StatsView.Stats s = new StatsView.Stats();
+        s.report = rep;
+        s.page = page;
+        top.showStats(s);
+        ShelfView.Menu m = new ShelfView.Menu(rep.title, t(rep.isYear() ? S.REPORT_YEAR : S.REPORT_MONTH));
+        m.parent = parent;
+        // B: back to the report list, and the statistics page back on the upper screen
+        boolean fromTile = shelf.selected() == ShelfView.STATS;
+        m.onBack = () -> { shelf.showMenu(parent); if (fromTile) top.showStats(collectStats()); else onFocus(shelf.selected()); };
+        for (int i = 0; i < ReportPainter.PAGES; i++) {
+            int pg = i;
+            m.add(ReportPainter.pageName(i), false, () -> { s.page = pg; top.showStats(s); }).hint(t(S.H_REPORT_PAGE));
+        }
+        m.add(t(S.REPORT_SAVE), false, () -> saveReportPicture(rep)).hint(t(S.H_REPORT_SAVE));
+        // moving the cursor turns the page
+        m.onSelect = i -> { if (i < ReportPainter.PAGES) { s.page = i; top.showStats(s); } };
+        m.sel = Math.max(0, Math.min(page, ReportPainter.PAGES - 1));
+        shelf.showMenu(m);
+    }
+
+    /** All pages as one picture in Pictures/DuoLauncher, where the gallery and other apps find it. */
+    private void saveReportPicture(PlayReport rep) {
+        Toast.makeText(this, t(S.REPORT_SAVING), Toast.LENGTH_SHORT).show();
+        new Thread(() -> {
+            String msg;
+            try {
+                Bitmap b = ReportPainter.picture(rep, g -> icons.tileNow(g), 0.6f);
+                File dir = new File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_PICTURES), "DuoLauncher");
+                dir.mkdirs();
+                String name = "report-" + rep.year + (rep.isYear() ? "" : String.format(Locale.ROOT, "-%02d", rep.month + 1)) + ".png";
+                File f = new File(dir, name);
+                try (java.io.OutputStream o = new java.io.FileOutputStream(f)) { b.compress(Bitmap.CompressFormat.PNG, 100, o); }
+                b.recycle();
+                android.media.MediaScannerConnection.scanFile(this, new String[]{f.getAbsolutePath()}, new String[]{"image/png"}, null);
+                msg = I18n.f(S.REPORT_SAVED, "Pictures/DuoLauncher/" + name);
+            } catch (Exception | OutOfMemoryError e) {
+                msg = t(S.REPORT_SAVE_FAILED);
+            }
+            String m = msg;
+            main.post(() -> Toast.makeText(this, m, Toast.LENGTH_LONG).show());
+        }, "report-picture").start();
+    }
+
+    /** Every month and year with play, newest first. */
+    private void showReportPicker(ShelfView.Menu parent) {
+        if (shelf == null) return;
+        boolean mo = prefs.getBoolean("report.month", true), yr = prefs.getBoolean("report.year", true);
+        Locale loc = Locale.forLanguageTag(I18n.code());
+        ShelfView.Menu m = new ShelfView.Menu(t(S.REPORT_EARLIER), null);
+        m.parent = parent;
+        for (int[] pr : PlayReport.periods(prefs)) {
+            if (pr[1] < 0 ? !yr : !mo) continue;
+            String label = pr[1] < 0 ? t(S.REPORT_YEAR) + "  ·  " + PlayReport.title(loc, pr[0], -1) : "      " + PlayReport.title(loc, pr[0], pr[1]);
+            m.add(label, false, () -> showReport(pr[0], pr[1], m, 0));
+        }
+        if (m.labels.isEmpty()) m.add(t(S.NO_PLAY_YET), false, null);
+        shelf.showMenu(m);
+    }
+
+    /** Settings → Playing → Play reports: which reports, the reminder, and opening one. */
+    private void showReportSettings(int sel) {
+        if (shelf == null) return;
+        ShelfView.Menu m = new ShelfView.Menu(t(S.REPORTS), null);
+        m.parent = settingsPage;
+        m.onBack = () -> { shelf.closeMenu(); onSettings(); };
+        String[][] keys = {{"report.month", t(S.REPORT_MONTHLY), t(S.H_REPORT_MONTHLY)}, {"report.year", t(S.REPORT_YEARLY), t(S.H_REPORT_YEARLY)},
+                {"report.remind", t(S.REPORT_REMIND), t(S.H_REPORT_REMIND)}};
+        for (String[] k : keys) {
+            int row = m.labels.size();
+            boolean on = prefs.getBoolean(k[0], true);
+            m.toggle(k[1], on, () -> { prefs.edit().putBoolean(k[0], !on).apply(); showReportSettings(row); }).hint(k[2]);
+        }
+        m.add(t(S.REPORT_OPEN), false, () -> showReportPicker(m)).hint(t(S.H_REPORT_OPEN));
+        m.sel = Math.max(0, Math.min(sel, m.labels.size() - 1));
+        shelf.showMenu(m);
+    }
+
+    /** Once per month (and once per year in January): last month's report is ready, if it has anything in it. */
+    private void maybeReportReady() {
+        if (shelf == null || shelfState.menu != null || !prefs.getBoolean("report.remind", true)) return;
+        java.util.Calendar prev = java.util.Calendar.getInstance();
+        prev.add(java.util.Calendar.MONTH, -1);
+        int y = prev.get(java.util.Calendar.YEAR), mo = prev.get(java.util.Calendar.MONTH);
+        Locale loc = Locale.forLanguageTag(I18n.code());
+        String tile = ShelfView.toolName("stats", t(S.STATS));
+        boolean newYear = mo == 11;
+        String seen = "report.seen." + y + String.format(Locale.ROOT, "%02d", mo + 1);
+        if (prefs.getBoolean(seen, false)) return;
+        boolean mOn = prefs.getBoolean("report.month", true), yOn = prefs.getBoolean("report.year", true);
+        if (!mOn && !yOn) return;
+        // only for a month (or, in January, a year) with play in it
+        String monthKey = "day:" + y + String.format(Locale.ROOT, "%02d", mo + 1), yearKey = "day:" + y;
+        boolean monthAny = false, yearAny = false;
+        for (java.util.Map.Entry<String, ?> kv : prefs.getAll().entrySet()) {
+            if (!(kv.getValue() instanceof Long) || (Long) kv.getValue() <= 0) continue;
+            if (kv.getKey().startsWith(monthKey)) monthAny = true;
+            if (kv.getKey().startsWith(yearKey)) yearAny = true;
+        }
+        prefs.edit().putBoolean(seen, true).apply();
+        String what = newYear && yOn && yearAny ? PlayReport.title(loc, y, -1) : mOn && monthAny ? PlayReport.title(loc, y, mo) : null;
+        if (what != null) shelf.showTip(I18n.f(S.REPORT_READY, what, tile));
     }
 
     @Override public void onNote(Library.Game g, ShelfView.Menu parent) {
@@ -4389,6 +4689,27 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
 
     @Override public void onStats() {
         if (shelf == null || lib == null) return;
+        boolean mo = prefs.getBoolean("report.month", true), yr = prefs.getBoolean("report.year", true);
+        if (!mo && !yr) { showPlayedGames(); return; }
+        java.util.Calendar now = java.util.Calendar.getInstance(), prev = java.util.Calendar.getInstance();
+        prev.add(java.util.Calendar.MONTH, -1);
+        Locale loc = Locale.forLanguageTag(I18n.code());
+        ShelfView.Menu m = new ShelfView.Menu(t(S.REPORTS), null);
+        int y = now.get(java.util.Calendar.YEAR), mo0 = now.get(java.util.Calendar.MONTH);
+        if (mo) {
+            m.add(t(S.REPORT_THIS_MONTH) + "  ·  " + PlayReport.title(loc, y, mo0), false, () -> showReport(y, mo0, m, 0));
+            int py = prev.get(java.util.Calendar.YEAR), pm = prev.get(java.util.Calendar.MONTH);
+            m.add(t(S.REPORT_LAST_MONTH) + "  ·  " + PlayReport.title(loc, py, pm), false, () -> showReport(py, pm, m, 0));
+        }
+        if (yr) m.add(t(S.REPORT_THIS_YEAR) + "  ·  " + PlayReport.title(loc, y, -1), false, () -> showReport(y, -1, m, 0));
+        m.add(door(t(S.REPORT_EARLIER)), false, () -> showReportPicker(m));
+        m.add(t(S.REPORT_ALL_PLAYED), false, this::showPlayedGames);
+        shelf.showMenu(m);
+    }
+
+    /** Every played game, most played first (A on the statistics tile when the reports are off). */
+    private void showPlayedGames() {
+        if (shelf == null || lib == null) return;
         List<Library.Game> played = new ArrayList<>();
         java.util.Set<Library.Game> seen = new HashSet<>();
         for (Library.Platform p : lib.platforms)
@@ -4860,12 +5181,25 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         String key = parts[0];
         // per-day totals feed the "this week" chart on the statistics page
         String day = "day:" + new java.text.SimpleDateFormat("yyyyMMdd", Locale.ROOT).format(new Date(now));
-        prefs.edit().putLong("time:" + key, prefs.getLong("time:" + key, 0) + spent).putLong("last:" + key, now)
-                .putLong(day, prefs.getLong(day, 0) + spent).apply();
-        // the last sessions' times, so screenshots taken while the game ran can be found again
+        // the game's own day totals (its play history chart) and how often it was played
+        java.util.TreeMap<String, Long> gdays = gameDays(key);
+        gdays.merge(day.substring(4), spent, Long::sum);
+        while (gdays.size() > 60) gdays.pollFirstEntry();
         List<String> ses = new ArrayList<>(java.util.Arrays.asList(prefs.getString("sessions:" + key, "").split(",")));
         ses.removeIf(String::isEmpty);
-        ses.add(start + "-" + now);
+        int plays = prefs.getInt("plays:" + key, ses.size()) + 1;
+        prefs.edit().putLong("time:" + key, prefs.getLong("time:" + key, 0) + spent).putLong("last:" + key, now)
+                .putLong(day, prefs.getLong(day, 0) + spent).putString("gday:" + key, joinDays(gdays)).putInt("plays:" + key, plays).apply();
+        // the last sessions' times, so screenshots taken while the game ran can be found again; "~" the time played
+        ses.add(start + "-" + now + "~" + spent);
+        PlayLog.Entry logged = new PlayLog.Entry(start, now, spent, key, ran != null ? ran.title : key, ran != null ? ran.platform.title() : "");
+        File logDir = getFilesDir();
+        java.util.Map<String, Library.Game> logKeys = lib != null ? lib.byKey : null;
+        long logStart = start;
+        PlayLog.later(() -> {
+            PlayLog.backfill(logDir, prefs, logKeys, key, logStart);
+            PlayLog.add(logDir, logged);
+        });
         while (ses.size() > 40) ses.remove(0);
         prefs.edit().putString("sessions:" + key, String.join(",", ses)).apply();
         int restHours = prefs.getInt("restHours", 2);
@@ -4959,7 +5293,8 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         for (String s : prefs.getString("sessions:" + g.key(), "").split(",")) {
             int d = s.indexOf('-');
             if (d <= 0) continue;
-            try { ses.add(new long[]{Long.parseLong(s.substring(0, d)), Long.parseLong(s.substring(d + 1)) + 60_000}); } catch (NumberFormatException ignored) { }
+            int e = s.indexOf('~');
+            try { ses.add(new long[]{Long.parseLong(s.substring(0, d)), Long.parseLong(s.substring(d + 1, e < 0 ? s.length() : e)) + 60_000}); } catch (NumberFormatException ignored) { }
         }
         String base = (g.mediaBase != null ? g.mediaBase : new File(g.baseName()).getName()).toLowerCase(Locale.ROOT);
         List<File> out = new ArrayList<>();

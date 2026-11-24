@@ -49,12 +49,12 @@ final class Config {
     /** Which part a setting belongs to; null for bookkeeping that never leaves the handheld. */
     static Part part(String k) {
         if (k.endsWith(".key") || k.equals("admin.pw") || k.startsWith("ra.")) return Part.KEYS;
-        for (String p : new String[]{"time:", "last:", "day:", "sessions:", "recent", "lastShot", "unbackedPlay"})
+        for (String p : new String[]{"time:", "last:", "day:", "gday:", "plays:", "sessions:", "recent", "lastShot", "unbackedPlay"})
             if (k.startsWith(p)) return Part.PLAY;
         for (String p : new String[]{"status:", "rating:", "note:", "howto:", "searchHistory", "order:", "sysOf:"})
             if (k.startsWith(p)) return Part.NOTES;
         // where this handheld keeps its data and how it copies it are its own, never taken from someone's config
-        if (k.startsWith("update.") || k.startsWith("copy.") || k.equals("dataHome") || k.equals("running") || k.equals("img.model.auto")) return null;
+        if (k.startsWith("update.") || k.startsWith("copy.") || k.equals("dataHome") || k.equals("playlog.made") || k.startsWith("report.seen.") || k.equals("running") || k.equals("img.model.auto")) return null;
         return Part.SETTINGS;
     }
 
@@ -63,12 +63,12 @@ final class Config {
 
     /** The app's own files of each part, by name in its files folder (a name ending in / is a folder). */
     private static Part filePart(String name) {
-        if (name.equals("firstseen.txt") || name.equals("seennew.txt")) return Part.PLAY;
+        if (name.equals("firstseen.txt") || name.equals("seennew.txt") || name.equals(PlayLog.FILE)) return Part.PLAY;
         if (name.equals("usage.json") || name.equals("translations.tsv") || name.startsWith("chats/")) return Part.AI;
         return null;
     }
 
-    private static final String[] APP_FILES = {"firstseen.txt", "seennew.txt", "usage.json", "translations.tsv", "chats"};
+    private static final String[] APP_FILES = {"firstseen.txt", "seennew.txt", PlayLog.FILE, "usage.json", "translations.tsv", "chats"};
     /** Folders inside DuoLauncher/ that are not game data (they have their own export, or are made again). */
     private static final Set<String> NOT_GAME_DATA = new HashSet<>(Arrays.asList("themes", "backups", "exports", "m3u", "profile"));
 
@@ -246,6 +246,7 @@ final class Config {
         File internalRoot = new File(android.os.Environment.getExternalStorageDirectory(), "DuoLauncher");
         JSONObject settings = null, personal = null;
         long[] total = {0};
+        boolean hadLog = false;
         try (ZipInputStream in = new ZipInputStream(new FileInputStream(zip))) {
             for (ZipEntry e; (e = in.getNextEntry()) != null; ) {
                 String name = e.getName();
@@ -261,7 +262,10 @@ final class Config {
                 } else if (name.startsWith("files/") && files != null) {
                     String rel = name.substring(6);
                     Part p = filePart(rel);
-                    if (p != null && want.contains(p)) extract(in, files, rel, total);
+                    if (p != null && want.contains(p)) {
+                        extract(in, files, rel, total);
+                        if (rel.equals(PlayLog.FILE)) hadLog = true;
+                    }
                 } else if (name.startsWith("card/") && want.contains(Part.CARD)) {
                     String rel = name.substring(5);
                     if (rel.startsWith("int/")) extract(in, internalRoot, rel.substring(4), total);
@@ -272,6 +276,12 @@ final class Config {
         if (settings == null) throw new IOException("not a Duo Launcher config");
         SharedPreferences.Editor ed = prefs.edit();
         int n = 0;
+        if (want.contains(Part.PLAY) && files != null) {
+            // the reports follow the imported play: an older config without a log gets one made from its sessions,
+            // and a config with one gets the remembered sessions merged in again
+            if (!hadLog) new File(files, PlayLog.FILE).delete();
+            ed.remove("playlog.made");
+        }
         // a key of this handheld must never be sent to an address that came from someone else's config;
         // when the keys come along (one's own full backup), the addresses come with them
         boolean keysToo = want.contains(Part.KEYS) && personal != null && personal.length() > 0;

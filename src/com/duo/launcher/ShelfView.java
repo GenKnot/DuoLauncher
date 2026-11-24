@@ -85,6 +85,9 @@ final class ShelfView extends View {
         void onAskAi(Library.Game g, Menu parent);
         /** Y → Status on a game (playing, done…) and its rating. */
         void onStatus(Library.Game g, Menu parent);
+        /** Y → Game info → Play history: the game's play time on the upper screen, and clearing it. */
+        void onPlayHistory(Library.Game g, Menu parent);
+        String playLine(Library.Game g);
         /** The status row's label, e.g. "Playing · ★★★★☆". */
         String statusLine(Library.Game g);
         /** Y → How to play. */
@@ -1135,10 +1138,12 @@ final class ShelfView extends View {
     private void showInfoMenu(Library.Game g, Menu parent) {
         Menu im = new Menu(t(S.GROUP_INFO), g.title);
         im.parent = parent;
+        im.reopen = () -> showInfoMenu(g, parent);
         if (g.path != null) {
             im.add(door(t(S.DETAILS)), false, () -> listener.onDetails(g)).hint(t(S.H_DETAILS));
             im.add(door(t(S.GENRE) + "  ·  " + Genres.name(g.genre)), false, () -> listener.onPickGenre(g, im)).hint(t(S.H_GENRE));
             im.add(door(t(S.STATUS) + "  ·  " + listener.statusLine(g)), false, () -> listener.onStatus(g, im)).hint(t(S.H_STATUS));
+            im.add(door(t(S.PLAY_HISTORY) + "  ·  " + listener.playLine(g)), false, () -> listener.onPlayHistory(g, im)).hint(t(S.H_PLAY_HISTORY));
             String note = listener.noteOf(g);
             im.add(door(t(S.NOTE) + (note == null ? "" : "  ·  " + note)), false, () -> listener.onNote(g, im)).hint(t(S.H_NOTE));
             im.add(door(t(S.AI_GAME_PICTURES)), false, () -> listener.onAiGamePictures(g, im)).hint(t(S.H_AI_GAME_PICTURES));
@@ -1697,6 +1702,16 @@ final class ShelfView extends View {
                 if (f > 0) r2.inset(s * f, s * f);
                 src.set(0, 0, b.getWidth(), b.getHeight());
                 c.drawBitmap(b, src, r2, p);
+            } else {
+                // no picture: the same coloured card with the first letters of the title as in the game grid
+                Library.Game g = pl.games.get(i);
+                path.reset();
+                path.addRoundRect(r2, s * 0.16f, s * 0.16f, Path.Direction.CW);
+                c.clipPath(path);
+                p.setColor(0xFF000000 | (g.title.hashCode() & 0x7F7F7F) | 0x404040);
+                c.drawRect(r2, p);
+                String t = g.title.length() > 4 ? g.title.substring(0, 4) : g.title;
+                text(c, t, 0, s * 0.08f, s * 0.2f, 0xFFFFFFFF, true, Paint.Align.CENTER);
             }
             c.restore();
         }

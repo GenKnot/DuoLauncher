@@ -157,6 +157,26 @@ final class GameText {
         return done;
     }
 
+    /**
+     * The player's own name and/or description for a game (from the library page), in the language given; a later
+     * entry wins over earlier ones, so this simply adds one.
+     */
+    static boolean setOwn(Library.Game g, String lang, String title, String desc) {
+        if (g.path == null) return false;
+        // "game: -" names no title of its own, so other languages keep theirs; name.<lang> is the new one
+        StringBuilder sb = new StringBuilder("\ngame: -\n");
+        if (g.titleId != null && g.path.getName().endsWith(".app")) sb.append("titleid: ").append(g.titleId).append('\n');
+        else sb.append("file: ").append(g.path.getName()).append('\n');
+        if (title != null) sb.append("name.").append(lang).append(": ").append(clean(title)).append('\n');
+        if (desc != null) {
+            // a cleared description is written as "-"; line breaks become indented lines ("." for an empty one)
+            String[] lines = desc.trim().replace("\r", "").split("\n", -1);
+            sb.append("description.").append(lang).append(": ").append(desc.trim().isEmpty() ? "-" : lines[0].trim()).append('\n');
+            for (int i = 1; i < lines.length; i++) sb.append("  ").append(lines[i].trim().isEmpty() ? "." : lines[i].trim()).append('\n');
+        }
+        return append(ownDir(g.platform, g), sb.toString());
+    }
+
     private static String clean(String s) {
         return s == null ? "" : s.replace('\n', ' ').replace('\r', ' ').trim();
     }

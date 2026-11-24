@@ -24,6 +24,8 @@ On top of finding your games and starting them, this is what those promises add 
 - **Cheats, from download to the first frame.** When a game has no cheats on the handheld, it fetches them from the big community databases – Sharkive for 3DS, libretro for NDS and GBA, CWCheat for PSP – lets you tick only the ones you want, translates their names into your language in one tap (and, with an AI key, even with the game's official names for characters and items), and writes them into each emulator's own cheat files: Azahar and Citra, DraStic, PPSSPP and RetroArch. See [Cheats](#cheats).
 - **An AI that knows your library.** Hold R and ask what to play next, how to get past a boss, or what a story is about – it answers from the games you actually have. The same AI translates game names and descriptions, files every game under a genre and a series, and draws missing covers, logos and backdrops. It runs on the service *you* choose with your own key, and every request is counted in Settings with an estimated cost. See [Your AI companion](#your-ai-companion) and [AI](#ai).
 - **Set up from your phone.** Turn on Wi-Fi transfer and a QR code appears on the upper screen. Scan it, and a page in your phone's language lets you send games, type API keys on a real keyboard, import and export configs, and download backups – no cables, no file manager. See [Handy tools](#handy-tools).
+- **Your collection, on show.** Duo Library opens your whole library in a browser on a computer or phone, in three looks – the handheld's own, a dark store, and a museum with a hall for each console, framed covers and plaques – and lets you rename, sort, rate, take notes, swap covers by dragging a picture in, or change a whole batch of games at once. Every edit is saved on the handheld. See [Duo Library](#duo-library-your-games-in-a-browser).
+- **Your play, told back to you.** Each month and each year becomes a few good-looking pages: the total against the month before, a calendar of the days you played, your favourite games, consoles and genres, and whether you are an early bird or a night owl – saved as one picture to share if you like. Every game also has its own 30-day history. See [Playing](#playing).
 - **One place for everything that needs a look.** The Problem centre gathers files it could not recognise, consoles without an emulator, games without a cover and duplicates, and fixes most of them on the spot. See [Handy tools](#handy-tools).
 - **Every frontend's data, used and left alone.** It reads Pegasus and ES-DE metadata and pictures side by side, keeps its own additions in its own `DuoLauncher` folder, and never rewrites another frontend's files, so they can all share one card. See [Where names, pictures and details come from](#where-names-pictures-and-details-come-from).
 - **Yours to shape, down to the details.** Colour themes and shareable theme packs, light and dark mode, your own picture and colour for any tile, text size, cover margins, rules for tidying names, your own game order, where its data is kept, and Duo Lite for less work on every screen. Your whole setup can be exported as one file and handed to a friend – without your keys or your play history. See [Look and feel](#look-and-feel) and [Themes](#themes).
@@ -41,6 +43,8 @@ And a few ideas that run through all of it:
 | Cheats downloaded, chosen, translated and set up for each emulator | ✅ | seldom |
 | Built-in AI that knows your library | ✅ | seldom |
 | Set up from a phone over Wi-Fi, with a QR code | ✅ | seldom |
+| Whole library in a browser, in three looks, editable | ✅ | seldom |
+| Monthly and yearly play reports, saved as a picture | ✅ | seldom |
 | Problem centre | ✅ | seldom |
 | Pegasus and ES-DE data read side by side | ✅ | seldom |
 | Grouped by series | ✅ | seldom |
@@ -56,16 +60,127 @@ Suggestions and bug reports are welcome on the [issue tracker](https://github.co
 
 - **Cheats, ready to use** – thousands of cheats for 3DS, NDS, PSP, GBA and every RetroArch system, from the handheld itself or, when a game has none, downloaded from the big cheat databases (Sharkive, libretro, CWCheat), where you tick only the ones you want. Names are translated into your language in one tap, every cheat can be edited, and they go straight into the emulator's own cheat files, so they work as soon as the game starts.
 - **An AI companion** – hold R anywhere and talk: it recommends from your own library, explains how to get past a part of a game, tells you about a story, or just chats. The answers can be read aloud.
+- **Duo Library in your browser** – the whole library on a computer or phone in three looks (Duo, store, museum), with names, genres, status, ratings, notes and pictures edited right there and saved on the handheld.
 - **Two screens, one launcher** – choose on the lower screen; see logos, cover art, video previews, play time and descriptions on the upper one.
 - **Every emulator in one place** – 3DS, NDS, GBA, GB/GBC, NES, SNES, N64, GameCube, Wii, Mega Drive, PS1, PS2, PSP, PS Vita and Switch, plus 22 older consoles through RetroArch (Master System to Dreamcast, PC Engine, Neo Geo, WonderSwan, Atari, arcade, DOS …), with the emulator chosen per console or per game. Multi-disc games show as one.
 - **Sorted for you** – every game filed under one of 14 genres and under its series (Ys, Castlevania, Super Robot Wars …). The home page shows your library by console, genre or series, and smart folders keep "recently added", "playing", "want to play", "finished" and "top rated" up to date.
 - **Fills in what is missing** – real box art from the libretro thumbnail sets, official English titles, and AI-drawn covers, logos and backdrops in the launcher's own style.
-- **Made for a handheld** – OLED-safe screensaver, Wi-Fi transfer from a browser, save backups, play statistics, RetroAchievements progress, a storage overview, and a home screen that is up in a second.
+- **Made for a handheld** – OLED-safe screensaver, Wi-Fi transfer from a browser, save backups, play statistics with monthly and yearly reports, RetroAchievements progress, a storage overview, and a home screen that is up in a second.
 - **Yours to change** – colour themes and theme packs, light and dark mode, text size, cover margins, a settings page like a console's, and configs you can export and share. 11 interface languages.
 
 ## Screenshots
 
 <p align="center"><img src="docs/screenshots/light-dark.png" alt="Light and dark mode"></p>
+
+### Duo Library
+
+Open it from a computer or phone on the same Wi-Fi. Three looks, the same library: the handheld's own style, a dark store and a museum. See [Duo Library](#duo-library-your-games-in-a-browser).
+
+<table>
+  <tr>
+    <th>Duo look: the console on its own backdrop</th>
+    <th>Store look: dark, big covers, play time on record</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/zh_web_duo.png" alt="Duo look: the console on its own backdrop"></td>
+    <td><img src="docs/screenshots/zh_web_store.png" alt="Store look: dark, big covers, play time on record"></td>
+  </tr>
+  <tr>
+    <th>Museum look: your most played on pedestals</th>
+    <th>One hall per console, framed covers and plaques</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/zh_web_museum.png" alt="Museum look: your most played on pedestals"></td>
+    <td><img src="docs/screenshots/zh_web_hall.png" alt="One hall per console, framed covers and plaques"></td>
+  </tr>
+  <tr>
+    <th>Every game: details, edit, swap pictures</th>
+    <th>On a phone</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/zh_web_detail.png" alt="Every game: details, edit, swap pictures"></td>
+    <td><img src="docs/screenshots/zh_web_phone.png" alt="On a phone"></td>
+  </tr>
+</table>
+
+### Monthly and yearly play reports
+
+<table>
+  <tr>
+    <th>The month at a glance, and your favourite</th>
+    <th>Every day of the month</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/zh_report.png" alt="The month at a glance, and your favourite"></td>
+    <td><img src="docs/screenshots/zh_report_days.png" alt="Every day of the month"></td>
+  </tr>
+  <tr>
+    <th>Consoles and genres</th>
+    <th>How you play: morning or night owl</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/zh_report_consoles.png" alt="Consoles and genres"></td>
+    <td><img src="docs/screenshots/zh_report_habits.png" alt="How you play: morning or night owl"></td>
+  </tr>
+  <tr>
+    <th colspan="2">Saved as one picture, ready to share</th>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><img src="docs/screenshots/zh_report_share.jpg" width="38%" alt="Saved as one picture, ready to share"></td>
+  </tr>
+</table>
+
+### Cheats, from download to the first frame
+
+<table>
+  <tr>
+    <th>Choose cheats before importing, names translated</th>
+    <th>3DS cheats, translated in one tap</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/zh_cheat_pick.png" alt="Choosing cheats"></td>
+    <td><img src="docs/screenshots/zh_cheats.png" alt="3DS cheats"></td>
+  </tr>
+  <tr>
+    <th>NDS cheats for DraStic, Chinese database</th>
+    <th>RetroArch cheats (GBA)</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/zh_cheats_nds.png" alt="NDS cheats"></td>
+    <td><img src="docs/screenshots/zh_cheats_gba.png" alt="GBA cheats"></td>
+  </tr>
+  <tr>
+    <th>Edit, add, download</th>
+    <th>Rename or delete a cheat</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/zh_cheat_menu.png" alt="Cheat menu"></td>
+    <td><img src="docs/screenshots/zh_cheat_edit.png" alt="Edit a cheat"></td>
+  </tr>
+</table>
+
+### Play history, Problem centre, Wi-Fi and your data
+
+<table>
+  <tr>
+    <th>One game's last 30 days, times played, longest session</th>
+    <th>Problem centre: everything that needs a look</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/zh_play_history.png" alt="One game's last 30 days, times played, longest session"></td>
+    <td><img src="docs/screenshots/zh_problems.png" alt="Problem centre: everything that needs a look"></td>
+  </tr>
+  <tr>
+    <th>Wi-Fi: scan the code with a phone</th>
+    <th>Where launcher data lives, with an automatic copy</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/zh_wifi_qr.png" alt="Wi-Fi: scan the code with a phone"></td>
+    <td><img src="docs/screenshots/zh_data_home.png" alt="Where launcher data lives, with an automatic copy"></td>
+  </tr>
+</table>
+
+### More
 
 <table>
   <tr>
@@ -171,35 +286,11 @@ Suggestions and bug reports are welcome on the [issue tracker](https://github.co
     <td><img src="docs/screenshots/zh_move.png" alt="Moving a folder"></td>
   </tr>
   <tr>
-    <th>Choose cheats before importing, names translated</th>
     <th>Game details: size, discs, screenshots</th>
-  </tr>
-  <tr>
-    <td><img src="docs/screenshots/zh_cheat_pick.png" alt="Choosing cheats"></td>
-    <td><img src="docs/screenshots/zh_details.png" alt="Game details"></td>
-  </tr>
-  <tr>
-    <th>3DS cheats, translated in one tap</th>
-    <th>NDS cheats for DraStic, Chinese database</th>
-  </tr>
-  <tr>
-    <td><img src="docs/screenshots/zh_cheats.png" alt="3DS cheats"></td>
-    <td><img src="docs/screenshots/zh_cheats_nds.png" alt="NDS cheats"></td>
-  </tr>
-  <tr>
-    <th>RetroArch cheats (GBA)</th>
-    <th>Edit, add, download</th>
-  </tr>
-  <tr>
-    <td><img src="docs/screenshots/zh_cheats_gba.png" alt="GBA cheats"></td>
-    <td><img src="docs/screenshots/zh_cheat_menu.png" alt="Cheat menu"></td>
-  </tr>
-  <tr>
-    <th>Rename or delete a cheat</th>
     <th>Translate every cheat at once</th>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/zh_cheat_edit.png" alt="Edit a cheat"></td>
+    <td><img src="docs/screenshots/zh_details.png" alt="Game details"></td>
     <td><img src="docs/screenshots/zh_tools.png" alt="Tools"></td>
   </tr>
   <tr>
@@ -238,7 +329,7 @@ Suggestions and bug reports are welcome on the [issue tracker](https://github.co
 
 **The upper screen** follows whatever is selected: a console on its backdrop with its game count and emulator; a game's logo over its blurred cover art with its console, genre · series, emulator, play time and a short description, a video preview after a moment, or the picture of where you left off.
 
-**Y** is the menu for whatever is selected. On a game it is short, with the rarer things one door further in: emulator, favorite, add to / remove from a folder, Cheats ›, AI help › (ask AI, how to play), Game info › (details, genre, status and rating, note, what the upper screen shows, AI pictures for this game) and More › (saves, mark as seen, hide, delete the game file). On a console folder: default emulator, rename, Merge folders ›, mark all as seen, hide. On a built-in tile: name, colour, icon and backdrop. The selected row explains itself in one line at the bottom of the menu.
+**Y** is the menu for whatever is selected. On a game it is short, with the rarer things one door further in: emulator, favorite, add to / remove from a folder, Cheats ›, AI help › (ask AI, how to play), Game info › (details, genre, status and rating, play history, note, what the upper screen shows, AI pictures for this game) and More › (saves, mark as seen, hide, delete the game file). On a console folder: default emulator, rename, Merge folders ›, mark all as seen, hide. On a built-in tile: name, colour, icon and backdrop. The selected row explains itself in one line at the bottom of the menu.
 
 *Why:* a menu with fifteen rows is hard to read on a handheld. Doors keep the everyday rows in front, and the one-line hint means nobody has to guess what a row does before pressing it.
 
@@ -357,7 +448,8 @@ R3, the Search tile, or the search button opens a keyboard on the upper screen t
   A Pegasus `metadata.pegasus.txt` usually brings its own launch line for each console; that is used first, and the cores above are offered next to it.
 
 - **Citra MMJ (performance mode)** – the same Citra MMJ build repackaged under the AnTuTu benchmark's package name, which many Android systems run at full clocks. It is offered only when that package really is Citra.
-- **Play time and statistics** – how long and when you last played each game, Switch-style; with usage access granted it counts only the time the game was really on screen. The Play statistics tile shows the total, this week day by day, time per console and the most played games.
+- **Play time and statistics** – how long and when you last played each game, Switch-style; with usage access granted it counts only the time the game was really on screen. The Play statistics tile shows the total, this week day by day, time per console and the most played games. For one game, Y → Game info → Play history shows its last 30 days day by day, how often you played it, your longest session and when you last played, and can clear that game's record (Cancel comes first).
+- **Monthly and yearly play reports** – A on the Play statistics tile opens this month, last month, this year and every earlier month or year you played in. Each report is five pages on the upper screen, turned by moving the cursor: the total with the change against the month or year before and your favourite game; a calendar (or the twelve months) with your biggest day; your five most played games; consoles as a ring and genres as bars; and how you play – morning, afternoon, evening or late night, your longest session and the games you tried for the first time. *Save as a picture* puts all pages in one image in Pictures/DuoLauncher, ready to share. At the start of each month the launcher says once that last month's report is ready. Settings → Playing → Play reports switches the monthly and yearly reports and that reminder on or off; with both reports off, the tile goes straight to the list of played games. *Why:* the play time is already counted, so it may as well tell a story you can look back on – and only when you want it.
 - **Where you left off** – a played game's newest screenshot or save-state picture becomes its upper-screen background.
 - **Status, rating and notes** – mark a game as playing, want to play, finished or dropped and give it one to five stars (Y → Status); write or say a line about where you are and what to do next (Y → Note). All of it shows on the upper screen next time you pick the game up.
 - **Game details** (Y → Details) – file, size, discs, folder, emulator, play time, the official English title, and the game's screenshots on the upper screen.
@@ -452,6 +544,22 @@ Y → Cheats on a game lists its cheats; A switches one on or off.
 - **Updates** – Settings → System → About checks the latest GitHub release once a day and links to it.
 - **Home screen** – set it as the default home app so it starts with the handheld; the Android home tile (or Settings → System → Exit to Android home) leads back to the system home screen, and Settings → System → Android settings opens the system's own settings.
 
+
+## Duo Library: your games in a browser
+
+Settings → Saves, transfer, sharing → Wi-Fi transfer, then open the page on a computer or phone (scan the QR code on the upper screen) and enter the password shown on the handheld. The **Game library** card opens Duo Library: every game with its cover, play time and status, on a screen big enough to look at it all.
+
+- **Three looks, one library.** Switch at the top right; the browser remembers your choice.
+  - **Duo** – the handheld's own style: the clay console icons in the list, and above the games the selected console on its illustrated backdrop, gently floating, like the upper screen. Follows the computer's light or dark mode.
+  - **Store** – dark, with big portrait covers that lift and glow under the pointer, a banner for the game you are playing, and the time on record under each game.
+  - **Museum** – an entrance with your three most played games on lit pedestals, then a hall for each console ("Game Boy Advance Hall · 582 exhibits"), every cover in a gold frame on a wooden shelf with a small plaque.
+- **Find anything.** Search by name (the English title and series match too), filter by console, genre and status, sort by name, play time, last played, recently added or rating.
+- **Every game, every detail.** Click a game for its cover and backdrop, description, play time, last played and file size. Change its name, genre, status, rating, note and description there, and drag a picture onto Cover, Backdrop or Title logo to replace it. Only what you changed is saved, straight into the launcher's own files, so the handheld shows it at once and it survives rescans. A name you give is used in the language you gave it in; other languages keep theirs.
+- **Many games at once.** Select several, then set their genre or status in one go.
+- **Fits a phone.** On a narrow screen the consoles become a row of chips you swipe through, and the filters sit side by side.
+- **Quick, and only yours.** The library is prepared the moment Wi-Fi transfer starts, so the page opens in a moment even with thousands of games. Like the settings and downloads, it needs the password shown on the handheld.
+
+*Why:* a handheld screen is the right place to play, not to tidy two thousand games. And a collection people spent years building deserves to be looked at – on a big screen, in a style that fits it.
 ## AI
 
 Everything here is optional and uses your own account. Keys are kept in the launcher's settings on the handheld and sent only to the service you chose. Enter them in Settings → AI and voice → AI services and keys, or on the Wi-Fi page from a computer or phone.

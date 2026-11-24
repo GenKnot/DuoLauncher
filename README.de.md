@@ -24,6 +24,8 @@ Duo Launcher war anfangs der Launcher eines einzelnen Spielers für einen einzel
 - **Cheats, vom Download bis zum ersten Bild.** Hat ein Spiel auf dem Handheld keine Cheats, holt er sie aus den großen Datenbanken der Community – Sharkive für 3DS, libretro für NDS und GBA, CWCheat für PSP – und lässt dich nur die anhaken, die du willst. Die Namen übersetzt er mit einem Tippen in deine Sprache (mit einem KI-Schlüssel sogar mit den offiziellen Namen der Figuren und Gegenstände aus dem Spiel) und schreibt alles in die Cheat-Dateien des jeweiligen Emulators: Azahar und Citra, DraStic, PPSSPP und RetroArch. Mehr unter [Cheats](#cheats).
 - **Eine KI, die deine Bibliothek kennt.** Halt R gedrückt und frag, was du als Nächstes spielen sollst, wie du an einem Boss vorbeikommst oder worum es in einer Geschichte geht – die Antwort kommt aus den Spielen, die du wirklich hast. Dieselbe KI übersetzt Spielnamen und Beschreibungen, ordnet jedes Spiel einem Genre und einer Reihe zu und zeichnet fehlende Cover, Logos und Hintergründe. Sie läuft über den Dienst, den *du* auswählst, mit deinem eigenen Schlüssel, und jede Anfrage wird in den Einstellungen mitgezählt, samt geschätzter Kosten. Mehr unter [Dein KI-Begleiter](#dein-ki-begleiter) und [KI](#ki).
 - **Einrichten vom Handy aus.** Schalte die WLAN-Übertragung ein, und auf dem oberen Bildschirm erscheint ein QR-Code. Scannst du ihn, öffnet sich eine Seite in der Sprache deines Handys: Dort schickst du Spiele rüber, tippst API-Schlüssel auf einer richtigen Tastatur, importierst und exportierst Konfigurationen und lädst Sicherungen herunter – ohne Kabel, ohne Dateimanager. Mehr unter [Nützliche Werkzeuge](#nützliche-werkzeuge).
+- **Deine Sammlung, schön ausgestellt.** Duo Library öffnet deine ganze Bibliothek im Browser auf Computer oder Handy, in drei Stilen – dem des Handhelds, einem dunklen Shop und einem Museum mit einem Saal pro Konsole, gerahmten Covern und Schildchen – und lässt dich umbenennen, sortieren, bewerten, Notizen schreiben, Cover austauschen, indem du einfach ein Bild hineinziehst, oder gleich einen ganzen Schwung Spiele auf einmal ändern. Jede Änderung wird auf dem Handheld gespeichert. Mehr unter [Duo Library](#duo-library-deine-spiele-im-browser).
+- **Dein Spielen, nacherzählt.** Aus jedem Monat und jedem Jahr werden ein paar schön gestaltete Seiten: die Gesamtzeit im Vergleich zum Vormonat, ein Kalender der Tage, an denen du gespielt hast, deine Lieblingsspiele, -konsolen und -genres und ob du eher Frühaufsteher oder Nachteule bist – auf Wunsch als ein Bild zum Teilen gespeichert. Dazu hat jedes Spiel seinen eigenen Verlauf über 30 Tage. Mehr unter [Spielen](#spielen).
 - **Ein Ort für alles, was einen Blick braucht.** Die Problemübersicht sammelt Dateien, die er nicht erkennen konnte, Konsolen ohne Emulator, Spiele ohne Cover und doppelte Spiele, und das meiste lässt sich dort gleich beheben. Mehr unter [Nützliche Werkzeuge](#nützliche-werkzeuge).
 - **Die Daten jedes Frontends: genutzt und in Ruhe gelassen.** Er liest Metadaten und Bilder von Pegasus und ES-DE nebeneinander, legt seine eigenen Ergänzungen in einem eigenen Ordner `DuoLauncher` ab und schreibt nie in die Dateien eines anderen Frontends – so können sich alle eine Speicherkarte teilen. Mehr unter [Woher Namen, Bilder und Details kommen](#woher-namen-bilder-und-details-kommen).
 - **Nach deinem Geschmack, bis ins Detail.** Farbdesigns und Design-Pakete zum Teilen, heller und dunkler Modus, ein eigenes Bild und eine eigene Farbe für jede Kachel, Schriftgröße, Rand um die Cover, Regeln zum Aufräumen von Namen, deine eigene Reihenfolge der Spiele, der Speicherort seiner Daten und Duo Lite, das jedem Bildschirm Arbeit abnimmt. Deine ganze Einrichtung lässt sich als eine Datei exportieren und an Freunde weitergeben – ohne deine Schlüssel und ohne deinen Spielverlauf. Mehr unter [Optik und Bedienung](#optik-und-bedienung) und [Designs](#designs).
@@ -41,6 +43,8 @@ Und ein paar Grundgedanken, die sich durch alles ziehen:
 | Cheats heruntergeladen, ausgewählt, übersetzt und für jeden Emulator eingerichtet | ✅ | selten |
 | Eingebaute KI, die deine Bibliothek kennt | ✅ | selten |
 | Einrichtung vom Handy aus über WLAN, per QR-Code | ✅ | selten |
+| Ganze Bibliothek im Browser, in drei Stilen, bearbeitbar | ✅ | selten |
+| Spielberichte für Monat und Jahr, als Bild gespeichert | ✅ | selten |
 | Problemübersicht | ✅ | selten |
 | Daten von Pegasus und ES-DE nebeneinander gelesen | ✅ | selten |
 | Nach Reihen gruppiert | ✅ | selten |
@@ -56,16 +60,127 @@ Vorschläge und Fehlerberichte sind im [Issue-Tracker](https://github.com/GenKno
 
 - **Cheats, sofort nutzbar** – Tausende Cheats für 3DS, NDS, PSP, GBA und jedes RetroArch-System, vom Handheld selbst oder, wenn ein Spiel keine hat, aus den großen Cheat-Datenbanken (Sharkive, libretro, CWCheat) geladen, wobei du nur die anhakst, die du willst. Die Namen werden mit einem Tippen in deine Sprache übersetzt, jeder Cheat lässt sich bearbeiten, und alles landet direkt in den Cheat-Dateien des Emulators, damit es ab dem Spielstart wirkt.
 - **Ein KI-Begleiter** – halte überall R gedrückt und sprich: Er empfiehlt Spiele aus deiner eigenen Bibliothek, erklärt, wie du an einer Stelle weiterkommst, erzählt dir etwas über eine Geschichte oder plaudert einfach. Die Antworten können vorgelesen werden.
+- **Duo Library im Browser** – die ganze Bibliothek auf Computer oder Handy in drei Stilen (Duo, Shop, Museum); Namen, Genres, Status, Bewertungen, Notizen und Bilder bearbeitest du direkt dort, gespeichert wird auf dem Handheld.
 - **Zwei Bildschirme, ein Launcher** – unten auswählen, oben Logos, Cover, Videovorschauen, Spielzeit und Beschreibungen sehen.
 - **Alle Emulatoren an einem Ort** – 3DS, NDS, GBA, GB/GBC, NES, SNES, N64, GameCube, Wii, Mega Drive, PS1, PS2, PSP, PS Vita und Switch, dazu 22 ältere Konsolen über RetroArch (von Master System bis Dreamcast, PC Engine, Neo Geo, WonderSwan, Atari, Arcade, DOS …), der Emulator wahlweise pro Konsole oder pro Spiel. Spiele mit mehreren Discs erscheinen als ein Eintrag.
 - **Schon sortiert** – jedes Spiel landet in einem von 14 Genres und in seiner Reihe (Ys, Castlevania, Super Robot Wars …). Die Startseite zeigt deine Bibliothek nach Konsole, Genre oder Reihe, und intelligente Ordner halten „Neu hinzugefügt“, „Spiele ich“, „Möchte ich spielen“, „Durchgespielt“ und „Am besten bewertet“ von selbst aktuell.
 - **Ergänzt, was fehlt** – echte Cover aus den libretro-Thumbnail-Sammlungen, offizielle englische Titel und von der KI gezeichnete Cover, Logos und Hintergründe im Stil des Launchers.
-- **Gemacht für einen Handheld** – OLED-schonender Bildschirmschoner, WLAN-Übertragung aus dem Browser, Sicherung der Spielstände, Spielstatistik, RetroAchievements-Fortschritt, eine Speicherübersicht und eine Startseite, die in einer Sekunde da ist.
+- **Gemacht für einen Handheld** – OLED-schonender Bildschirmschoner, WLAN-Übertragung aus dem Browser, Sicherung der Spielstände, Spielstatistik mit Monats- und Jahresberichten, RetroAchievements-Fortschritt, eine Speicherübersicht und eine Startseite, die in einer Sekunde da ist.
 - **Ganz nach deinem Geschmack** – Farbdesigns und Design-Pakete, heller und dunkler Modus, Schriftgröße, Rand um die Cover, eine Einstellungsseite wie bei einer Konsole und Konfigurationen, die du exportieren und teilen kannst. 11 Sprachen für die Oberfläche.
 
 ## Screenshots
 
 <p align="center"><img src="docs/screenshots/light-dark.png" alt="Light and dark mode"></p>
+
+### Duo Library
+
+Öffne sie auf einem Computer oder Handy im selben WLAN. Drei Stile, dieselbe Bibliothek: der Stil des Handhelds, ein dunkler Shop und ein Museum. Mehr unter [Duo Library](#duo-library-deine-spiele-im-browser).
+
+<table>
+  <tr>
+    <th>Stil „Duo“: die Konsole vor ihrem eigenen Hintergrund</th>
+    <th>Stil „Shop“: dunkel, große Cover, erfasste Spielzeit</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/zh_web_duo.png" alt="Stil „Duo“: die Konsole vor ihrem eigenen Hintergrund"></td>
+    <td><img src="docs/screenshots/zh_web_store.png" alt="Stil „Shop“: dunkel, große Cover, erfasste Spielzeit"></td>
+  </tr>
+  <tr>
+    <th>Stil „Museum“: deine meistgespielten Spiele auf Sockeln</th>
+    <th>Ein Saal pro Konsole, gerahmte Cover und Schildchen</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/zh_web_museum.png" alt="Stil „Museum“: deine meistgespielten Spiele auf Sockeln"></td>
+    <td><img src="docs/screenshots/zh_web_hall.png" alt="Ein Saal pro Konsole, gerahmte Cover und Schildchen"></td>
+  </tr>
+  <tr>
+    <th>Jedes Spiel: Details, Bearbeiten, Bilder austauschen</th>
+    <th>Auf dem Handy</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/zh_web_detail.png" alt="Jedes Spiel: Details, Bearbeiten, Bilder austauschen"></td>
+    <td><img src="docs/screenshots/zh_web_phone.png" alt="Auf dem Handy"></td>
+  </tr>
+</table>
+
+### Spielberichte für Monat und Jahr
+
+<table>
+  <tr>
+    <th>Der Monat auf einen Blick, mit deinem Lieblingsspiel</th>
+    <th>Jeder Tag des Monats</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/zh_report.png" alt="Der Monat auf einen Blick, mit deinem Lieblingsspiel"></td>
+    <td><img src="docs/screenshots/zh_report_days.png" alt="Jeder Tag des Monats"></td>
+  </tr>
+  <tr>
+    <th>Konsolen und Genres</th>
+    <th>Wie du spielst: Frühaufsteher oder Nachteule</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/zh_report_consoles.png" alt="Konsolen und Genres"></td>
+    <td><img src="docs/screenshots/zh_report_habits.png" alt="Wie du spielst: Frühaufsteher oder Nachteule"></td>
+  </tr>
+  <tr>
+    <th colspan="2">Als ein Bild gespeichert, fertig zum Teilen</th>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><img src="docs/screenshots/zh_report_share.jpg" width="38%" alt="Als ein Bild gespeichert, fertig zum Teilen"></td>
+  </tr>
+</table>
+
+### Cheats, vom Download bis zum ersten Bild
+
+<table>
+  <tr>
+    <th>Cheats vor dem Import auswählen, Namen schon übersetzt</th>
+    <th>3DS-Cheats, mit einem Tippen übersetzt</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/zh_cheat_pick.png" alt="Choosing cheats"></td>
+    <td><img src="docs/screenshots/zh_cheats.png" alt="3DS cheats"></td>
+  </tr>
+  <tr>
+    <th>NDS-Cheats für DraStic, chinesische Datenbank</th>
+    <th>RetroArch-Cheats (GBA)</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/zh_cheats_nds.png" alt="NDS cheats"></td>
+    <td><img src="docs/screenshots/zh_cheats_gba.png" alt="GBA cheats"></td>
+  </tr>
+  <tr>
+    <th>Bearbeiten, hinzufügen, herunterladen</th>
+    <th>Einen Cheat umbenennen oder löschen</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/zh_cheat_menu.png" alt="Cheat menu"></td>
+    <td><img src="docs/screenshots/zh_cheat_edit.png" alt="Edit a cheat"></td>
+  </tr>
+</table>
+
+### Spielverlauf, Problemübersicht, WLAN und deine Daten
+
+<table>
+  <tr>
+    <th>Die letzten 30 Tage eines Spiels, wie oft gespielt, längste Sitzung</th>
+    <th>Problemübersicht: alles, was einen Blick braucht</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/zh_play_history.png" alt="Die letzten 30 Tage eines Spiels, wie oft gespielt, längste Sitzung"></td>
+    <td><img src="docs/screenshots/zh_problems.png" alt="Problemübersicht: alles, was einen Blick braucht"></td>
+  </tr>
+  <tr>
+    <th>WLAN: den Code mit dem Handy scannen</th>
+    <th>Wo die Daten des Launchers liegen, mit automatischer Kopie</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/zh_wifi_qr.png" alt="WLAN: den Code mit dem Handy scannen"></td>
+    <td><img src="docs/screenshots/zh_data_home.png" alt="Wo die Daten des Launchers liegen, mit automatischer Kopie"></td>
+  </tr>
+</table>
+
+### Mehr
 
 <table>
   <tr>
@@ -171,35 +286,11 @@ Vorschläge und Fehlerberichte sind im [Issue-Tracker](https://github.com/GenKno
     <td><img src="docs/screenshots/zh_move.png" alt="Moving a folder"></td>
   </tr>
   <tr>
-    <th>Cheats vor dem Import auswählen, Namen schon übersetzt</th>
     <th>Spieldetails: Größe, Discs, Screenshots</th>
-  </tr>
-  <tr>
-    <td><img src="docs/screenshots/zh_cheat_pick.png" alt="Choosing cheats"></td>
-    <td><img src="docs/screenshots/zh_details.png" alt="Game details"></td>
-  </tr>
-  <tr>
-    <th>3DS-Cheats, mit einem Tippen übersetzt</th>
-    <th>NDS-Cheats für DraStic, chinesische Datenbank</th>
-  </tr>
-  <tr>
-    <td><img src="docs/screenshots/zh_cheats.png" alt="3DS cheats"></td>
-    <td><img src="docs/screenshots/zh_cheats_nds.png" alt="NDS cheats"></td>
-  </tr>
-  <tr>
-    <th>RetroArch-Cheats (GBA)</th>
-    <th>Bearbeiten, hinzufügen, herunterladen</th>
-  </tr>
-  <tr>
-    <td><img src="docs/screenshots/zh_cheats_gba.png" alt="GBA cheats"></td>
-    <td><img src="docs/screenshots/zh_cheat_menu.png" alt="Cheat menu"></td>
-  </tr>
-  <tr>
-    <th>Einen Cheat umbenennen oder löschen</th>
     <th>Alle Cheats auf einmal übersetzen</th>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/zh_cheat_edit.png" alt="Edit a cheat"></td>
+    <td><img src="docs/screenshots/zh_details.png" alt="Game details"></td>
     <td><img src="docs/screenshots/zh_tools.png" alt="Tools"></td>
   </tr>
   <tr>
@@ -238,7 +329,7 @@ Vorschläge und Fehlerberichte sind im [Issue-Tracker](https://github.com/GenKno
 
 **Der obere Bildschirm** folgt dem, was gerade ausgewählt ist: eine Konsole vor ihrem Hintergrund mit Spieleanzahl und Emulator; das Logo eines Spiels über seinem unscharfen Cover mit Konsole, Genre · Reihe, Emulator, Spielzeit und einer kurzen Beschreibung, nach einem Moment eine Videovorschau oder das Bild der Stelle, an der du aufgehört hast.
 
-**Y** öffnet das Menü für das, was ausgewählt ist. Bei einem Spiel ist es kurz, und was man seltener braucht, liegt eine Tür weiter drinnen: Emulator, Favorit, zu einem Ordner hinzufügen / aus einem Ordner entfernen, Cheats ›, KI-Hilfe › (KI fragen, So wird gespielt), Spielinfos › (Details, Genre, Status und Wertung, Notiz, was der obere Bildschirm zeigt, KI-Bilder für dieses Spiel) und Mehr › (Spielstände, Als gesehen markieren, Ausblenden, Spieldatei löschen). Bei einem Konsolenordner: Standard-Emulator, Umbenennen, Ordner zusammenführen ›, Alle als gesehen markieren, Ausblenden. Bei einer eingebauten Kachel: Name, Farbe, Symbol und Hintergrund. Die ausgewählte Zeile erklärt sich unten im Menü in einer Zeile selbst.
+**Y** öffnet das Menü für das, was ausgewählt ist. Bei einem Spiel ist es kurz, und was man seltener braucht, liegt eine Tür weiter drinnen: Emulator, Favorit, zu einem Ordner hinzufügen / aus einem Ordner entfernen, Cheats ›, KI-Hilfe › (KI fragen, So wird gespielt), Spielinfos › (Details, Genre, Status und Wertung, Spielverlauf, Notiz, was der obere Bildschirm zeigt, KI-Bilder für dieses Spiel) und Mehr › (Spielstände, Als gesehen markieren, Ausblenden, Spieldatei löschen). Bei einem Konsolenordner: Standard-Emulator, Umbenennen, Ordner zusammenführen ›, Alle als gesehen markieren, Ausblenden. Bei einer eingebauten Kachel: Name, Farbe, Symbol und Hintergrund. Die ausgewählte Zeile erklärt sich unten im Menü in einer Zeile selbst.
 
 *Warum:* Ein Menü mit fünfzehn Zeilen ist auf einem Handheld schwer zu überblicken. Die Türen halten die alltäglichen Zeilen vorne, und dank des einzeiligen Hinweises muss niemand raten, was eine Zeile tut, bevor er sie drückt.
 
@@ -357,7 +448,8 @@ R3, die Kachel „Suchen“ oder die Suchschaltfläche öffnet oben eine Tastatu
   Eine `metadata.pegasus.txt` von Pegasus bringt meist schon eine eigene Startzeile für jede Konsole mit; die wird zuerst verwendet, die Cores oben stehen daneben zur Auswahl.
 
 - **Citra MMJ (Leistungsmodus)** – derselbe Citra-MMJ-Build, neu verpackt unter dem Paketnamen des Benchmarks AnTuTu, den viele Android-Systeme mit vollem Takt laufen lassen. Er wird nur angeboten, wenn hinter diesem Paket wirklich Citra steckt.
-- **Spielzeit und Statistik** – wie lange und wann du jedes Spiel zuletzt gespielt hast, wie bei der Switch; mit Nutzungsdatenzugriff zählt nur die Zeit, in der das Spiel wirklich auf dem Bildschirm war. Die Kachel „Spielstatistik“ zeigt die Gesamtzeit, diese Woche Tag für Tag, die Zeit pro Konsole und die meistgespielten Spiele.
+- **Spielzeit und Statistik** – wie lange und wann du jedes Spiel zuletzt gespielt hast, wie bei der Switch; mit Nutzungsdatenzugriff zählt nur die Zeit, in der das Spiel wirklich auf dem Bildschirm war. Die Kachel „Spielstatistik“ zeigt die Gesamtzeit, diese Woche Tag für Tag, die Zeit pro Konsole und die meistgespielten Spiele. Für ein einzelnes Spiel zeigt Y → „Spielinfos“ → „Spielverlauf“ die letzten 30 Tage Tag für Tag, wie oft du es gespielt hast, deine längste Sitzung und wann du zuletzt gespielt hast; dort lässt sich auch der Verlauf dieses Spiels löschen („Abbrechen“ steht an erster Stelle).
+- **Spielberichte für Monat und Jahr** – A auf der Kachel „Spielstatistik“ öffnet diesen Monat, den letzten Monat, dieses Jahr und jeden früheren Monat und jedes frühere Jahr, in dem du gespielt hast. Jeder Bericht hat fünf Seiten auf dem oberen Bildschirm, durch die du mit dem Cursor blätterst: die Gesamtzeit mit dem Vergleich zum Vormonat oder Vorjahr und dein Lieblingsspiel; ein Kalender (oder die zwölf Monate) mit deinem stärksten Tag; deine fünf meistgespielten Spiele; Konsolen als Ring und Genres als Balken; und wie du spielst – eher morgens, nachmittags, abends oder spät in der Nacht, deine längste Sitzung und die Spiele, die du zum ersten Mal ausprobiert hast. „Als Bild speichern“ legt alle Seiten als ein Bild in Pictures/DuoLauncher ab, fertig zum Teilen. Am Anfang jedes Monats sagt der Launcher einmal Bescheid, dass der Bericht für den letzten Monat fertig ist. Unter „Einstellungen“ → „Spielen“ → „Spielberichte“ schaltest du die Monats- und Jahresberichte und diesen Hinweis ein oder aus; sind beide Berichte aus, führt die Kachel direkt zur Liste der gespielten Spiele. *Warum:* Die Spielzeit wird ohnehin gezählt, da kann sie auch gleich eine Geschichte erzählen, auf die man gern zurückblickt – aber nur, wenn du das willst.
 - **Wo du aufgehört hast** – der neueste Screenshot oder das Bild des neuesten Savestates eines gespielten Spiels wird zu seinem Hintergrund auf dem oberen Bildschirm.
 - **Status, Wertung und Notizen** – markiere ein Spiel als „Spiele ich“, „Möchte ich spielen“, „Durchgespielt“ oder „Abgebrochen“ und gib ihm ein bis fünf Sterne (Y → „Status“); schreib oder sprich eine Zeile dazu, wo du gerade bist und was als Nächstes ansteht (Y → „Notiz“). All das steht beim nächsten Mal, wenn du das Spiel auswählst, auf dem oberen Bildschirm.
 - **Spieldetails** (Y → „Details“) – Datei, Größe, Discs, Ordner, Emulator, Spielzeit, der offizielle englische Titel und die Screenshots des Spiels auf dem oberen Bildschirm.
@@ -451,6 +543,22 @@ Y → „Cheats“ bei einem Spiel listet seine Cheats auf; A schaltet einen an 
 - **Aufräumen** – die Problemübersicht, „Speicher“, „Cover herunterladen“, „Alle Cheats übersetzen“ und eine Seite „Diagnose“. „Doppelte Spiele“ und „Spiele ohne Cover“ wohnen jetzt in der Problemübersicht. Die KI-Werkzeuge (Namen und Beschreibungen für eine ganze Konsole, Genres, Reihen, Genre-Symbole, Bilder für fehlende Grafiken) findest du unter „KI und Sprache“ → „Bibliothek von der KI aufräumen lassen“.
 - **Updates** – „Einstellungen“ → „System“ → „Info“ prüft einmal am Tag das neueste GitHub-Release und verlinkt darauf.
 - **Startbildschirm** – leg ihn als Standard-Startbildschirm-App fest, dann startet er mit dem Handheld; die Kachel „Android-Startbildschirm“ (oder „Einstellungen“ → „System“ → „Zum Android-Startbildschirm“) führt zurück zum Startbildschirm des Systems, und „Einstellungen“ → „System“ → „Android-Einstellungen“ öffnet die Einstellungen des Systems selbst.
+
+## Duo Library: deine Spiele im Browser
+
+Öffne „Einstellungen“ → „Spielstände, Übertragung, Teilen“ → „WLAN-Übertragung“, ruf die Seite auf einem Computer oder Handy auf (scann den QR-Code auf dem oberen Bildschirm) und gib das Passwort ein, das der Handheld anzeigt. Die Karte „Spielebibliothek“ öffnet Duo Library: jedes Spiel mit Cover, Spielzeit und Status, auf einem Bildschirm, der groß genug ist, um alles zu überblicken.
+
+- **Drei Stile, eine Bibliothek.** Umgeschaltet wird oben rechts; der Browser merkt sich deine Wahl.
+  - **Duo** – der Stil des Handhelds selbst: die Konsolensymbole aus Ton in der Liste und über den Spielen die ausgewählte Konsole vor ihrem gezeichneten Hintergrund, sanft schwebend wie auf dem oberen Bildschirm. Folgt dem hellen oder dunklen Modus des Computers.
+  - **Shop** – dunkel, mit großen Covern im Hochformat, die sich unter dem Mauszeiger anheben und leuchten, einem Banner für das Spiel, das du gerade spielst, und der erfassten Spielzeit unter jedem Spiel.
+  - **Museum** – ein Eingang mit deinen drei meistgespielten Spielen auf beleuchteten Sockeln, danach ein Saal für jede Konsole („Game Boy Advance-Saal · 582 Exponate“), jedes Cover in einem Goldrahmen auf einem Holzregal, mit einem kleinen Schild davor.
+- **Alles schnell gefunden.** Such nach Namen (auch der englische Titel und die Reihe zählen), filtere nach Konsole, Genre und Status und sortiere nach Name, Spielzeit, zuletzt gespielt, zuletzt hinzugefügt oder Bewertung.
+- **Jedes Spiel bis ins Detail.** Ein Klick auf ein Spiel zeigt Cover und Hintergrund, Beschreibung, Spielzeit, wann du es zuletzt gespielt hast und die Dateigröße. Dort änderst du Name, Genre, Status, Bewertung, Notiz und Beschreibung, und ein Bild, das du auf „Cover“, „Hintergrund“ oder „Titel-Logo“ ziehst, ersetzt das bisherige. Gespeichert wird nur, was du geändert hast, und zwar direkt in den eigenen Dateien des Launchers – der Handheld zeigt es sofort, und es übersteht jeden neuen Scan. Ein Name, den du vergibst, gilt in der Sprache, in der du ihn eingegeben hast; die anderen Sprachen behalten ihren.
+- **Viele Spiele auf einmal.** Wähle mehrere aus und setze Genre oder Status in einem Rutsch.
+- **Passt aufs Handy.** Auf einem schmalen Bildschirm werden die Konsolen zu einer Reihe von Chips, durch die du wischst, und die Filter rücken nebeneinander.
+- **Schnell und nur für dich.** Die Bibliothek wird vorbereitet, sobald die WLAN-Übertragung startet, darum ist die Seite auch bei Tausenden Spielen im Nu offen. Wie die Einstellungen und Downloads ist sie durch das Passwort geschützt, das der Handheld anzeigt.
+
+*Warum:* Auf dem Bildschirm eines Handhelds spielt man – zweitausend Spiele räumt man dort nicht gern auf. Und eine Sammlung, an der jemand jahrelang gebaut hat, verdient es, angeschaut zu werden: auf einem großen Bildschirm, in einem Stil, der zu ihr passt.
 
 ## KI
 
