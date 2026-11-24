@@ -6,28 +6,69 @@
 
 A dual-screen game launcher for the **Retroid Pocket Duo** and other Android handhelds with a second display, in the spirit of the 3DS home menu.
 Point it at your ROM folders and it finds the games, sorts them by console, genre and series, shows them on the lower screen with the artwork on the upper one, and starts each game in the emulator you choose.
+Cheats are built in as well: when a game has none on the handheld, it downloads them from the big community cheat databases (Sharkive, libretro, CWCheat), lets you tick the ones you want, translates their names into your interface language in one tap, and writes them where the emulator reads them, so they work as soon as the game starts.
 
 **Download:** the latest APK is on the [Releases page](https://github.com/GenKnot/DuoLauncher/releases/latest) (Android 11 or newer). Installing a new version over the old one keeps every setting and your play time.
 
 ## Why another launcher?
 
-Duo Launcher started as one player's launcher for one handheld, and it still grows from how that handheld is actually used. A few ideas run through all of it:
+Duo Launcher started as one player's launcher for one handheld, and it still grows from how that handheld is actually used. It is built on four promises:
+
+1. **It works with the library you already have** – whichever frontend you set it up with, nothing has to be redone. Pegasus and ES-DE are read today; more frontends are on the way.
+2. **AI when you want it, the way you want it** – any of several services, your own key, a cost you can see, and every AI feature optional.
+3. **The chores are done for you** – cheats, artwork, translations, copying files over, tidying up.
+4. **Everything is yours to shape** – a choice for nearly every detail, and anything that shows something can be switched off.
+
+Most frontends stop at "list the games and start them". This is what those promises add up to:
+
+- **Cheats, from download to the first frame.** When a game has no cheats on the handheld, it fetches them from the big community databases – Sharkive for 3DS, libretro for NDS and GBA, CWCheat for PSP – lets you tick only the ones you want, translates their names into your language in one tap (and, with an AI key, even with the game's official names for characters and items), and writes them into each emulator's own cheat files: Azahar and Citra, DraStic, PPSSPP and RetroArch. Emulators only look after their own cheats, and other frontends leave cheats out entirely. See [Cheats](#cheats).
+- **An AI that knows your library.** Hold R and ask what to play next, how to get past a boss, or what a story is about – it answers from the games you actually have. The same AI translates game names and descriptions, files every game under a genre and a series, and draws missing covers, logos and backdrops. It runs on the service *you* choose with your own key, and every request is counted in Settings with an estimated cost. See [Your AI companion](#your-ai-companion) and [AI](#ai).
+- **Set up from your phone.** Turn on Wi-Fi transfer and a QR code appears on the upper screen. Scan it, and a page in your phone's language lets you send games, type API keys on a real keyboard, import and export configs, and download backups – no cables, no file manager. See [Handy tools](#handy-tools).
+- **One place for everything that needs a look.** The Problem centre gathers files it could not recognise, consoles without an emulator, games without a cover and duplicates, and fixes most of them on the spot. See [Handy tools](#handy-tools).
+- **Every frontend's data, used and left alone.** It reads Pegasus and ES-DE metadata and pictures side by side, keeps its own additions in its own `DuoLauncher` folder, and never rewrites another frontend's files, so they can all share one card. See [Where names, pictures and details come from](#where-names-pictures-and-details-come-from).
+- **Yours to shape, down to the details.** Colour themes and shareable theme packs, light and dark mode, your own picture and colour for any tile, text size, cover margins, rules for tidying names, your own game order, where its data is kept, and Duo Lite for less work on every screen. Your whole setup can be exported as one file and handed to a friend – without your keys or your play history. See [Look and feel](#look-and-feel) and [Themes](#themes).
+- **Sorted by series, not just by console.** Ys, Castlevania, Super Robot Wars … every game is grouped with the rest of its series and filed under one of 14 genres, by the built-in game table or by the AI. See [Genres and series](#genres-and-series).
+
+And a few ideas that run through all of it:
 
 - **Two screens are two jobs.** The lower screen is for choosing: big folders, a grid, a list, menus. The upper screen is for looking: the console on its own illustrated backdrop, a game's logo over its cover, a video preview, how long you have played, a note to yourself, or a conversation with the AI. Nothing has to share space with anything else.
 - **The gamepad comes first.** Every feature works without touching the screen: a keyboard made for the d-pad, held directions that keep scrolling, L / R that turn pages, hold L to search by voice, hold R to talk to the AI. Touch works too, it just isn't required.
-- **Your library, as it already is.** It reads the Pegasus and ES-DE metadata and pictures you may already have, keeps its own additions in its own `DuoLauncher` folder, and never rewrites another frontend's files.
-- **AI that works for you, with your key.** Translation, sorting, pictures, advice and conversation use the service *you* choose and pay for directly. Keys stay on the handheld, and every request is counted in Settings with an estimated cost, so nothing runs behind your back.
-- **Everything can be changed, hidden, or shared.** Every home tile can be renamed, recoloured, given a new picture, moved or hidden. Your whole setup can be exported as one file and handed to a friend – without your keys or your play history.
+
+### Compared with other frontends
+
+| | Duo Launcher | ES-DE | Pegasus | Daijishō | LaunchBox | RetroArch |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|
+| Cheats downloaded, picked, translated and written for each emulator | ✅ | – | – | – | – | ◐ ¹ |
+| Built-in AI: library-aware chat, translation, sorting, artwork | ✅ | – | – | – | – | – |
+| Browser page over Wi-Fi, opened with a QR code | ✅ | – | – | – | – | – |
+| Problem centre (unrecognised files, missing emulators, covers, duplicates) | ✅ | – | – | – | ? | – |
+| Reads both Pegasus and ES-DE data without changing it | ✅ | – | ◐ ² | – | – | – |
+| Groups games by series automatically | ✅ | – | – | – | ? | – |
+| Grouped by genre | ✅ | ✅ | – | ◐ | ? | ✅ |
+| Game list on one screen, artwork on the other | ✅ | ◐ ³ | – | – | ✅ | – |
+| Recognises games by their file contents | ✅ | – | – | ? | ? | ✅ |
+| Play time and RetroAchievements progress | ✅ | ◐ ⁴ | – | ◐ ⁵ | ✅ | ✅ |
+| Interface languages | 11 | 20+ | ? | ? | ? | many |
+
+✅ yes · ◐ partly · – not found · ? could not confirm
+
+1. RetroArch's Online Updater downloads its whole cheat pack for its own cores; there is no picking per game, no translation, and nothing for standalone emulators.
+2. Pegasus can read EmulationStation game lists.
+3. With a separate companion app.
+4. Play time only.
+5. A RetroAchievements widget.
+
+Compared from each project's own documentation and changelogs in November 2026. Other dual-screen frontends, such as Cocoon, iiSU, Blip and BoxShelf, also put the list and the artwork on two screens. If something here is wrong or out of date, please say so on the [issue tracker](https://github.com/GenKnot/DuoLauncher/issues) and it will be corrected.
 
 Suggestions and bug reports are welcome on the [issue tracker](https://github.com/GenKnot/DuoLauncher/issues).
 
 ## Highlights
 
+- **Cheats, ready to use** – thousands of cheats for 3DS, NDS, PSP, GBA and every RetroArch system, from the handheld itself or, when a game has none, downloaded from the big cheat databases (Sharkive, libretro, CWCheat), where you tick only the ones you want. Names are translated into your language in one tap, every cheat can be edited, and they go straight into the emulator's own cheat files, so they work as soon as the game starts.
+- **An AI companion** – hold R anywhere and talk: it recommends from your own library, explains how to get past a part of a game, tells you about a story, or just chats. The answers can be read aloud.
 - **Two screens, one launcher** – choose on the lower screen; see logos, cover art, video previews, play time and descriptions on the upper one.
 - **Every emulator in one place** – 3DS, NDS, GBA, GB/GBC, NES, SNES, N64, GameCube, Wii, Mega Drive, PS1, PS2, PSP, PS Vita and Switch, plus 22 older consoles through RetroArch (Master System to Dreamcast, PC Engine, Neo Geo, WonderSwan, Atari, arcade, DOS …), with the emulator chosen per console or per game. Multi-disc games show as one.
 - **Sorted for you** – every game filed under one of 14 genres and under its series (Ys, Castlevania, Super Robot Wars …). The home page shows your library by console, genre or series, and smart folders keep "recently added", "playing", "want to play", "finished" and "top rated" up to date.
-- **An AI companion** – hold R anywhere and talk: it recommends from your own library, explains how to get past a part of a game, tells you about a story, or just chats. The answers can be read aloud.
-- **Cheats, managed** – thousands of ready-made cheats for 3DS, NDS, PSP, GBA and every RetroArch system, translated into your language in one tap, editable, and shared between emulators.
 - **Fills in what is missing** – real box art from the libretro thumbnail sets, official English titles, and AI-drawn covers, logos and backdrops in the launcher's own style.
 - **Made for a handheld** – OLED-safe screensaver, Wi-Fi transfer from a browser, save backups, play statistics, RetroAchievements progress, a storage overview, and a home screen that is up in a second.
 - **Yours to change** – colour themes and theme packs, light and dark mode, text size, cover margins, a settings page like a console's, and configs you can export and share. 11 interface languages.

@@ -6,28 +6,69 @@
 
 Ein Spiele-Launcher für zwei Bildschirme, gemacht für den **Retroid Pocket Duo** und andere Android-Handhelds mit zweitem Display – ganz im Geist des 3DS-Hauptmenüs.
 Du gibst ihm deine ROM-Ordner, er findet die Spiele, sortiert sie nach Konsole, Genre und Reihe, zeigt sie unten an, die Grafiken dazu oben, und startet jedes Spiel in dem Emulator, den du festlegst.
+Cheats sind ebenfalls eingebaut: Hat ein Spiel auf dem Handheld keine, lädt er sie aus den großen Cheat-Datenbanken der Community (Sharkive, libretro, CWCheat), du hakst nur die an, die du willst, die Namen werden mit einem Tippen in deine Menüsprache übersetzt und landen dort, wo der Emulator sie liest – sie wirken also, sobald das Spiel startet.
 
 **Download:** Die aktuelle APK gibt es auf der [Releases-Seite](https://github.com/GenKnot/DuoLauncher/releases/latest) (ab Android 11). Wenn du eine neue Version über die alte installierst, bleiben alle Einstellungen und deine Spielzeit erhalten.
 
 ## Warum noch ein Launcher?
 
-Duo Launcher war anfangs der Launcher eines einzelnen Spielers für einen einzelnen Handheld, und er wächst bis heute aus der Art, wie dieser Handheld tatsächlich benutzt wird. Ein paar Grundgedanken ziehen sich durch alles:
+Duo Launcher war anfangs der Launcher eines einzelnen Spielers für einen einzelnen Handheld, und er wächst bis heute aus der Art, wie dieser Handheld tatsächlich benutzt wird. Er steht auf vier Versprechen:
+
+1. **Er nimmt deine Bibliothek, wie sie schon ist** – egal, mit welchem Frontend du sie eingerichtet hast, nichts muss neu gemacht werden. Pegasus und ES-DE liest er heute schon, weitere Frontends folgen.
+2. **KI, wenn du willst und wie du willst** – mehrere Dienste zur Auswahl, dein eigener Schlüssel, Kosten, die du siehst, und jede KI-Funktion ist optional.
+3. **Die lästige Arbeit nimmt er dir ab** – Cheats, Grafiken, Übersetzungen, Dateien rüberkopieren, Aufräumen.
+4. **Alles lässt sich nach deinem Geschmack einrichten** – für fast jedes Detail gibt es eine Wahl, und alles, was etwas anzeigt, lässt sich abschalten.
+
+Die meisten Frontends hören bei „Spiele auflisten und starten“ auf. Das ergibt sich aus diesen Versprechen:
+
+- **Cheats, vom Download bis zum ersten Bild.** Hat ein Spiel auf dem Handheld keine Cheats, holt er sie aus den großen Datenbanken der Community – Sharkive für 3DS, libretro für NDS und GBA, CWCheat für PSP – und lässt dich nur die anhaken, die du willst. Die Namen übersetzt er mit einem Tippen in deine Sprache (mit einem KI-Schlüssel sogar mit den offiziellen Namen der Figuren und Gegenstände aus dem Spiel) und schreibt alles in die Cheat-Dateien des jeweiligen Emulators: Azahar und Citra, DraStic, PPSSPP und RetroArch. Emulatoren kümmern sich nur um ihre eigenen Cheats, und andere Frontends lassen Cheats ganz weg. Mehr unter [Cheats](#cheats).
+- **Eine KI, die deine Bibliothek kennt.** Halt R gedrückt und frag, was du als Nächstes spielen sollst, wie du an einem Boss vorbeikommst oder worum es in einer Geschichte geht – die Antwort kommt aus den Spielen, die du wirklich hast. Dieselbe KI übersetzt Spielnamen und Beschreibungen, ordnet jedes Spiel einem Genre und einer Reihe zu und zeichnet fehlende Cover, Logos und Hintergründe. Sie läuft über den Dienst, den *du* auswählst, mit deinem eigenen Schlüssel, und jede Anfrage wird in den Einstellungen mitgezählt, samt geschätzter Kosten. Mehr unter [Dein KI-Begleiter](#dein-ki-begleiter) und [KI](#ki).
+- **Einrichten vom Handy aus.** Schalte die WLAN-Übertragung ein, und auf dem oberen Bildschirm erscheint ein QR-Code. Scannst du ihn, öffnet sich eine Seite in der Sprache deines Handys: Dort schickst du Spiele rüber, tippst API-Schlüssel auf einer richtigen Tastatur, importierst und exportierst Konfigurationen und lädst Sicherungen herunter – ohne Kabel, ohne Dateimanager. Mehr unter [Nützliche Werkzeuge](#nützliche-werkzeuge).
+- **Ein Ort für alles, was einen Blick braucht.** Die Problemübersicht sammelt Dateien, die er nicht erkennen konnte, Konsolen ohne Emulator, Spiele ohne Cover und doppelte Spiele, und das meiste lässt sich dort gleich beheben. Mehr unter [Nützliche Werkzeuge](#nützliche-werkzeuge).
+- **Die Daten jedes Frontends: genutzt und in Ruhe gelassen.** Er liest Metadaten und Bilder von Pegasus und ES-DE nebeneinander, legt seine eigenen Ergänzungen in einem eigenen Ordner `DuoLauncher` ab und schreibt nie in die Dateien eines anderen Frontends – so können sich alle eine Speicherkarte teilen. Mehr unter [Woher Namen, Bilder und Details kommen](#woher-namen-bilder-und-details-kommen).
+- **Nach deinem Geschmack, bis ins Detail.** Farbdesigns und Design-Pakete zum Teilen, heller und dunkler Modus, ein eigenes Bild und eine eigene Farbe für jede Kachel, Schriftgröße, Rand um die Cover, Regeln zum Aufräumen von Namen, deine eigene Reihenfolge der Spiele, der Speicherort seiner Daten und Duo Lite, das jedem Bildschirm Arbeit abnimmt. Deine ganze Einrichtung lässt sich als eine Datei exportieren und an Freunde weitergeben – ohne deine Schlüssel und ohne deinen Spielverlauf. Mehr unter [Optik und Bedienung](#optik-und-bedienung) und [Designs](#designs).
+- **Nach Reihen sortiert, nicht nur nach Konsolen.** Ys, Castlevania, Super Robot Wars … jedes Spiel landet bei den übrigen Teilen seiner Reihe und in einem von 14 Genres – über die eingebaute Spieletabelle oder per KI. Mehr unter [Genres und Reihen](#genres-und-reihen).
+
+Und ein paar Grundgedanken, die sich durch alles ziehen:
 
 - **Zwei Bildschirme, zwei Aufgaben.** Unten wird ausgewählt: große Ordner, ein Raster, eine Liste, Menüs. Oben wird geschaut: die Konsole vor ihrem eigenen gezeichneten Hintergrund, das Logo eines Spiels über seinem Cover, eine Videovorschau, deine bisherige Spielzeit, eine Notiz an dich selbst oder ein Gespräch mit der KI. Nichts muss sich den Platz mit etwas anderem teilen.
 - **Das Gamepad hat Vorrang.** Jede Funktion geht ohne den Bildschirm anzufassen: eine Tastatur fürs Steuerkreuz, gehaltene Richtungen, die weiterscrollen, L / R zum Blättern, L halten für die Sprachsuche, R halten, um mit der KI zu reden. Touch geht auch, ist aber nie nötig.
-- **Deine Bibliothek, so wie sie schon ist.** Er liest die Metadaten und Bilder von Pegasus und ES-DE, die du vielleicht schon hast, legt seine eigenen Ergänzungen in einem eigenen Ordner `DuoLauncher` ab und schreibt nie in die Dateien eines anderen Frontends.
-- **KI, die für dich arbeitet – mit deinem Schlüssel.** Übersetzung, Sortierung, Bilder, Tipps und Gespräche laufen über den Dienst, den *du* auswählst und direkt bezahlst. Die Schlüssel bleiben auf dem Handheld, und jede Anfrage wird in den Einstellungen mitgezählt, samt geschätzter Kosten – nichts passiert hinter deinem Rücken.
-- **Alles lässt sich ändern, ausblenden oder teilen.** Jede Kachel auf der Startseite kann umbenannt, umgefärbt, mit einem neuen Bild versehen, verschoben oder ausgeblendet werden. Deine ganze Einrichtung lässt sich als eine Datei exportieren und an Freunde weitergeben – ohne deine Schlüssel und ohne deinen Spielverlauf.
+
+### Im Vergleich mit anderen Frontends
+
+| | Duo Launcher | ES-DE | Pegasus | Daijishō | LaunchBox | RetroArch |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|
+| Cheats heruntergeladen, ausgewählt, übersetzt und für jeden Emulator geschrieben | ✅ | – | – | – | – | ◐ ¹ |
+| Eingebaute KI: Chat, der die Bibliothek kennt, Übersetzung, Sortierung, Grafiken | ✅ | – | – | – | – | – |
+| Browserseite über WLAN, per QR-Code geöffnet | ✅ | – | – | – | – | – |
+| Problemübersicht (nicht erkannte Dateien, fehlende Emulatoren, Cover, doppelte Spiele) | ✅ | – | – | – | ? | – |
+| Liest Daten von Pegasus und ES-DE, ohne sie zu verändern | ✅ | – | ◐ ² | – | – | – |
+| Gruppiert Spiele automatisch nach Reihen | ✅ | – | – | – | ? | – |
+| Nach Genres gruppiert | ✅ | ✅ | – | ◐ | ? | ✅ |
+| Spieleliste auf einem Bildschirm, Grafiken auf dem anderen | ✅ | ◐ ³ | – | – | ✅ | – |
+| Erkennt Spiele am Inhalt ihrer Dateien | ✅ | – | – | ? | ? | ✅ |
+| Spielzeit und RetroAchievements-Fortschritt | ✅ | ◐ ⁴ | – | ◐ ⁵ | ✅ | ✅ |
+| Sprachen der Oberfläche | 11 | 20+ | ? | ? | ? | viele |
+
+✅ ja · ◐ teilweise · – nicht gefunden · ? nicht bestätigt
+
+1. Der Online-Updater von RetroArch lädt das komplette Cheat-Paket für die eigenen Cores; eine Auswahl pro Spiel gibt es nicht, ebenso wenig eine Übersetzung oder etwas für eigenständige Emulatoren.
+2. Pegasus kann Spielelisten von EmulationStation lesen.
+3. Mit einer separaten Begleit-App.
+4. Nur die Spielzeit.
+5. Ein RetroAchievements-Widget.
+
+Verglichen anhand der Dokumentation und der Changelogs der einzelnen Projekte, Stand November 2026. Auch andere Frontends für zwei Bildschirme, etwa Cocoon, iiSU, Blip und BoxShelf, verteilen Liste und Grafiken auf zwei Bildschirme. Ist hier etwas falsch oder veraltet, sag bitte im [Issue-Tracker](https://github.com/GenKnot/DuoLauncher/issues) Bescheid, dann wird es korrigiert.
 
 Vorschläge und Fehlerberichte sind im [Issue-Tracker](https://github.com/GenKnot/DuoLauncher/issues) willkommen.
 
 ## Das Wichtigste im Überblick
 
+- **Cheats, sofort nutzbar** – Tausende Cheats für 3DS, NDS, PSP, GBA und jedes RetroArch-System, vom Handheld selbst oder, wenn ein Spiel keine hat, aus den großen Cheat-Datenbanken (Sharkive, libretro, CWCheat) geladen, wobei du nur die anhakst, die du willst. Die Namen werden mit einem Tippen in deine Sprache übersetzt, jeder Cheat lässt sich bearbeiten, und alles landet direkt in den Cheat-Dateien des Emulators, damit es ab dem Spielstart wirkt.
+- **Ein KI-Begleiter** – halte überall R gedrückt und sprich: Er empfiehlt Spiele aus deiner eigenen Bibliothek, erklärt, wie du an einer Stelle weiterkommst, erzählt dir etwas über eine Geschichte oder plaudert einfach. Die Antworten können vorgelesen werden.
 - **Zwei Bildschirme, ein Launcher** – unten auswählen, oben Logos, Cover, Videovorschauen, Spielzeit und Beschreibungen sehen.
 - **Alle Emulatoren an einem Ort** – 3DS, NDS, GBA, GB/GBC, NES, SNES, N64, GameCube, Wii, Mega Drive, PS1, PS2, PSP, PS Vita und Switch, dazu 22 ältere Konsolen über RetroArch (von Master System bis Dreamcast, PC Engine, Neo Geo, WonderSwan, Atari, Arcade, DOS …), der Emulator wahlweise pro Konsole oder pro Spiel. Spiele mit mehreren Discs erscheinen als ein Eintrag.
 - **Schon sortiert** – jedes Spiel landet in einem von 14 Genres und in seiner Reihe (Ys, Castlevania, Super Robot Wars …). Die Startseite zeigt deine Bibliothek nach Konsole, Genre oder Reihe, und intelligente Ordner halten „Neu hinzugefügt“, „Spiele ich“, „Möchte ich spielen“, „Durchgespielt“ und „Am besten bewertet“ von selbst aktuell.
-- **Ein KI-Begleiter** – halte überall R gedrückt und sprich: Er empfiehlt Spiele aus deiner eigenen Bibliothek, erklärt, wie du an einer Stelle weiterkommst, erzählt dir etwas über eine Geschichte oder plaudert einfach. Die Antworten können vorgelesen werden.
-- **Cheats im Griff** – Tausende fertige Cheats für 3DS, NDS, PSP, GBA und jedes RetroArch-System, mit einem Tippen in deine Sprache übersetzt, bearbeitbar und zwischen Emulatoren geteilt.
 - **Ergänzt, was fehlt** – echte Cover aus den libretro-Thumbnail-Sammlungen, offizielle englische Titel und von der KI gezeichnete Cover, Logos und Hintergründe im Stil des Launchers.
 - **Gemacht für einen Handheld** – OLED-schonender Bildschirmschoner, WLAN-Übertragung aus dem Browser, Sicherung der Spielstände, Spielstatistik, RetroAchievements-Fortschritt, eine Speicherübersicht und eine Startseite, die in einer Sekunde da ist.
 - **Ganz nach deinem Geschmack** – Farbdesigns und Design-Pakete, heller und dunkler Modus, Schriftgröße, Rand um die Cover, eine Einstellungsseite wie bei einer Konsole und Konfigurationen, die du exportieren und teilen kannst. 11 Sprachen für die Oberfläche.

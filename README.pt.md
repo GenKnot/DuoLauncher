@@ -6,28 +6,69 @@
 
 Um launcher de jogos de duas telas para o **Retroid Pocket Duo** e outros portáteis Android com uma segunda tela, inspirado no menu inicial do 3DS.
 Você aponta para as suas pastas de ROMs e ele encontra os jogos, separa por console, gênero e série, mostra tudo na tela de baixo com a arte na de cima e abre cada jogo no emulador que você escolher.
+Os cheats também já vêm embutidos: quando um jogo não tem nenhum no portátil, ele baixa dos grandes bancos de cheats da comunidade (Sharkive, libretro, CWCheat), deixa você marcar só os que quiser, traduz os nomes para o idioma da interface com um toque e grava tudo onde o emulador lê, então eles funcionam assim que o jogo abre.
 
 **Download:** o APK mais recente está na [página de Releases](https://github.com/GenKnot/DuoLauncher/releases/latest) (Android 11 ou mais novo). Instalar uma versão nova por cima da antiga mantém todas as configurações e o seu tempo de jogo.
 
 ## Por que mais um launcher?
 
-O Duo Launcher começou como o launcher de um jogador para um portátil, e até hoje cresce a partir do jeito como esse portátil é usado de verdade. Algumas ideias atravessam tudo:
+O Duo Launcher começou como o launcher de um jogador para um portátil, e até hoje cresce a partir do jeito como esse portátil é usado de verdade. Ele se apoia em quatro promessas:
+
+1. **Funciona com a biblioteca que você já tem** – não importa com qual frontend você montou, nada precisa ser refeito. Hoje ele lê o Pegasus e o ES-DE; outros frontends estão a caminho.
+2. **IA quando você quiser, do jeito que você quiser** – vários serviços para escolher, a sua própria chave, um custo que você enxerga, e todo recurso de IA é opcional.
+3. **O trabalho chato fica com ele** – trapaças, imagens, traduções, copiar arquivos, arrumar a casa.
+4. **Tudo fica do seu jeito** – uma escolha para quase todo detalhe, e tudo o que mostra alguma coisa pode ser desligado.
+
+A maioria dos frontends para em “listar os jogos e abrir”. Isto é o que essas promessas viram na prática:
+
+- **Trapaças, do download ao primeiro quadro.** Quando um jogo não tem trapaças no portátil, ele busca nos grandes bancos de dados da comunidade – Sharkive para 3DS, libretro para NDS e GBA, CWCheat para PSP –, deixa você marcar só as que quiser, traduz os nomes para o seu idioma com um toque (com uma chave de IA, até com os nomes oficiais de personagens e itens do jogo) e grava tudo nos arquivos de trapaça de cada emulador: Azahar e Citra, DraStic, PPSSPP e RetroArch. Os emuladores só cuidam das próprias trapaças, e os outros frontends simplesmente deixam as trapaças de fora. Veja [Trapaças](#trapaças).
+- **Uma IA que conhece a sua biblioteca.** Segure R e pergunte o que jogar agora, como passar de um chefe ou do que trata uma história – ela responde com base nos jogos que você realmente tem. A mesma IA traduz nomes e descrições, coloca cada jogo num gênero e numa série e desenha as capas, logos e fundos que estiverem faltando. Ela usa o serviço que *você* escolhe, com a sua própria chave, e cada pedido é contado nas Configurações com um custo estimado. Veja [Seu companheiro de IA](#seu-companheiro-de-ia) e [IA](#ia).
+- **Configure pelo celular.** Ligue a Transferência Wi-Fi e um QR code aparece na tela de cima. Escaneie, e abre uma página no idioma do seu celular onde dá para mandar jogos, digitar chaves de API num teclado de verdade, importar e exportar configurações e baixar backups – sem cabo, sem gerenciador de arquivos. Veja [Ferramentas úteis](#ferramentas-úteis).
+- **Um lugar só para tudo o que merece uma olhada.** A Central de problemas reúne os arquivos que ele não conseguiu reconhecer, consoles sem emulador, jogos sem capa e duplicados, e resolve a maior parte ali mesmo. Veja [Ferramentas úteis](#ferramentas-úteis).
+- **Os dados de cada frontend, usados e deixados em paz.** Ele lê os metadados e as imagens do Pegasus e do ES-DE lado a lado, guarda o que acrescenta numa pasta própria, `DuoLauncher`, e nunca reescreve os arquivos de outro frontend, então todos podem dividir o mesmo cartão. Veja [De onde vêm os nomes, as imagens e os detalhes](#de-onde-vêm-os-nomes-as-imagens-e-os-detalhes).
+- **Do seu jeito, até nos detalhes.** Temas de cores e pacotes de tema para compartilhar, modo claro e escuro, imagem e cor próprias para qualquer bloco, tamanho do texto, margem das capas, regras para arrumar os nomes, a sua própria ordem de jogos, onde ficam os dados e o Duo Lite, que alivia o trabalho de cada tela. Toda a sua configuração pode ser exportada num arquivo só e passada para um amigo – sem as suas chaves e sem o seu histórico de jogo. Veja [Aparência](#aparência) e [Temas](#temas).
+- **Organizado por série, não só por console.** Ys, Castlevania, Super Robot Wars … cada jogo fica junto com o resto da sua série e entra num dos 14 gêneros, pela tabela de jogos embutida ou pela IA. Veja [Gêneros e séries](#gêneros-e-séries).
+
+E algumas ideias que atravessam tudo:
 
 - **Duas telas, duas funções.** A tela de baixo é para escolher: pastas grandes, grade, lista, menus. A de cima é para ver: o console no seu próprio fundo ilustrado, o logo do jogo sobre a capa, uma prévia em vídeo, quanto tempo você já jogou, uma nota para você mesmo ou uma conversa com a IA. Nada precisa disputar espaço com nada.
 - **O controle vem primeiro.** Tudo funciona sem tocar na tela: um teclado feito para o direcional, direções que continuam rolando enquanto você segura, L / R para virar a página, segurar L para pesquisar por voz, segurar R para falar com a IA. O toque também funciona, só não é obrigatório.
-- **A sua biblioteca, do jeito que ela já está.** Ele lê os metadados e as imagens do Pegasus e do ES-DE que você talvez já tenha, guarda o que acrescenta numa pasta própria, `DuoLauncher`, e nunca reescreve os arquivos de outro frontend.
-- **IA que trabalha para você, com a sua chave.** Tradução, organização, imagens, dicas e conversa usam o serviço que *você* escolhe e paga diretamente. As chaves ficam no portátil, e cada pedido é contado nas Configurações com um custo estimado, então nada roda escondido.
-- **Tudo pode ser mudado, ocultado ou compartilhado.** Cada bloco da tela inicial pode ser renomeado, ganhar outra cor, outra imagem, mudar de lugar ou sumir. Toda a sua configuração pode ser exportada num arquivo só e passada para um amigo – sem as suas chaves e sem o seu histórico de jogo.
+
+### Comparado com outros frontends
+
+| | Duo Launcher | ES-DE | Pegasus | Daijishō | LaunchBox | RetroArch |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|
+| Trapaças baixadas, escolhidas, traduzidas e gravadas para cada emulador | ✅ | – | – | – | – | ◐ ¹ |
+| IA embutida: chat que conhece a biblioteca, tradução, organização, imagens | ✅ | – | – | – | – | – |
+| Página no navegador via Wi-Fi, aberta por QR code | ✅ | – | – | – | – | – |
+| Central de problemas (arquivos não reconhecidos, emuladores faltando, capas, duplicados) | ✅ | – | – | – | ? | – |
+| Lê os dados do Pegasus e do ES-DE sem alterá-los | ✅ | – | ◐ ² | – | – | – |
+| Agrupa os jogos por série automaticamente | ✅ | – | – | – | ? | – |
+| Jogos agrupados por gênero | ✅ | ✅ | – | ◐ | ? | ✅ |
+| Lista de jogos numa tela, imagens na outra | ✅ | ◐ ³ | – | – | ✅ | – |
+| Reconhece os jogos pelo conteúdo dos arquivos | ✅ | – | – | ? | ? | ✅ |
+| Tempo de jogo e progresso no RetroAchievements | ✅ | ◐ ⁴ | – | ◐ ⁵ | ✅ | ✅ |
+| Idiomas da interface | 11 | 20+ | ? | ? | ? | muitos |
+
+✅ sim · ◐ em parte · – não encontrado · ? não confirmado
+
+1. O Online Updater do RetroArch baixa o pacote inteiro de trapaças para os próprios cores; não dá para escolher por jogo, não há tradução e não serve para emuladores standalone.
+2. O Pegasus consegue ler as listas de jogos do EmulationStation.
+3. Com um app complementar separado.
+4. Só o tempo de jogo.
+5. Um widget do RetroAchievements.
+
+Comparação feita com base na documentação e nos changelogs de cada projeto, em novembro de 2026. Outros frontends de duas telas, como Cocoon, iiSU, Blip e BoxShelf, também colocam a lista e as imagens em telas separadas. Se algo aqui estiver errado ou desatualizado, avise no [issue tracker](https://github.com/GenKnot/DuoLauncher/issues) que a gente corrige.
 
 Sugestões e relatos de bugs são bem-vindos no [issue tracker](https://github.com/GenKnot/DuoLauncher/issues).
 
 ## Destaques
 
+- **Cheats prontos para usar** – milhares de cheats para 3DS, NDS, PSP, GBA e todos os sistemas do RetroArch, do próprio portátil ou, quando um jogo não tem, baixados dos grandes bancos de cheats (Sharkive, libretro, CWCheat), onde você marca só os que quiser. Os nomes são traduzidos para o seu idioma com um toque, cada cheat pode ser editado e tudo vai direto para os arquivos de cheats do próprio emulador, funcionando assim que o jogo abre.
+- **Um companheiro de IA** – segure R em qualquer lugar e fale: ele recomenda jogos da sua própria biblioteca, explica como passar de um trecho, conta sobre a história ou só bate papo. As respostas podem ser lidas em voz alta.
 - **Duas telas, um launcher** – você escolhe na tela de baixo e vê logos, capas, prévias em vídeo, tempo de jogo e descrições na de cima.
 - **Todos os emuladores num lugar só** – 3DS, NDS, GBA, GB/GBC, NES, SNES, N64, GameCube, Wii, Mega Drive, PS1, PS2, PSP, PS Vita e Switch, além de 22 consoles mais antigos pelo RetroArch (do Master System ao Dreamcast, PC Engine, Neo Geo, WonderSwan, Atari, arcade, DOS …), com o emulador escolhido por console ou por jogo. Jogos de vários discos aparecem como um só.
 - **Já vem organizado** – cada jogo entra num de 14 gêneros e na sua série (Ys, Castlevania, Super Robot Wars …). A tela inicial mostra a biblioteca por console, gênero ou série, e as pastas inteligentes mantêm sempre em dia “Adicionados recentemente”, “Jogando”, “Quero jogar”, “Zerado” e “Mais bem avaliados”.
-- **Um companheiro de IA** – segure R em qualquer lugar e fale: ele recomenda jogos da sua própria biblioteca, explica como passar de um trecho, conta sobre a história ou só bate papo. As respostas podem ser lidas em voz alta.
-- **Trapaças organizadas** – milhares de cheats prontos para 3DS, NDS, PSP, GBA e todos os sistemas do RetroArch, traduzidos para o seu idioma com um toque, editáveis e compartilhados entre emuladores.
 - **Completa o que falta** – capas reais dos pacotes de thumbnails da libretro, títulos oficiais em inglês e capas, logos e fundos desenhados por IA no estilo do próprio launcher.
 - **Feito para um portátil** – protetor de tela seguro para OLED, transferência por Wi-Fi pelo navegador, backup de saves, estatísticas de jogo, progresso no RetroAchievements, um panorama do armazenamento e uma tela inicial que abre em um segundo.
 - **Do seu jeito** – temas de cores e pacotes de tema, modo claro e escuro, tamanho do texto, margem das capas, uma tela de configurações como a de um console e configurações que você exporta e compartilha. 11 idiomas na interface.
