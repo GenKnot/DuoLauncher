@@ -19,9 +19,9 @@ Duo Launcher est né comme le launcher d'un joueur pour une console, et il évol
 3. **Les corvées sont faites pour vous** – codes de triche, illustrations, traductions, copie des fichiers, rangement.
 4. **Tout se façonne à votre goût** – un choix pour presque chaque détail, et tout ce qui affiche quelque chose peut être désactivé.
 
-La plupart des frontends s'arrêtent à « lister les jeux et les lancer ». Voici à quoi ces promesses mènent :
+En plus de trouver vos jeux et de les lancer, voici à quoi ces promesses mènent :
 
-- **Les codes de triche, du téléchargement à la première image.** Quand un jeu n'a aucun code sur la console, il va les chercher dans les grandes bases de la communauté – Sharkive pour la 3DS, libretro pour la NDS et la GBA, CWCheat pour la PSP –, vous laisse cocher uniquement ceux que vous voulez, traduit leurs noms dans votre langue en une touche (avec une clé d'IA, il reprend même les noms officiels des personnages et des objets du jeu) et les écrit dans les fichiers de codes propres à chaque émulateur : Azahar et Citra, DraStic, PPSSPP et RetroArch. Les émulateurs ne s'occupent que de leurs propres codes, et les autres frontends les laissent complètement de côté. Voir [Codes de triche](#codes-de-triche).
+- **Les codes de triche, du téléchargement à la première image.** Quand un jeu n'a aucun code sur la console, il va les chercher dans les grandes bases de la communauté – Sharkive pour la 3DS, libretro pour la NDS et la GBA, CWCheat pour la PSP –, vous laisse cocher uniquement ceux que vous voulez, traduit leurs noms dans votre langue en une touche (avec une clé d'IA, il reprend même les noms officiels des personnages et des objets du jeu) et les écrit dans les fichiers de codes propres à chaque émulateur : Azahar et Citra, DraStic, PPSSPP et RetroArch. Voir [Codes de triche](#codes-de-triche).
 - **Une IA qui connaît votre bibliothèque.** Maintenez R et demandez à quoi jouer ensuite, comment venir à bout d'un boss ou de quoi parle une histoire : elle répond à partir des jeux que vous avez vraiment. La même IA traduit les noms et les descriptions des jeux, range chacun dans un genre et une série, et dessine les jaquettes, logos et fonds qui manquent. Elle passe par le service que *vous* choisissez, avec votre propre clé, et chaque requête est comptée dans les paramètres avec un coût estimé. Voir [Votre compagnon IA](#votre-compagnon-ia) et [IA](#ia).
 - **Tout se règle depuis le téléphone.** Activez le transfert Wi-Fi et un QR code apparaît sur l'écran du haut. Scannez-le : une page dans la langue de votre téléphone vous permet d'envoyer des jeux, de taper les clés d'API sur un vrai clavier, d'importer et d'exporter des configurations et de télécharger des sauvegardes – sans câble ni gestionnaire de fichiers. Voir [Outils pratiques](#outils-pratiques).
 - **Un seul endroit pour tout ce qui mérite un coup d'œil.** « Problèmes détectés » rassemble les fichiers non reconnus, les consoles sans émulateur, les jeux sans jaquette et les doublons, et règle la plupart des cas sur place. Voir [Outils pratiques](#outils-pratiques).
@@ -33,31 +33,21 @@ Et quelques idées qui le traversent de bout en bout :
 
 - **Deux écrans, deux rôles.** L'écran du bas sert à choisir : de grands dossiers, une grille, une liste, des menus. L'écran du haut sert à regarder : la console sur son propre fond illustré, le logo d'un jeu sur sa jaquette, un aperçu vidéo, votre temps de jeu, une note pour vous-même ou une conversation avec l'IA. Rien n'a à partager la place avec autre chose.
 - **La manette d'abord.** Tout fonctionne sans toucher l'écran : un clavier pensé pour la croix directionnelle, des directions qu'on maintient pour continuer à défiler, L / R pour tourner les pages, L maintenu pour chercher à la voix, R maintenu pour parler à l'IA. Le tactile marche aussi, mais il n'est jamais obligatoire.
-### Comparé aux autres frontends
+### Aux côtés des autres frontends
 
-| | Duo Launcher | ES-DE | Pegasus | Daijishō | LaunchBox | RetroArch |
-|---|:-:|:-:|:-:|:-:|:-:|:-:|
-| Codes de triche téléchargés, choisis, traduits et écrits pour chaque émulateur | ✅ | – | – | – | – | ◐ ¹ |
-| IA intégrée : discussion qui connaît la bibliothèque, traduction, classement, illustrations | ✅ | – | – | – | – | – |
-| Page web en Wi-Fi, ouverte par un QR code | ✅ | – | – | – | – | – |
-| Problèmes détectés (fichiers non reconnus, émulateurs manquants, jaquettes, doublons) | ✅ | – | – | – | ? | – |
-| Lit les données Pegasus et ES-DE sans les modifier | ✅ | – | ◐ ² | – | – | – |
-| Regroupe automatiquement les jeux par série | ✅ | – | – | – | ? | – |
-| Classement par genre | ✅ | ✅ | – | ◐ | ? | ✅ |
-| Liste des jeux sur un écran, illustrations sur l'autre | ✅ | ◐ ³ | – | – | ✅ | – |
-| Reconnaît les jeux au contenu de leurs fichiers | ✅ | – | – | ? | ? | ✅ |
-| Temps de jeu et progression RetroAchievements | ✅ | ◐ ⁴ | – | ◐ ⁵ | ✅ | ✅ |
-| Langues de l'interface | 11 | 20+ | ? | ? | ? | beaucoup |
+| | Duo Launcher | Autres frontends |
+|---|:-:|:-:|
+| Codes de triche téléchargés, choisis, traduits et installés pour chaque émulateur | ✅ | rare |
+| IA intégrée qui connaît votre bibliothèque | ✅ | rare |
+| Configuration depuis le téléphone en Wi-Fi, avec un QR code | ✅ | rare |
+| « Problèmes détectés » | ✅ | rare |
+| Données Pegasus et ES-DE lues côte à côte | ✅ | rare |
+| Classement par série | ✅ | rare |
+| Classement par genre | ✅ | fréquent |
+| Liste des jeux et illustrations sur deux écrans | ✅ | fréquent |
+| Temps de jeu et RetroAchievements | ✅ | fréquent |
 
-✅ oui · ◐ en partie · – introuvable · ? pas pu vérifier
-
-1. L'Online Updater de RetroArch télécharge tout son pack de codes pour ses propres cores : pas de choix jeu par jeu, pas de traduction, et rien pour les émulateurs autonomes.
-2. Pegasus sait lire les listes de jeux d'EmulationStation.
-3. Avec une application compagnon séparée.
-4. Temps de jeu seulement.
-5. Un widget RetroAchievements.
-
-Comparaison établie en novembre 2026 à partir de la documentation et des journaux de modifications de chaque projet. D'autres frontends à deux écrans, comme Cocoon, iiSU, Blip et BoxShelf, répartissent eux aussi la liste et les illustrations sur les deux écrans. Si quelque chose ici est faux ou dépassé, signalez-le sur le [suivi des tickets](https://github.com/GenKnot/DuoLauncher/issues) et ce sera corrigé.
+Un aperçu approximatif, d'après ce que proposaient les autres frontends en novembre 2026. Beaucoup d'entre eux excellent dans ce qu'ils ont choisi de faire ; Duo Launcher met simplement ses efforts sur les points ci-dessus. Si quelque chose ici n'est plus à jour, signalez-le sur le [suivi des tickets](https://github.com/GenKnot/DuoLauncher/issues).
 
 Suggestions et rapports de bugs sont les bienvenus sur le [suivi des tickets](https://github.com/GenKnot/DuoLauncher/issues).
 

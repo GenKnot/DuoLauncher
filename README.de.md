@@ -19,9 +19,9 @@ Duo Launcher war anfangs der Launcher eines einzelnen Spielers für einen einzel
 3. **Die lästige Arbeit nimmt er dir ab** – Cheats, Grafiken, Übersetzungen, Dateien rüberkopieren, Aufräumen.
 4. **Alles lässt sich nach deinem Geschmack einrichten** – für fast jedes Detail gibt es eine Wahl, und alles, was etwas anzeigt, lässt sich abschalten.
 
-Die meisten Frontends hören bei „Spiele auflisten und starten“ auf. Das ergibt sich aus diesen Versprechen:
+Über das Finden und Starten deiner Spiele hinaus ergibt sich aus diesen Versprechen Folgendes:
 
-- **Cheats, vom Download bis zum ersten Bild.** Hat ein Spiel auf dem Handheld keine Cheats, holt er sie aus den großen Datenbanken der Community – Sharkive für 3DS, libretro für NDS und GBA, CWCheat für PSP – und lässt dich nur die anhaken, die du willst. Die Namen übersetzt er mit einem Tippen in deine Sprache (mit einem KI-Schlüssel sogar mit den offiziellen Namen der Figuren und Gegenstände aus dem Spiel) und schreibt alles in die Cheat-Dateien des jeweiligen Emulators: Azahar und Citra, DraStic, PPSSPP und RetroArch. Emulatoren kümmern sich nur um ihre eigenen Cheats, und andere Frontends lassen Cheats ganz weg. Mehr unter [Cheats](#cheats).
+- **Cheats, vom Download bis zum ersten Bild.** Hat ein Spiel auf dem Handheld keine Cheats, holt er sie aus den großen Datenbanken der Community – Sharkive für 3DS, libretro für NDS und GBA, CWCheat für PSP – und lässt dich nur die anhaken, die du willst. Die Namen übersetzt er mit einem Tippen in deine Sprache (mit einem KI-Schlüssel sogar mit den offiziellen Namen der Figuren und Gegenstände aus dem Spiel) und schreibt alles in die Cheat-Dateien des jeweiligen Emulators: Azahar und Citra, DraStic, PPSSPP und RetroArch. Mehr unter [Cheats](#cheats).
 - **Eine KI, die deine Bibliothek kennt.** Halt R gedrückt und frag, was du als Nächstes spielen sollst, wie du an einem Boss vorbeikommst oder worum es in einer Geschichte geht – die Antwort kommt aus den Spielen, die du wirklich hast. Dieselbe KI übersetzt Spielnamen und Beschreibungen, ordnet jedes Spiel einem Genre und einer Reihe zu und zeichnet fehlende Cover, Logos und Hintergründe. Sie läuft über den Dienst, den *du* auswählst, mit deinem eigenen Schlüssel, und jede Anfrage wird in den Einstellungen mitgezählt, samt geschätzter Kosten. Mehr unter [Dein KI-Begleiter](#dein-ki-begleiter) und [KI](#ki).
 - **Einrichten vom Handy aus.** Schalte die WLAN-Übertragung ein, und auf dem oberen Bildschirm erscheint ein QR-Code. Scannst du ihn, öffnet sich eine Seite in der Sprache deines Handys: Dort schickst du Spiele rüber, tippst API-Schlüssel auf einer richtigen Tastatur, importierst und exportierst Konfigurationen und lädst Sicherungen herunter – ohne Kabel, ohne Dateimanager. Mehr unter [Nützliche Werkzeuge](#nützliche-werkzeuge).
 - **Ein Ort für alles, was einen Blick braucht.** Die Problemübersicht sammelt Dateien, die er nicht erkennen konnte, Konsolen ohne Emulator, Spiele ohne Cover und doppelte Spiele, und das meiste lässt sich dort gleich beheben. Mehr unter [Nützliche Werkzeuge](#nützliche-werkzeuge).
@@ -34,31 +34,21 @@ Und ein paar Grundgedanken, die sich durch alles ziehen:
 - **Zwei Bildschirme, zwei Aufgaben.** Unten wird ausgewählt: große Ordner, ein Raster, eine Liste, Menüs. Oben wird geschaut: die Konsole vor ihrem eigenen gezeichneten Hintergrund, das Logo eines Spiels über seinem Cover, eine Videovorschau, deine bisherige Spielzeit, eine Notiz an dich selbst oder ein Gespräch mit der KI. Nichts muss sich den Platz mit etwas anderem teilen.
 - **Das Gamepad hat Vorrang.** Jede Funktion geht ohne den Bildschirm anzufassen: eine Tastatur fürs Steuerkreuz, gehaltene Richtungen, die weiterscrollen, L / R zum Blättern, L halten für die Sprachsuche, R halten, um mit der KI zu reden. Touch geht auch, ist aber nie nötig.
 
-### Im Vergleich mit anderen Frontends
+### Neben anderen Frontends
 
-| | Duo Launcher | ES-DE | Pegasus | Daijishō | LaunchBox | RetroArch |
-|---|:-:|:-:|:-:|:-:|:-:|:-:|
-| Cheats heruntergeladen, ausgewählt, übersetzt und für jeden Emulator geschrieben | ✅ | – | – | – | – | ◐ ¹ |
-| Eingebaute KI: Chat, der die Bibliothek kennt, Übersetzung, Sortierung, Grafiken | ✅ | – | – | – | – | – |
-| Browserseite über WLAN, per QR-Code geöffnet | ✅ | – | – | – | – | – |
-| Problemübersicht (nicht erkannte Dateien, fehlende Emulatoren, Cover, doppelte Spiele) | ✅ | – | – | – | ? | – |
-| Liest Daten von Pegasus und ES-DE, ohne sie zu verändern | ✅ | – | ◐ ² | – | – | – |
-| Gruppiert Spiele automatisch nach Reihen | ✅ | – | – | – | ? | – |
-| Nach Genres gruppiert | ✅ | ✅ | – | ◐ | ? | ✅ |
-| Spieleliste auf einem Bildschirm, Grafiken auf dem anderen | ✅ | ◐ ³ | – | – | ✅ | – |
-| Erkennt Spiele am Inhalt ihrer Dateien | ✅ | – | – | ? | ? | ✅ |
-| Spielzeit und RetroAchievements-Fortschritt | ✅ | ◐ ⁴ | – | ◐ ⁵ | ✅ | ✅ |
-| Sprachen der Oberfläche | 11 | 20+ | ? | ? | ? | viele |
+| | Duo Launcher | Andere Frontends |
+|---|:-:|:-:|
+| Cheats heruntergeladen, ausgewählt, übersetzt und für jeden Emulator eingerichtet | ✅ | selten |
+| Eingebaute KI, die deine Bibliothek kennt | ✅ | selten |
+| Einrichtung vom Handy aus über WLAN, per QR-Code | ✅ | selten |
+| Problemübersicht | ✅ | selten |
+| Daten von Pegasus und ES-DE nebeneinander gelesen | ✅ | selten |
+| Nach Reihen gruppiert | ✅ | selten |
+| Nach Genres gruppiert | ✅ | häufig |
+| Spieleliste und Grafiken auf zwei Bildschirmen | ✅ | häufig |
+| Spielzeit und RetroAchievements | ✅ | häufig |
 
-✅ ja · ◐ teilweise · – nicht gefunden · ? nicht bestätigt
-
-1. Der Online-Updater von RetroArch lädt das komplette Cheat-Paket für die eigenen Cores; eine Auswahl pro Spiel gibt es nicht, ebenso wenig eine Übersetzung oder etwas für eigenständige Emulatoren.
-2. Pegasus kann Spielelisten von EmulationStation lesen.
-3. Mit einer separaten Begleit-App.
-4. Nur die Spielzeit.
-5. Ein RetroAchievements-Widget.
-
-Verglichen anhand der Dokumentation und der Changelogs der einzelnen Projekte, Stand November 2026. Auch andere Frontends für zwei Bildschirme, etwa Cocoon, iiSU, Blip und BoxShelf, verteilen Liste und Grafiken auf zwei Bildschirme. Ist hier etwas falsch oder veraltet, sag bitte im [Issue-Tracker](https://github.com/GenKnot/DuoLauncher/issues) Bescheid, dann wird es korrigiert.
+Ein grobes Bild davon, was andere Frontends im November 2026 boten. Viele von ihnen sind hervorragend in dem, worauf sie sich konzentrieren; Duo Launcher steckt seine Mühe einfach in die Punkte oben. Ist hier etwas veraltet, sag bitte im [Issue-Tracker](https://github.com/GenKnot/DuoLauncher/issues) Bescheid.
 
 Vorschläge und Fehlerberichte sind im [Issue-Tracker](https://github.com/GenKnot/DuoLauncher/issues) willkommen.
 

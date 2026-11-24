@@ -19,9 +19,9 @@ Duo Launcher empezó como el launcher de un solo jugador para una sola portátil
 3. **El trabajo pesado lo hace él**: trucos, imágenes, traducciones, pasar archivos, ordenar.
 4. **Todo se adapta a ti**: se puede elegir casi cada detalle, y todo lo que muestra algo se puede desactivar.
 
-La mayoría de los frontends se quedan en «listar los juegos y arrancarlos». Esto es lo que dan de sí esas promesas:
+Además de encontrar tus juegos y arrancarlos, esto es lo que dan de sí esas promesas:
 
-- **Trucos, de la descarga al primer fotograma.** Si un juego no tiene trucos en la portátil, los busca en las grandes bases de datos de la comunidad (Sharkive para 3DS, libretro para NDS y GBA, CWCheat para PSP), te deja marcar solo los que quieras, traduce sus nombres a tu idioma con un toque (con una clave de IA, incluso con los nombres oficiales de los personajes y objetos del juego) y los escribe en los archivos de trucos de cada emulador: Azahar y Citra, DraStic, PPSSPP y RetroArch. Los emuladores solo se ocupan de sus propios trucos, y los demás frontends ni los tocan. Más en [Trucos](#trucos).
+- **Trucos, de la descarga al primer fotograma.** Si un juego no tiene trucos en la portátil, los busca en las grandes bases de datos de la comunidad (Sharkive para 3DS, libretro para NDS y GBA, CWCheat para PSP), te deja marcar solo los que quieras, traduce sus nombres a tu idioma con un toque (con una clave de IA, incluso con los nombres oficiales de los personajes y objetos del juego) y los escribe en los archivos de trucos de cada emulador: Azahar y Citra, DraStic, PPSSPP y RetroArch. Más en [Trucos](#trucos).
 - **Una IA que conoce tu biblioteca.** Mantén R y pregúntale a qué jugar ahora, cómo pasarte un jefe o de qué va una historia: te responde a partir de los juegos que tienes de verdad. La misma IA traduce los nombres y las descripciones, coloca cada juego en un género y una saga, y dibuja las portadas, logos y fondos que falten. Funciona con el servicio que *tú* eliges y con tu propia clave, y cada solicitud queda registrada en los ajustes con un coste estimado. Más en [Tu compañero con IA](#tu-compañero-con-ia) y en [IA](#ia).
 - **Se configura desde el móvil.** Activa la transferencia Wi-Fi y aparece un código QR en la pantalla de arriba. Escanéalo y una página en el idioma de tu móvil te deja enviar juegos, escribir las claves de API con un teclado de verdad, importar y exportar configuraciones y descargar copias de seguridad, sin cables ni gestor de archivos. Más en [Herramientas útiles](#herramientas-útiles).
 - **Un solo sitio para todo lo que merece un vistazo.** «Problemas detectados» reúne los archivos que no ha sabido reconocer, las consolas sin emulador, los juegos sin portada y los duplicados, y arregla la mayoría ahí mismo. Más en [Herramientas útiles](#herramientas-útiles).
@@ -33,31 +33,21 @@ Y hay unas cuantas ideas detrás de todo:
 
 - **Dos pantallas, dos tareas.** La pantalla de abajo sirve para elegir: carpetas grandes, una cuadrícula, una lista, menús. La de arriba sirve para mirar: la consola sobre su propio fondo ilustrado, el logo de un juego sobre su portada, un vídeo de muestra, cuánto tiempo llevas jugado, una nota que te dejaste o una conversación con la IA. Nada tiene que compartir espacio con otra cosa.
 - **El mando va primero.** Todo funciona sin tocar la pantalla: un teclado pensado para la cruceta, direcciones que siguen avanzando si las mantienes, L / R para pasar página, mantener L para buscar por voz, mantener R para hablar con la IA. La pantalla táctil también funciona, solo que no hace falta.
-### Comparado con otros frontends
+### Junto a otros frontends
 
-| | Duo Launcher | ES-DE | Pegasus | Daijishō | LaunchBox | RetroArch |
-|---|:-:|:-:|:-:|:-:|:-:|:-:|
-| Trucos descargados, elegidos, traducidos y escritos para cada emulador | ✅ | – | – | – | – | ◐ ¹ |
-| IA integrada: chat que conoce tu biblioteca, traducción, clasificación, imágenes | ✅ | – | – | – | – | – |
-| Página web por Wi-Fi que se abre con un código QR | ✅ | – | – | – | – | – |
-| Problemas detectados (archivos sin reconocer, emuladores que faltan, portadas, duplicados) | ✅ | – | – | – | ? | – |
-| Lee los datos de Pegasus y de ES-DE sin modificarlos | ✅ | – | ◐ ² | – | – | – |
-| Agrupa los juegos por saga automáticamente | ✅ | – | – | – | ? | – |
-| Agrupado por género | ✅ | ✅ | – | ◐ | ? | ✅ |
-| La lista de juegos en una pantalla, las imágenes en la otra | ✅ | ◐ ³ | – | – | ✅ | – |
-| Reconoce los juegos por el contenido de sus archivos | ✅ | – | – | ? | ? | ✅ |
-| Tiempo de juego y progreso de RetroAchievements | ✅ | ◐ ⁴ | – | ◐ ⁵ | ✅ | ✅ |
-| Idiomas de la interfaz | 11 | 20+ | ? | ? | ? | muchos |
+| | Duo Launcher | Otros frontends |
+|---|:-:|:-:|
+| Trucos descargados, elegidos, traducidos y preparados para cada emulador | ✅ | poco común |
+| IA integrada que conoce tu biblioteca | ✅ | poco común |
+| Configuración desde el móvil por Wi-Fi, con un código QR | ✅ | poco común |
+| «Problemas detectados» | ✅ | poco común |
+| Datos de Pegasus y de ES-DE leídos a la vez | ✅ | poco común |
+| Agrupado por saga | ✅ | poco común |
+| Agrupado por género | ✅ | habitual |
+| Lista de juegos e imágenes en dos pantallas | ✅ | habitual |
+| Tiempo de juego y RetroAchievements | ✅ | habitual |
 
-✅ sí · ◐ en parte · – no encontrado · ? sin confirmar
-
-1. El Online Updater de RetroArch descarga su paquete de trucos completo para sus propios cores: no se eligen juego a juego, no hay traducción y no sirve para los emuladores independientes.
-2. Pegasus puede leer las listas de juegos de EmulationStation.
-3. Con una app complementaria aparte.
-4. Solo el tiempo de juego.
-5. Un widget de RetroAchievements.
-
-Comparación hecha en noviembre de 2026 a partir de la documentación y los registros de cambios de cada proyecto. Otros frontends de doble pantalla, como Cocoon, iiSU, Blip y BoxShelf, también reparten la lista y las imágenes entre las dos pantallas. Si algo de esto está mal o se ha quedado anticuado, dilo en el [gestor de incidencias](https://github.com/GenKnot/DuoLauncher/issues) y se corregirá.
+Una idea aproximada, según lo que ofrecían otros frontends en noviembre de 2026. Muchos son excelentes en lo suyo; Duo Launcher simplemente pone su esfuerzo en lo de arriba. Si algo de esto se ha quedado anticuado, dilo en el [gestor de incidencias](https://github.com/GenKnot/DuoLauncher/issues).
 
 Las sugerencias y los informes de errores son bienvenidos en el [gestor de incidencias](https://github.com/GenKnot/DuoLauncher/issues).
 

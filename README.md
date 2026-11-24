@@ -19,9 +19,9 @@ Duo Launcher started as one player's launcher for one handheld, and it still gro
 3. **The chores are done for you** – cheats, artwork, translations, copying files over, tidying up.
 4. **Everything is yours to shape** – a choice for nearly every detail, and anything that shows something can be switched off.
 
-Most frontends stop at "list the games and start them". This is what those promises add up to:
+On top of finding your games and starting them, this is what those promises add up to:
 
-- **Cheats, from download to the first frame.** When a game has no cheats on the handheld, it fetches them from the big community databases – Sharkive for 3DS, libretro for NDS and GBA, CWCheat for PSP – lets you tick only the ones you want, translates their names into your language in one tap (and, with an AI key, even with the game's official names for characters and items), and writes them into each emulator's own cheat files: Azahar and Citra, DraStic, PPSSPP and RetroArch. Emulators only look after their own cheats, and other frontends leave cheats out entirely. See [Cheats](#cheats).
+- **Cheats, from download to the first frame.** When a game has no cheats on the handheld, it fetches them from the big community databases – Sharkive for 3DS, libretro for NDS and GBA, CWCheat for PSP – lets you tick only the ones you want, translates their names into your language in one tap (and, with an AI key, even with the game's official names for characters and items), and writes them into each emulator's own cheat files: Azahar and Citra, DraStic, PPSSPP and RetroArch. See [Cheats](#cheats).
 - **An AI that knows your library.** Hold R and ask what to play next, how to get past a boss, or what a story is about – it answers from the games you actually have. The same AI translates game names and descriptions, files every game under a genre and a series, and draws missing covers, logos and backdrops. It runs on the service *you* choose with your own key, and every request is counted in Settings with an estimated cost. See [Your AI companion](#your-ai-companion) and [AI](#ai).
 - **Set up from your phone.** Turn on Wi-Fi transfer and a QR code appears on the upper screen. Scan it, and a page in your phone's language lets you send games, type API keys on a real keyboard, import and export configs, and download backups – no cables, no file manager. See [Handy tools](#handy-tools).
 - **One place for everything that needs a look.** The Problem centre gathers files it could not recognise, consoles without an emulator, games without a cover and duplicates, and fixes most of them on the spot. See [Handy tools](#handy-tools).
@@ -34,31 +34,21 @@ And a few ideas that run through all of it:
 - **Two screens are two jobs.** The lower screen is for choosing: big folders, a grid, a list, menus. The upper screen is for looking: the console on its own illustrated backdrop, a game's logo over its cover, a video preview, how long you have played, a note to yourself, or a conversation with the AI. Nothing has to share space with anything else.
 - **The gamepad comes first.** Every feature works without touching the screen: a keyboard made for the d-pad, held directions that keep scrolling, L / R that turn pages, hold L to search by voice, hold R to talk to the AI. Touch works too, it just isn't required.
 
-### Compared with other frontends
+### Alongside other frontends
 
-| | Duo Launcher | ES-DE | Pegasus | Daijishō | LaunchBox | RetroArch |
-|---|:-:|:-:|:-:|:-:|:-:|:-:|
-| Cheats downloaded, picked, translated and written for each emulator | ✅ | – | – | – | – | ◐ ¹ |
-| Built-in AI: library-aware chat, translation, sorting, artwork | ✅ | – | – | – | – | – |
-| Browser page over Wi-Fi, opened with a QR code | ✅ | – | – | – | – | – |
-| Problem centre (unrecognised files, missing emulators, covers, duplicates) | ✅ | – | – | – | ? | – |
-| Reads both Pegasus and ES-DE data without changing it | ✅ | – | ◐ ² | – | – | – |
-| Groups games by series automatically | ✅ | – | – | – | ? | – |
-| Grouped by genre | ✅ | ✅ | – | ◐ | ? | ✅ |
-| Game list on one screen, artwork on the other | ✅ | ◐ ³ | – | – | ✅ | – |
-| Recognises games by their file contents | ✅ | – | – | ? | ? | ✅ |
-| Play time and RetroAchievements progress | ✅ | ◐ ⁴ | – | ◐ ⁵ | ✅ | ✅ |
-| Interface languages | 11 | 20+ | ? | ? | ? | many |
+| | Duo Launcher | Other frontends |
+|---|:-:|:-:|
+| Cheats downloaded, chosen, translated and set up for each emulator | ✅ | seldom |
+| Built-in AI that knows your library | ✅ | seldom |
+| Set up from a phone over Wi-Fi, with a QR code | ✅ | seldom |
+| Problem centre | ✅ | seldom |
+| Pegasus and ES-DE data read side by side | ✅ | seldom |
+| Grouped by series | ✅ | seldom |
+| Grouped by genre | ✅ | often |
+| Game list and artwork on two screens | ✅ | often |
+| Play time and RetroAchievements | ✅ | often |
 
-✅ yes · ◐ partly · – not found · ? could not confirm
-
-1. RetroArch's Online Updater downloads its whole cheat pack for its own cores; there is no picking per game, no translation, and nothing for standalone emulators.
-2. Pegasus can read EmulationStation game lists.
-3. With a separate companion app.
-4. Play time only.
-5. A RetroAchievements widget.
-
-Compared from each project's own documentation and changelogs in November 2026. Other dual-screen frontends, such as Cocoon, iiSU, Blip and BoxShelf, also put the list and the artwork on two screens. If something here is wrong or out of date, please say so on the [issue tracker](https://github.com/GenKnot/DuoLauncher/issues) and it will be corrected.
+A rough picture, from what other frontends offered in November 2026. Many of them are excellent at what they focus on; Duo Launcher simply puts its effort into the things above. If something here is out of date, please say so on the [issue tracker](https://github.com/GenKnot/DuoLauncher/issues).
 
 Suggestions and bug reports are welcome on the [issue tracker](https://github.com/GenKnot/DuoLauncher/issues).
 
