@@ -142,6 +142,6 @@ final class BackdropView extends View {
         c.drawRect(0, h * 0.55f, w, h, p);
         p.setShader(null);
 
-        if (getVisibility() == VISIBLE) postInvalidateDelayed(33);
+        if (getVisibility() == VISIBLE && !TopView.lite) postInvalidateDelayed(33);   // Duo Lite: still
     }
 }

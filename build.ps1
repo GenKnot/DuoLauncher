@@ -16,7 +16,7 @@ New-Item -ItemType Directory -Force "$out\classes", "$out\dex" | Out-Null
 & "$bt\aapt2.exe" compile --dir "$root\res" -o "$out\res.zip"
 if ($LASTEXITCODE) { throw 'aapt2 compile failed' }
 & "$bt\aapt2.exe" link -o "$out\base.apk" -I $jar --manifest "$root\AndroidManifest.xml" -R "$out\res.zip" --auto-add-overlay `
-    --min-sdk-version 30 --target-sdk-version 35 --version-code 142 --version-name 1.4.2
+    --min-sdk-version 30 --target-sdk-version 35 --version-code 150 --version-name 1.5.0
 if ($LASTEXITCODE) { throw 'aapt2 link failed' }
 
 $srcs = Get-ChildItem "$root\src" -Recurse -Filter *.java | ForEach-Object FullName

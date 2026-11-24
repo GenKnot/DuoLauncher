@@ -24,7 +24,7 @@ Sugestões e relatos de bugs são bem-vindos no [issue tracker](https://github.c
 ## Destaques
 
 - **Duas telas, um launcher** – você escolhe na tela de baixo e vê logos, capas, prévias em vídeo, tempo de jogo e descrições na de cima.
-- **Todos os emuladores num lugar só** – 3DS, NDS, GBA, GB/GBC, NES, SNES, N64, GameCube, Wii, Mega Drive, PS1, PS2, PSP, PS Vita e Switch, com o emulador escolhido por console ou por jogo. Jogos de vários discos aparecem como um só.
+- **Todos os emuladores num lugar só** – 3DS, NDS, GBA, GB/GBC, NES, SNES, N64, GameCube, Wii, Mega Drive, PS1, PS2, PSP, PS Vita e Switch, além de 22 consoles mais antigos pelo RetroArch (do Master System ao Dreamcast, PC Engine, Neo Geo, WonderSwan, Atari, arcade, DOS …), com o emulador escolhido por console ou por jogo. Jogos de vários discos aparecem como um só.
 - **Já vem organizado** – cada jogo entra num de 14 gêneros e na sua série (Ys, Castlevania, Super Robot Wars …). A tela inicial mostra a biblioteca por console, gênero ou série, e as pastas inteligentes mantêm sempre em dia “Adicionados recentemente”, “Jogando”, “Quero jogar”, “Zerado” e “Mais bem avaliados”.
 - **Um companheiro de IA** – segure R em qualquer lugar e fale: ele recomenda jogos da sua própria biblioteca, explica como passar de um trecho, conta sobre a história ou só bate papo. As respostas podem ser lidas em voz alta.
 - **Trapaças organizadas** – milhares de cheats prontos para 3DS, NDS, PSP, GBA e todos os sistemas do RetroArch, traduzidos para o seu idioma com um toque, editáveis e compartilhados entre emuladores.
@@ -184,10 +184,19 @@ Sugestões e relatos de bugs são bem-vindos no [issue tracker](https://github.c
 ## Primeiros passos
 
 1. **Instale o APK** da [página de Releases](https://github.com/GenKnot/DuoLauncher/releases/latest) e abra.
-2. **Escolha um idioma** e depois conceda, numa tela só, as permissões que ele pede: acesso aos arquivos (para achar os seus jogos), acesso ao uso (para que o tempo de jogo conte só quando o jogo está de fato na tela) e, se quiser, o papel de tela inicial. Dá para voltar a essa tela quando quiser em Configurações → Sistema → Permissões.
+2. **Siga o guia de boas-vindas.** Na primeira vez que você abre o launcher, um guia curto passa pela configuração, uma tela de cada vez:
+   - **“Encontramos suas configurações e registros anteriores”** – aparece primeiro, e só quando a cópia automática do launcher está em algum armazenamento (depois de reinstalar, ou num portátil novo com o mesmo cartão). “Restaurar” deixa você escolher o que volta, como em “Importar uma configuração”; “Começar do zero” segue com o guia normalmente. Veja [Configurações e compartilhamento](#configurações-e-compartilhamento).
+   - **Idioma.**
+   - **Permissões**, todas numa tela só: acesso aos arquivos (para achar os seus jogos), acesso ao uso (para que o tempo de jogo conte só quando o jogo está de fato na tela) e o papel de tela inicial, marcado como “opcional”. Essa tela também fica em Configurações → Sistema → Permissões.
+   - **O que foi encontrado** – quantos consoles e jogos a busca achou, e onde ela procurou: na pasta `Roms` na raiz de cada armazenamento e em todas as pastas que você adicionou. Se a busca ainda estiver rodando, a tela avisa e se completa quando ela terminar. Uma porta leva à [Central de problemas](#ferramentas-úteis) para tudo o que ela não conseguiu identificar.
+   - **IA (opcional)** – o que os recursos de IA fazem, e que você paga ao serviço que escolher pelo que usar. Depois, *Digitar as chaves no celular (Wi-Fi)*, *Configurar no portátil* ou *Depois*.
+   - **Os botões** – o que cada um faz, numa tela só.
+
+   Toda tela tem *Pular o guia*, e o B volta uma tela. Configurações → Sistema → Ver o guia de boas-vindas de novo mostra o guia outra vez.
+   *Por quê:* os primeiros minutos decidem se o launcher faz sentido, e quem acabou de chegar não deveria precisar ler esta página para chegar lá. Ver logo de cara quantos jogos foram encontrados também responde a primeira pergunta de todo mundo (“ele achou os meus jogos?”). Quem já sabe o que está fazendo pode pular o guia em qualquer tela.
 3. **Deixe ele achar os seus jogos.** Qualquer pasta `Roms` no armazenamento interno ou no cartão SD é encontrada sozinha. Outras pastas podem ser adicionadas em Configurações → Início e biblioteca → Pastas de jogos. Os consoles são reconhecidos pelo nome da pasta (`gba`, `Nintendo DS`, `psx` …) e pela extensão dos arquivos.
 4. **Escolha os emuladores** onde você quiser algo diferente do padrão: aperte Y numa pasta de console para o console inteiro, ou num jogo só para aquele jogo. Só aparecem os emuladores que estão instalados.
-5. **Opcional: coloque uma chave de IA** em Configurações → IA e voz – no próprio portátil ou, com mais conforto, pelo computador ou celular via Wi-Fi (Configurações → Saves, transferência, partilha → Transferência Wi-Fi). Tudo funciona sem chave, menos os recursos de IA.
+5. **Opcional: coloque uma chave de IA** em Configurações → IA e voz → Serviços de IA e chaves – no próprio portátil ou, com mais conforto, pelo computador ou celular via Wi-Fi (Configurações → Saves, transferência, compartilhamento → Transferência Wi-Fi, ou *Digitar no computador ou celular* no mesmo menu). Tudo funciona sem chave, menos os recursos de IA.
 6. **Opcional: use como tela inicial** (Configurações → Sistema → Definir como tela inicial (ao ligar)) para que ele abra junto com o portátil. O bloco “Início do Android” sempre leva de volta à tela inicial do sistema.
 
 ## O básico
@@ -198,7 +207,23 @@ Sugestões e relatos de bugs são bem-vindos no [issue tracker](https://github.c
 
 **A tela de cima** acompanha o que está selecionado: um console no seu fundo, com o número de jogos e o emulador; ou o logo do jogo sobre a capa desfocada, com console, gênero · série, emulador, tempo de jogo e uma descrição curta, uma prévia em vídeo depois de um instante, ou a imagem de onde você parou.
 
-**Y** é o menu do que estiver selecionado – num jogo: emulador, favorito, pastas, “Trapaças”, “Detalhes”, “Gênero”, “Nota”, “Perguntar à IA”, “Status” e nota de estrelas, “Como jogar”, “Saves”, o que a tela de cima mostra (“Tela superior”), ocultar. Numa pasta de console: emulador padrão, “Renomear”, “Juntar pastas”, ocultar. Num bloco fixo: nome, “Cor”, “Ícone” e fundo.
+**Y** é o menu do que estiver selecionado. Num jogo ele é curto, e o que se usa menos fica uma porta mais para dentro: emulador, favorito, adicionar a / remover de uma pasta, “Trapaças” ›, “Ajuda da IA” › (“Perguntar à IA”, “Como jogar”), “Informações do jogo” › (“Detalhes”, “Gênero”, “Status” e nota de estrelas, “Nota”, “Tela superior” – o que a tela de cima mostra, “Imagens com IA para este jogo”) e “Mais” › (“Saves”, “Marcar como visto”, ocultar, “Apagar o arquivo”). Numa pasta de console: emulador padrão, “Renomear”, “Juntar pastas” ›, “Marcar todos como vistos”, ocultar. Num bloco fixo: nome, “Cor”, “Ícone” e fundo. A linha selecionada se explica numa frase curta no rodapé do menu.
+
+*Por quê:* um menu com quinze linhas é difícil de ler num portátil. As portas deixam na frente o que se usa todo dia, e a dica de uma linha poupa qualquer um de adivinhar o que uma opção faz antes de apertar.
+
+**Apagar o arquivo** (Y → “Mais”) pergunta antes, mostrando o tamanho e avisando que os saves ficam; o cursor começa em “Cancelar”, então apertar A duas vezes rápido demais não apaga nada. Um jogo de vários discos perde todos os arquivos de uma vez, e um jogo apagado de uma lista da Central de problemas (“Jogos duplicados”, por exemplo) some dessa lista na hora.
+
+*Por quê:* duplicados e jogos que você já terminou saem sem precisar de computador.
+
+**Dicas que aparecem uma vez só.** Na primeira vez que um recurso fica ao seu alcance, uma linha aparece logo acima da legenda dos botões, na tela de baixo. Ela aparece uma vez só e some depois de uns nove segundos ou quando você aperta um botão (menos nos primeiros dois segundos, mais ou menos, para não sumir antes de dar tempo de ler; o botão continua fazendo o que faz). Por enquanto são quatro:
+
+- na tela inicial: segure A para pegar um bloco e mudá-lo de lugar, Y para as opções daquele bloco;
+- de volta à tela inicial depois de sair de uma pasta: SELECT mostra a tela inicial por console, por gênero ou por série;
+- num jogo dentro de uma pasta de console, na ordem padrão: segure A para levar o jogo aonde você quiser, Y para emulador, trapaças, saves e mais;
+- na pasta “Não reconhecidos”: aperte A num arquivo para dizer de qual console ele é.
+
+Configurações → Sistema → Dicas de recursos novos desliga as dicas, e “Mostrar todas as dicas de novo” traz de volta as que você já viu.
+*Por quê:* segurar A para mover, ou o SELECT na tela inicial, são fáceis de passar despercebidos e difíceis de adivinhar. Uma linha na hora em que dá para usar o recurso fica mais na memória do que um manual, e uma vez basta: dica que volta toda hora vira ruído.
 
 ### Controles
 
@@ -206,7 +231,7 @@ Sugestões e relatos de bugs são bem-vindos no [issue tracker](https://github.c
 |---|---|
 | Direcional / analógico esquerdo | Mover; segure para continuar andando |
 | Esquerda / direita, L / R numa lista ou menu | Uma página por vez |
-| A | Abrir / jogar; segure A numa pasta da tela inicial para pegá-la e mudar de lugar |
+| A | Abrir / jogar; segure A para pegar e mudar de lugar uma pasta da tela inicial ou um jogo dentro de uma pasta de console |
 | B | Voltar |
 | L / R | Console anterior / seguinte (nas Configurações: categoria) |
 | Segurar L | Pesquisar por voz |
@@ -225,7 +250,7 @@ Tudo também funciona por toque: toque para selecionar, toque de novo para abrir
 ## Sua biblioteca
 
 - **Acha os seus jogos sozinho.** O armazenamento interno e os cartões SD são vasculhados atrás de pastas `Roms`; outras podem ser adicionadas em Configurações → Início e biblioteca → Pastas de jogos. A última busca fica em cache, então a tela inicial abre em um segundo e a próxima busca roda quietinha em segundo plano.
-- **Consoles** – 3DS, NDS, GBA (e as pastas de GBA com vibração e de hacks), GBC, GB, NES, SNES, N64, GameCube, Wii, Mega Drive, PlayStation 1/2/3, PSP, PS Vita e Switch, com arte também para PS4, PS5, Xbox 360 e Xbox Series.
+- **Consoles** – 3DS, NDS, GBA (e as pastas de GBA com vibração e de hacks), GBC, GB, NES, SNES, N64, GameCube, Wii, Mega Drive, PlayStation 1/2/3, PSP, PS Vita e Switch, com arte também para PS4, PS5, Xbox 360 e Xbox Series. Todos os outros consoles do pack Pegasus G também são reconhecidos: Virtual Boy, Master System, Game Gear, 32X, Mega-CD, Saturn, Dreamcast, NAOMI, PC Engine e o seu CD, PC-FX, Neo Geo CD, Neo Geo Pocket Color, WonderSwan e WonderSwan Color, Pokémon Mini, Atari Lynx, Atari 2600, Game & Watch, 3DO, DOS e arcade.
 - **Jogos de vários discos como um só.** `Disc A/B`, `Disc 1/2`, `CD1/CD2`, `(Disc 2 of 3)` na mesma pasta, ou uma lista `files:` do Pegasus, viram uma entrada só. RetroArch e DuckStation recebem uma playlist `.m3u` dos discos, para você trocar de disco durante o jogo.
 - **Jogos e apps de Android** – os jogos instalados ganham uma pasta própria automaticamente; outros apps (vídeo, navegador …) podem ser adicionados a uma pasta “Apps”.
 - **Funciona com o que você já tem.** Ele lê o `metadata.pegasus.txt` do Pegasus, o `gamelist.xml` e a `downloaded_media` do ES-DE / EmulationStation, as thumbnails do RetroArch e as pastas `media/`, `covers/` e `images/` ao lado dos jogos. Nada disso é alterado; o que o launcher acrescenta vai para a pasta `DuoLauncher` dele (veja [Suas informações de jogo](#suas-informações-de-jogo)).
@@ -235,6 +260,8 @@ Tudo também funciona por toque: toque para selecionar, toque de novo para abrir
 - **Pastas inteligentes** se enchem sozinhas: “Adicionados recentemente” (os últimos 30 dias), “Ainda não jogados”, “Mais jogados”, “Jogando”, “Quero jogar”, “Zerado” e “Mais bem avaliados”. Y numa delas mostra a regra.
 - **Continuar e favoritos.** O primeiro bloco da tela inicial volta direto para o último jogo. Marque jogos com estrela pelo Y para juntá-los na pasta “Favoritos”.
 - **Esconda o que você não joga** – uma pasta de console, ou um único jogo ou app (Y → “Ocultar esta pasta” / “Ocultar este jogo”); traga de volta em Configurações → Início e biblioteca.
+- **Limpe os nomes dos jogos.** Nomes tirados direto dos arquivos de ROM muitas vezes ficam assim: `0153 - Legend of Zelda, The - The Minish Cap (USA) [!]`. Configurações → Início e biblioteca → Limpar nomes dos jogos tem seis chaves, todas desligadas no começo: “Tirar região e idiomas”, “Tirar versão e marcas de dump”, “Tirar o número do início”, “Sublinhados e pontos viram espaços”, “‘Zelda, The’ vira ‘The Zelda’” e “Tirar tudo o que está entre parênteses”. Ao lado de cada chave aparece um exemplo da sua própria biblioteca com o nome antes e depois, e “Ver todas as mudanças” lista todos os jogos que seriam renomeados. *Por quê:* só muda o nome na tela. Os arquivos no cartão continuam exatamente como estão, então emuladores, saves e outros frontends não são afetados. Títulos que vêm do Pegasus, do ES-DE ou das suas próprias edições ficam como estão, porque alguém já os escolheu. Tags que diferenciam um jogo do outro, como `(Beta)` ou `(Hack)`, são mantidas, a não ser que você ligue a chave dos parênteses.
+- **Coloque os jogos na sua ordem.** Dentro de uma pasta de console, segure A num jogo (ou toque e segure) para pegá-lo, leve-o com o direcional até onde quiser e solte para deixá-lo ali. A ordem fica guardada para aquele console, sobrevive a novas buscas e entra no backup completo. Jogos adicionados depois ficam no lugar de sempre. Y no console → “Voltar à ordem original” desfaz tudo. Só dá para mudar jogos de lugar na ordem “Padrão” e sem filtro de idioma, porque numa ordem por nome ou por tempo de jogo a sua ordem não faria sentido. *Por quê:* os jogos que você está jogando agora, ou uma série na ordem de lançamento, ficam melhor juntos no topo, e nenhuma ordenação automática tem como saber disso.
 - **O seu catálogo.** Depois de cada busca, a biblioteca inteira é gravada em `DuoLauncher/catalog.tsv` (console, arquivo, título, título em inglês, gênero, série, tempo de jogo, status, nota) – para planilhas, outras ferramentas ou para a IA.
 
 ### Gêneros e séries
@@ -242,7 +269,7 @@ Tudo também funciona por toque: toque para selecionar, toque de novo para abrir
 Navegar por dois mil jogos só por console cansa, então cada jogo também ganha um de 14 gêneros (RPG, ação, aventura, plataforma, tático, estratégia, tiro, quebra-cabeça, corrida, esporte, luta, simulação, party e música, outros) e a sua série.
 
 - **Primeiro, o que já vem embutido.** Uma tabela dentro do launcher (`assets/gamedb.tsv`, 3.860 nomes de arquivo que cobrem todos os jogos das listas dos packs Pegasus G para esses consoles, com o nome `.iso` e o `.cso` quando o pack tem os dois) já conhece o gênero, a série e o título oficial em inglês dos romsets comuns, por console e nome de arquivo. Jogos que ela conhece não precisam de IA nem de internet.
-- **IA para o resto.** Configurações → IA e voz → “IA: separar por gênero” / “IA: séries de jogos” classifica os jogos que sobraram, e o resultado fica em `DuoLauncher/<console>/genres.txt` e `series.txt` no cartão – é feito uma vez só e sobrevive a reinstalações. Gêneros já escritos pelo Pegasus ou pelo ES-DE (“Action RPG”, “角色扮演” …) são encaixados nos 14 gêneros.
+- **IA para o resto.** Configurações → IA e voz → Deixar a IA organizar a biblioteca → “IA: separar por gênero” / “IA: séries de jogos” classifica os jogos que sobraram, e o resultado fica em `DuoLauncher/<console>/genres.txt` e `series.txt` no cartão – é feito uma vez só e sobrevive a reinstalações. Gêneros já escritos pelo Pegasus ou pelo ES-DE (“Action RPG”, “角色扮演” …) são encaixados nos 14 gêneros.
 - **À mão** – Y → “Gênero” em qualquer jogo.
 - **Na tela.** A tela de cima mostra o gênero · série do jogo, e SELECT na tela inicial transforma as pastas em gêneros ou séries. Os nomes das séries seguem o idioma da interface.
 
@@ -252,10 +279,10 @@ R3, o bloco “Pesquisar” ou o botão de pesquisa abrem na tela de cima um tec
 
 ### Imagens que se preenchem sozinhas
 
-- **Capas reais** – Configurações → Organizar → “Baixar capas” baixa as capas dos pacotes de thumbnails da libretro. Jogos de NDS e GBA são identificados pelo código de jogo dentro da ROM (ROMs zipadas também, com telas de título), então arquivos traduzidos e renomeados continuam achando as suas imagens; jogos de PlayStation 1/2, PSP, N64, GameCube, Wii, 3DS, GB/GBC, NES, SNES e Mega Drive são identificados pelo título em inglês.
+- **Capas reais** – Configurações → Organizar → “Baixar capas” (também na Central de problemas, em “Jogos sem capa”) baixa as capas dos pacotes de thumbnails da libretro. Jogos de NDS e GBA são identificados pelo código de jogo dentro da ROM (ROMs zipadas também, com telas de título), então arquivos traduzidos e renomeados continuam achando as suas imagens; jogos de PlayStation 1/2, PSP, N64, GameCube, Wii, 3DS, GB/GBC, NES, SNES e Mega Drive são identificados pelo título em inglês. “Sem capa” quer dizer a mesma coisa em todo lugar: o jogo não tem capa (só logo ou fundo não conta), então a Central de problemas, “Baixar capas” e o menu de imagens por IA mostram o mesmo número.
 - **Ícones direto das ROMs** – ícones de banner do NDS e ícones SMDH do 3DS; títulos de 3DS instalados mostram o nome no idioma da interface.
 - **Capas que combinam** – as capas preenchem os blocos, ou ficam todas com a mesma margem pequena, média ou grande (Configurações → Aparência e som → Margem das capas); bordas brancas embutidas nas imagens das capas são cortadas.
-- **Imagens por IA** – com uma chave de imagens, dá para desenhar capas, logos de título e fundos para jogos que não têm (Y → “Detalhes” → “Criar capa com IA”, ou um console inteiro de uma vez em Configurações → IA e voz → “IA: desenhar imagens que faltam”). Veja [IA](#ia).
+- **Imagens por IA** – com uma chave de imagens, a IA desenha capa, fundo e logo de título. Para um jogo: Y → “Informações do jogo” → “Imagens com IA para este jogo”, que mostra se o jogo já tem cada uma; a nova substitui a atual, e o logo de título precisa do título em inglês (“IA: nomes e descrições” encontra). Para vários jogos: Configurações → IA e voz → Deixar a IA organizar a biblioteca → “IA: desenhar imagens que faltam”, que mostra quantos jogos estão sem cada tipo; a lista de consoles começa com “Todas as plataformas”, e dois consoles com o mesmo nome mostram o nome da pasta (uma pasta de hacks de GBA, por exemplo). Veja [IA](#ia).
 
 ## Jogando
 
@@ -277,6 +304,26 @@ R3, o bloco “Pesquisar” ou o botão de pesquisa abrem na tela de cima um tec
   | PSP | PPSSPP, RetroArch · PPSSPP |
   | PS Vita | Vita3K (pelo ID do título, por exemplo um arquivo chamado `PCSE00000.psvita` ou um nome que contenha esse ID) |
   | Switch | Eden |
+  | Virtual Boy | RetroArch · Beetle VB |
+  | Master System / Game Gear | RetroArch · Genesis Plus GX, PicoDrive |
+  | 32X | RetroArch · PicoDrive |
+  | Mega-CD | RetroArch · Genesis Plus GX, PicoDrive |
+  | Saturn | RetroArch · Yaba Sanshiro, Yabause |
+  | Dreamcast / NAOMI | RetroArch · Flycast |
+  | PC Engine / PC Engine CD | RetroArch · Beetle PCE Fast, Beetle PCE |
+  | PC-FX | RetroArch · Beetle PC-FX |
+  | Neo Geo CD | RetroArch · NeoCD |
+  | Neo Geo Pocket Color | RetroArch · Beetle NeoPop, RACE |
+  | WonderSwan / Color | RetroArch · Beetle Cygne |
+  | Pokémon Mini | RetroArch · PokeMini |
+  | Atari Lynx | RetroArch · Handy, Beetle Lynx |
+  | Atari 2600 | RetroArch · Stella |
+  | Game & Watch | RetroArch · Game & Watch |
+  | 3DO | RetroArch · Opera |
+  | DOS | RetroArch · DOSBox Pure |
+  | Arcade | RetroArch · FinalBurn Neo, MAME 2003-Plus |
+
+  Um `metadata.pegasus.txt` do Pegasus normalmente já traz a própria linha de inicialização para cada console; ela é usada primeiro, e os cores acima aparecem como opção ao lado dela.
 
 - **Citra MMJ (modo desempenho)** – a mesma build do Citra MMJ reempacotada com o nome de pacote do benchmark AnTuTu, que muitos sistemas Android rodam com o clock no máximo. Só aparece quando esse pacote é mesmo o Citra.
 - **Tempo de jogo e estatísticas** – quanto tempo e quando você jogou cada jogo pela última vez, no estilo do Switch; com o acesso ao uso liberado, conta só o tempo em que o jogo estava de fato na tela. O bloco “Estatísticas” mostra o total, a semana atual dia a dia, o tempo por console e os jogos mais jogados.
@@ -284,7 +331,9 @@ R3, o bloco “Pesquisar” ou o botão de pesquisa abrem na tela de cima um tec
 - **Status, nota e anotações** – marque um jogo como “Jogando”, “Quero jogar”, “Zerado” ou “Abandonado” e dê de uma a cinco estrelas (Y → “Status”); escreva ou fale uma linha sobre onde você está e o que fazer a seguir (Y → “Nota”). Tudo isso aparece na tela de cima da próxima vez que você pegar o jogo.
 - **Detalhes do jogo** (Y → “Detalhes”) – arquivo, tamanho, discos, pasta, emulador, tempo de jogo, o título oficial em inglês e as capturas de tela do jogo na tela de cima.
 - **Prévias em vídeo e sons** – o vídeo de um jogo começa na tela de cima depois de um instante (ou escolha logo ou capa por jogo: Y → “Tela superior”). Os sons suaves da interface e a musiquinha de banner de cada jogo de 3DS podem ser desligados.
-- **Quando um jogo não abre** – arquivo sumido, emulador não instalado, emulador que não abre aquele tipo de arquivo ou jogo que fecha na hora: cada caso ganha uma mensagem dizendo o que fazer.
+- **Sai da frente enquanto você joga.** Assim que um jogo abre, a tela de baixo fica com o emulador, e vídeo, música e músicas de banner param. Além disso, o launcher libera as imagens que guarda na memória (medido: de uns 167 MB para 109 MB), deixa uma varredura do cartão que esteja em andamento esperando até você voltar, para não disputar o cartão com o emulador, e para a atualização do relógio e as animações da tela de cima. Na volta, as capas reaparecem em menos de um segundo.
+  *Por quê:* o emulador fica com a memória e o cartão só para ele.
+- **Quando um jogo não abre** – arquivo sumido, emulador não instalado, emulador que não abre aquele tipo de arquivo ou jogo que fecha na hora: cada caso ganha uma mensagem dizendo o que fazer. A [Central de problemas](#ferramentas-úteis) lista os consoles sem emulador instalado antes que você dê de cara com isso.
 - **Lembrete de pausa** (Configurações → Jogo) – depois de uma, duas ou três horas num jogo, o launcher sugere uma pausa quando você volta.
 - **RetroAchievements** – com o seu nome de usuário e a chave Web API, mostra os jogos recentes com o progresso das conquistas, e uma etiqueta 🏆 nos jogos que têm conquistas.
 
@@ -295,8 +344,8 @@ Tudo isso é opcional e usa o serviço de IA que você escolher, com a sua próp
 - **Fale com ele de qualquer lugar.** Segure R na tela inicial, numa pasta ou no teclado de pesquisa e fale – ou aperte Y para digitar. A conversa ocupa a tela de cima; os jogos que ele recomenda ou encontra aparecem na de baixo, prontos para abrir com A. Pergunte o que jogar (“um RPG tranquilo, não muito longo”), refine (“algo com mais ação”), pergunte como passar daquele trecho do jogo selecionado, sobre a história ou um personagem, ou só bata papo. Ele lembra da conversa por meia hora.
   *Por quê:* a tela de baixo é onde se escolhem os jogos, então as sugestões da IA caem ali; a de cima fica livre para ler. E num portátil, segurar um botão de ombro e falar é mais rápido que qualquer menu.
 - **Conversa nova, histórico salvo.** X no chat começa uma conversa nova; SELECT lista as anteriores, a mais recente no topo, para abrir de novo, apagar uma por uma ou apagar todas (também em Configurações → IA e voz → Histórico de conversas com a IA). Enquanto o chat está aberto, as prévias em vídeo, as músicas de banner do 3DS e os sons dos botões ficam em silêncio, e as respostas faladas tocam no volume de mídia.
-  *Por quê:* uma pergunta nova não deve arrastar o assunto anterior, uma resposta que vale guardar não deve sumir ao reiniciar, e uma resposta falada não adianta nada com o trailer de um jogo tocando por cima. O histórico fica só no aparelho, nunca vai junto numa configuração exportada, e "Salvar conversas com a IA" desliga o recurso.
-- **Respostas em voz alta** – Configurações → IA e voz → Respostas de voz da IA: Soniox (com chave própria) ou OpenAI (a chave de imagens), com escolha de voz e de velocidade e um botão de teste. Fica desligado até você ligar.
+  *Por quê:* uma pergunta nova não deve arrastar o assunto anterior, uma resposta que vale guardar não deve sumir ao reiniciar, e uma resposta falada não adianta nada com o trailer de um jogo tocando por cima. O histórico nunca vai junto numa configuração exportada com *Compartilhar*, mas entra na cópia automática em `DuoLauncher/profile/`, então reinstalar não apaga as conversas; e a chave “Salvar conversas com a IA”, dentro de Histórico de conversas com a IA, desliga o recurso.
+- **Respostas em voz alta** – Configurações → IA e voz → Serviços de IA e chaves → Respostas de voz da IA: Soniox (com chave própria) ou OpenAI (a chave de imagens), com escolha de voz e de velocidade e um botão de teste. Fica desligado até você ligar.
 - **O que jogar hoje** – Y no bloco “O que jogar?” faz a IA escolher seis jogos da sua biblioteca de acordo com o seu gosto, com um motivo para cada um. Um aperto simples no bloco sorteia um jogo, dando preferência aos que você nunca jogou.
 - **Pergunte sobre um jogo** (Y → “Perguntar à IA”) – uma pergunta sobre o jogo selecionado, digitada ou falada, respondida na tela de cima.
 - **Como jogar** (Y → “Como jogar”) – os controles (inclusive os botões de confirmar / cancelar trocados das versões japonesas) e o básico que um iniciante precisa saber, escritos uma vez por jogo e guardados.
@@ -330,31 +379,190 @@ Y → “Trapaças” num jogo lista os cheats dele; A liga ou desliga cada um.
 - **Visual dos consoles** – a imagem, o fundo claro e escuro e a cor da pasta de cada console podem ser trocados (Configurações → Aparência e som → Aparência das plataformas). Um fundo escuro pode ser redesenhado pelo serviço de imagens a partir do claro, para que os dois sempre combinem.
 - **Tamanho do texto** – quatro tamanhos para as duas telas.
 - **Protetor de tela** – depois de alguns minutos parado, a tela de cima mostra as suas capas com um relógio e a de baixo fica preta. O texto muda de canto a cada imagem e se desloca devagar, para nada marcar um painel OLED.
+- **Duo Lite** (Configurações → Aparência e som, primeira linha) – uma chave só que desliga as prévias em vídeo e a música dos banners do 3DS, a arte desfocada atrás de um jogo, os pontinhos que flutuam na tela de cima e o leve balanço da imagem do console, a animação de entrada e a moldura de seleção que pulsa. Enquanto ela está ligada, as chaves “Prévias em vídeo” e “Música dos banners do 3DS” aparecem desligadas e explicam o motivo quando você aperta; as suas escolhas voltam quando o Duo Lite é desligado. Medido no Duo, com o launcher parado na tela inicial: a tela de cima normalmente redesenha uns 600 quadros em 5 segundos, e no Duo Lite, nenhum.
+  *Por quê:* para sessões longas na bateria, ou se você simplesmente prefere uma tela parada.
 
 ## Configurações e compartilhamento
 
-- **Uma tela de configurações como a de um console.** START abre uma página só: as categorias à esquerda (Aparência e som, Início e biblioteca, Jogo, IA e voz, Saves, transferência, partilha, Organizar, Sistema), as opções de uma categoria à direita com os valores atuais e as chaves de liga/desliga, e a tela de cima mostrando a versão, o espaço livre em cada unidade e quais serviços de IA estão ligados. L / R trocam de categoria.
-- **Compartilhe a sua configuração.** Configurações → Saves, transferência, partilha → Exportar minha configuração grava um zip com todas as configurações (visual, layout e ordem da tela inicial, pastas, o que está oculto, escolhas de emulador, serviços de IA) e as suas imagens. “Importar uma configuração” pega uma de `DuoLauncher/exports` ou da pasta Download – enviada por Wi-Fi, por um app de mensagens ou num cartão.
-  *Por que é seguro compartilhar:* chaves, senhas e histórico de jogo nunca entram numa configuração exportada, importar uma mantém as suas, e uma chave sua nunca é apontada para um endereço que veio da configuração de outra pessoa.
+- **Uma tela de configurações como a de um console.** START abre uma página só: as categorias à esquerda (Aparência e som, Início e biblioteca, Jogo, IA e voz, Saves, transferência, compartilhamento, Organizar, Sistema), as opções de uma categoria à direita com os valores atuais e as chaves de liga/desliga, e a tela de cima mostrando a versão, o espaço livre em cada unidade e quais serviços de IA estão ligados. L / R trocam de categoria.
+  Algumas opções são portas para um menu menor (Serviços de IA e chaves, Deixar a IA organizar a biblioteca, Central de problemas …). Com o cursor numa delas, uma linha no rodapé do cartão diz o que tem lá dentro, e o B, de dentro, volta para a mesma opção com os valores já atualizados.
+  *Por quê:* uma categoria com uma dúzia de opções vira um paredão numa tela de 1280×960. Agrupar as configurações menos usadas atrás de uma porta deixa cada categoria curta, e a nota de uma linha mostra o que uma porta guarda antes de você entrar.
+- **Faça backup ou compartilhe a sua configuração.** Configurações → Saves, transferência, compartilhamento → Exportar minha configuração pergunta o que incluir: as configurações e as suas imagens, o histórico de jogo, status, avaliações e notas dos jogos, chaves e contas, o uso da IA e as conversas, e os dados dos jogos nas pastas `DuoLauncher` – ou um de dois atalhos, *Compartilhar* (só configurações e imagens) e *Backup completo* (tudo). “Importar uma configuração” pega uma de `DuoLauncher/exports` ou da pasta Download – enviada por Wi-Fi, por um app de mensagens ou num cartão – e mostra o que ela traz, para você desmarcar o que deve ficar como está. Na página Wi-Fi, mandar um arquivo para *Configurações para importar* coloca o arquivo direto em `DuoLauncher/exports`, e ele já fica esperando em “Importar uma configuração”.
+  *Por quê:* uma configuração passada para um amigo nunca pode levar as suas chaves nem o seu histórico, enquanto um backup seu deve trazer de volta exatamente o mesmo launcher num portátil novo ou depois de reinstalar. Um backup completo guarda as suas chaves, então a exportação avisa para você não passá-lo adiante, e uma chave sua nunca é apontada para um endereço que veio da configuração de outra pessoa.
+- **Onde ficam os dados** (Configurações → Saves, transferência, compartilhamento) – para onde vai a pasta `DuoLauncher`: gêneros, séries e nomes dados pela IA de cada console, imagens baixadas ou desenhadas pela IA, backups dos saves, exportações, temas e a cópia das configurações descrita abaixo. “Junto com os jogos” é o padrão e o jeito de sempre: os dados de cada console no armazenamento onde estão os jogos dele, os backups no cartão. “Cartão” põe tudo no cartão TF, que leva os seus dados junto para outro portátil (sem cartão, o armazenamento interno quebra o galho por enquanto). “Interno” deixa tudo no portátil, mesmo quando você troca de cartão. O que foi gravado antes da mudança continua sendo lido onde está. Com “Cartão” ou “Interno” escolhido, “Mover os dados existentes para cá” mostra o tamanho e então traz as pastas `DuoLauncher` dos outros armazenamentos; os arquivos que já estão lá são mantidos, e as listas de cheats do NDS e as playlists de jogos com vários discos ficam onde os emuladores esperam.
+  *Por quê:* quem decide onde ficam os seus dados é você; nada disso vem fixo no código.
+- **Uma cópia automática das configurações e registros.** “Manter uma cópia das configurações e registros” (no mesmo menu, ligado por padrão) copia as configurações, as suas imagens, o tempo de jogo, status, avaliações e notas, a ordem dos jogos, o uso da IA e as conversas para `DuoLauncher/profile/` no armazenamento escolhido – a primeira vez em até um minuto, depois sempre que algo muda. A verificação acontece mais ou menos uma vez por minuto enquanto o launcher está na tela, nunca durante um jogo, e só a cópia mais recente é guardada. As chaves de API ficam de fora, a não ser que “Incluir as chaves de API na cópia” esteja ligado, com o aviso de que qualquer pessoa com o cartão poderia lê-las. “Salvar uma cópia agora” faz uma na hora e mostra quando foi feita a última. Depois de reinstalar, ou num portátil novo com o mesmo cartão, o guia de boas-vindas começa com “Encontramos suas configurações e registros anteriores”: “Restaurar” deixa você escolher as partes, como em “Importar uma configuração”, e “Começar do zero” deixa tudo como está.
+  *Por quê:* até agora, desinstalar ou restaurar o aparelho para os padrões de fábrica levava junto o tempo de jogo, as notas e as configurações, a menos que você tivesse lembrado de exportar tudo na mão.
 - **11 idiomas** – 简体中文, 繁體中文, English, 日本語, 한국어, Français, Español, Deutsch, Italiano, Português, Русский.
 
 ## Ferramentas úteis
 
-- **Transferência Wi-Fi** – Configurações → Saves, transferência, partilha → Transferência Wi-Fi mostra um endereço e um PIN. Abra o endereço num navegador na mesma rede, digite o PIN e solte ROMs ou pacotes de tema direto em qualquer pasta de console. A mesma página tem as configurações de IA, voz e RetroAchievements, protegidas por uma senha de administração (seis dígitos aleatórios, ou uma sua), para colar chaves longas pelo computador. A tela do portátil fica ligada enquanto a transferência está rodando, porque com a tela apagada não dá para acessar a página.
+- **Central de problemas** – a primeira opção de Configurações → Organizar. Ela verifica a biblioteca em segundo plano toda vez que você entra e junta tudo o que talvez mereça uma olhada, com uma contagem em cada linha:
+  - **Permissões que faltam** – abre a tela de permissões.
+  - **Arquivos não reconhecidos** – abre a pasta “Não reconhecidos”, onde A num arquivo escolhe o console dele.
+  - **Consoles sem emulador instalado** – escolha um console para ver os emuladores instalados (A passa a usar um deles) e os que o launcher sabe que funcionariam depois de instalados, além de *Abrir este console*.
+  - **Arquivos que não abrem** – arquivos vazios e arquivos que uma lista de jogos do Pegasus ou do ES-DE cita, mas que não estão no cartão.
+  - **Jogos sem capa** – um menuzinho com “Ver quais são os N jogos”, “Baixar capas” (roda ali mesmo com a linha “Procurando capas online…”, e depois o menu volta com o novo número e quantas foram achadas, ou avisa que nada foi encontrado online) e “Desenhar capas para estes N jogos com IA”.
+  - **Jogos duplicados** – mesmo console, mesmo nome e mesmo tamanho: quase certamente um jogo copiado duas vezes.
+
+  A primeira linha avisa que nada disso impede o launcher de funcionar, e só aparecem os problemas que existem de verdade. A tela *O que foi encontrado* do guia de boas-vindas também leva até aqui. B numa lista aberta daqui (Jogos sem capa, Jogos duplicados, Arquivos que não abrem) volta para a Central de problemas, não para a tela inicial.
+  *Por quê:* essas verificações viviam espalhadas pelas configurações, e um emulador faltando só aparecia quando um jogo não abria. Um lugar só, verificado quando você vai até ele e que nunca aparece sozinho, deixa você arrumar as coisas quando estiver a fim e ignorar o resto.
+- **Transferência Wi-Fi** – Configurações → Saves, transferência, compartilhamento → Transferência Wi-Fi mostra na tela de cima o endereço da página com um QR code ao lado, a senha de administração (seis dígitos aleatórios, ou uma sua) e uma listinha do que dá para fazer na página. Aponte a câmera do celular para o código, ou digite o endereço num navegador na mesma rede. O QR code é gerado no próprio portátil, então não precisa de internet. O B no menu Wi-Fi volta para onde você o abriu.
+  A página segue o modo claro ou escuro do celular ou do computador, e aparece no primeiro idioma preferido do navegador entre os onze do launcher (chinês tradicional para Taiwan, Hong Kong e Macau), ou em inglês se nenhum servir. Tudo nela é traduzido, com os mesmos nomes do app. Antes de ser desbloqueada, ela só pede a senha de administração e diz o que dá para fazer ali. Depois de desbloqueada (recarregar não manda a senha de novo), ela tem:
+  - **Enviar arquivos** – escolha uma pasta e solte os arquivos: ROMs em qualquer pasta de console, pacotes de tema, ou uma configuração em *Configurações para importar*, que vai para `DuoLauncher/exports` e aparece em Configurações → Importar uma configuração.
+  - **As configurações de Tradução por IA, Imagens por IA, Respostas de voz da IA e RetroAchievements**, para colar chaves longas pelo computador. Chaves salvas nunca aparecem inteiras.
+  - **Downloads** – toda configuração exportada, tema exportado e backup de saves, do mais novo para o mais antigo, com tamanho e data.
+
+  A tela do portátil fica ligada enquanto a transferência está rodando, porque com a tela apagada não dá para acessar a página.
+  *Por quê:* digitar um endereço no celular é a parte chata, e a câmera resolve isso num segundo. Os downloads ficam atrás da senha porque um backup completo pode ter as suas chaves de API, e uma página que qualquer um na mesma rede Wi-Fi consegue abrir não deve entregar isso.
 - **Armazenamento** – um bloco da tela inicial mostra o quanto o cartão está cheio, e o espaço livre de cada unidade na tela de cima. Lá dentro: o tamanho dos jogos de cada console, os maiores jogos nunca jogados e a opção de apagar os arquivos de um jogo (todos os discos e os arquivos citados num `.cue` ou `.m3u`) depois de uma confirmação.
 - **Backup de saves** – faça backup e restaure os saves do DraStic, RetroArch, PPSSPP, AetherSX2, DuckStation, Mupen64Plus FZ, Azahar e Citra num zip, guardado em `DuoLauncher/backups` no cartão SD (no armazenamento interno quando não há cartão). Depois de três horas de jogo sem backup o launcher avisa, ou faz um sozinho se você preferir (os dez backups automáticos mais recentes são mantidos; os seus nunca são apagados). Uma restauração só substitui cada save quando a cópia dele está completa. Y → “Saves” faz backup e restaura um jogo sozinho.
-- **Organizar** – encontrar jogos duplicados, listar jogos sem imagens, baixar as capas que faltam, traduzir todas as trapaças de uma vez e uma tela de diagnóstico; as ferramentas de IA (nomes e descrições de um console inteiro, gêneros, séries, imagens, ícones de gêneros) ficam em IA e voz.
+- **Organizar** – a Central de problemas, Armazenamento, “Baixar capas”, “Traduzir todas as trapaças” e uma tela de Diagnóstico. “Jogos duplicados” e “Jogos sem capa” agora ficam dentro da Central de problemas. As ferramentas de IA (nomes e descrições de um console inteiro, gêneros, séries, ícones de gêneros, imagens para a arte que falta) ficam em IA e voz → Deixar a IA organizar a biblioteca.
 - **Atualizações** – Configurações → Sistema → Sobre confere a release mais recente no GitHub uma vez por dia e leva até ela.
 - **Tela inicial** – defina como app de tela inicial padrão para ele abrir junto com o portátil; o bloco “Início do Android” (ou Configurações → Sistema → Sair para o início do Android) leva de volta à tela inicial do sistema, e Configurações → Sistema → Configurações do Android abre as configurações do próprio sistema.
 
 ## IA
 
-Tudo aqui é opcional e usa a sua própria conta. As chaves ficam guardadas nas configurações do launcher, no portátil, e são enviadas só para o serviço que você escolheu. Coloque-as em Configurações → IA e voz, ou na página Wi-Fi pelo computador ou celular.
+Tudo aqui é opcional e usa a sua própria conta. As chaves ficam guardadas nas configurações do launcher, no portátil, e são enviadas só para o serviço que você escolheu. Coloque-as em Configurações → IA e voz → Serviços de IA e chaves, ou na página Wi-Fi pelo computador ou celular.
+
+Configurações → IA e voz tem seis opções:
+
+- **Escolher com a IA** e **IA: o que jogar hoje** – o chat e as seis sugestões (veja [Seu companheiro de IA](#seu-companheiro-de-ia)).
+- **Serviços de IA e chaves** – Tradução por IA, Imagens por IA e Respostas de voz da IA, cada uma com o seu serviço e a sua chave, e *Digitar no computador ou celular (página Wi-Fi)*.
+- **Deixar a IA organizar a biblioteca** – “IA: nomes e descrições”, “IA: separar por gênero”, “IA: séries de jogos”, “IA: ícones de gêneros” e “IA: desenhar imagens que faltam”.
+- **Histórico de conversas com a IA** – as conversas anteriores e a chave “Salvar conversas com a IA”.
+- **Uso e custo da IA.**
+
+*Por quê:* essa categoria tinha treze opções numa lista só, misturando coisas do dia a dia com chaves que você coloca uma vez. Agora as duas coisas que as pessoas vêm buscar ficam no topo, a configuração de uma vez só fica atrás de uma porta, e as tarefas que passam pela biblioteca inteira ficam atrás de outra.
 
 - **Tradução por IA** – DeepSeek, Qwen, OpenAI, Claude, Gemini ou qualquer endereço compatível com a OpenAI. É essa chave que conversa: o chat, as sugestões de jogos, “Perguntar à IA”, “Como jogar”, gêneros e séries, nomes de cheats (um jogo inteiro num pedido só) e nomes e descrições de jogos no seu idioma (gravados nos metadados do próprio launcher junto com o título oficial em inglês, então uma biblioteca de títulos chineses fica natural em inglês e vice-versa). Sem chave, os cheats são traduzidos por serviços gratuitos.
 - **Imagens por IA** – uma chave de imagens da OpenAI (o modelo de imagem mais novo que a chave pode usar é escolhido automaticamente). Capas, logos de título, fundos, imagens de consoles, ícones e fundos de pastas e blocos, tudo no mesmo estilo de ícones de massinha e papel recortado da arte embutida; os ícones são desenhados com fundo transparente, para que as partes brancas fiquem. Uma imagem leva cerca de meio minuto. A mesma chave transforma a sua voz em texto (`/audio/transcriptions`), já que o portátil não tem reconhecimento de voz próprio.
 - **Respostas de voz da IA** – Soniox com chave própria, ou OpenAI com a chave de imagens; voz e velocidade (“Normal”, “Rápido”, “Muito rápido” – “Rápido” é o padrão, porque os dois leem chinês devagar).
 - **Uso e custo da IA** – cada pedido que o launcher faz é contado no portátil: pedidos, tokens, imagens e minutos de voz, com um custo estimado para hoje, esta semana, este mês e o total. A estimativa usa os preços públicos dos serviços para o que você usa; cada preço pode ser ajustado ao seu (outro modelo, um revendedor, um desconto). O que vale é a fatura do seu provedor.
+
+## Como ele encontra os seus jogos
+
+Para começar, você não precisa de arquivo de metadados, de scraper nem de uma organização de pastas específica: copie os jogos para o cartão e o launcher resolve o resto. Esta seção explica exatamente como, para você saber onde colocar as coisas e por que um jogo aparece onde aparece.
+
+### Onde ele procura
+
+- **Toda pasta `Roms` na raiz de um armazenamento** – o armazenamento interno e cada cartão SD. Maiúsculas não fazem diferença (`ROMs`, `roms`). Dá para desligar em Configurações → Início e biblioteca → Pastas de jogos → Encontrar pastas Roms automaticamente.
+- **Qualquer pasta que você adicionar** em Configurações → Início e biblioteca → Pastas de jogos, para jogos guardados em outro lugar.
+- **Até três níveis de pastas abaixo** dali. Pastas com imagens ou arquivos de emulador são puladas: `media`, `images`, `videos`, `covers`, `boxart`, `screenshots`, `manuals`, `marquees`, `wheel`, `saves`, `states`, `savestates`, `bios`, `system`, `cheats`, `downloaded_media`.
+- **Jogos de 3DS instalados no Azahar ou no Citra** (a partir da pasta `sdmc` deles) e **jogos de Android** também entram.
+
+O resultado de uma busca fica guardado, então a tela inicial abre em um segundo; jogos copiados depois são encontrados na próxima busca.
+
+*Por quê:* a maioria das pessoas já tem uma pasta `Roms` de outro frontend ou de um pack de ROMs. Partir dela significa não ter que mover, renomear nem configurar nada antes.
+
+### Organização recomendada
+
+Uma pasta por console, com o nome do console:
+
+```
+Roms/
+  3DS/      NDS/      GBA/      GBC/      GB/
+  NES/      SNES/     N64/      NGC/      WII/
+  MD/       PS1/      PS2/      PSP/      PSV/
+  SWITCH/   SATURN/   DC/       PCE/      ARCADE/  …
+```
+
+Os nomes das pastas são comparados de forma flexível (espaços, hífens e maiúsculas são ignorados), e os nomes de costume do Pegasus, do ES-DE e do RetroArch também funcionam:
+
+| Console | Nomes de pasta que ele entende | Tipos de arquivo que ele reconhece em qualquer lugar |
+|---|---|---|
+| Nintendo 3DS | `3ds`, `n3ds`, `nintendo3ds` | `.3ds` `.cci` `.cxi` `.cia` `.3dsx` |
+| Nintendo DS | `nds`, `ds`, `nintendods` | `.nds` `.dsi` |
+| Game Boy Advance | `gba`, `gameboyadvance` | `.gba` |
+| Game Boy Color | `gbc`, `gameboycolor` | `.gbc` |
+| Game Boy | `gb`, `gameboy` | `.gb` |
+| NES / Famicom | `nes`, `fc`, `famicom` | `.nes` `.fds` `.unf` |
+| SNES / Super Famicom | `snes`, `sfc`, `superfamicom`, `supernintendo` | `.sfc` `.smc` |
+| Nintendo 64 | `n64`, `nintendo64` | `.n64` `.z64` `.v64` |
+| GameCube | `ngc`, `gc`, `gamecube`, `nintendogamecube` | `.gcm` `.gcz` `.rvz` `.ciso` |
+| Wii | `wii`, `nintendowii` | `.wbfs` `.wad` |
+| Mega Drive / Genesis | `md`, `genesis`, `megadrive`, `segagenesis` | `.md` `.gen` `.smd` |
+| PlayStation | `ps1`, `psx`, `playstation` | `.pbp` |
+| PlayStation 2 | `ps2`, `playstation2` | – (precisa da pasta dele) |
+| PSP | `psp` | `.cso` |
+| PS Vita | `psv`, `psvita`, `vita` | `.vpk` |
+| Switch | `switch`, `ns`, `nintendoswitch` | `.nsp` `.xci` `.nsz` `.xcz` |
+| Virtual Boy | `vb`, `virtualboy` | `.vb` `.vboy` |
+| Master System | `sms`, `mastersystem` | `.sms` |
+| Game Gear | `gg`, `gamegear` | `.gg` |
+| 32X | `32x`, `sega32x`, `md32x` | `.32x` |
+| Mega-CD / Sega CD | `segacd`, `megacd`, `mdcd` | – (pelo conteúdo) |
+| Saturn | `saturn`, `ss`, `segasaturn` | – (pelo conteúdo) |
+| Dreamcast | `dc`, `dreamcast` | `.cdi` `.gdi` |
+| NAOMI / Atomiswave | `naomi`, `naomi2`, `atomiswave` | – (precisa da pasta dele) |
+| PC Engine / TurboGrafx-16 | `pce`, `pcengine`, `tg16` | `.pce` |
+| PC Engine CD | `pcecd`, `pcenginecd`, `tgcd` | – (precisa da pasta dele) |
+| PC-FX | `pcfx` | – (precisa da pasta dele) |
+| Neo Geo CD | `neogeocd`, `ngcd` | – (precisa da pasta dele) |
+| Neo Geo Pocket Color | `ngpc`, `ngp`, `neogeopocket` | `.ngp` `.ngc` |
+| WonderSwan | `ws`, `wonderswan` | `.ws` |
+| WonderSwan Color | `wsc`, `wonderswancolor` | `.wsc` |
+| Pokémon Mini | `pokemini` | `.min` |
+| Atari Lynx | `lynx`, `atarilynx` | `.lnx` |
+| Atari 2600 | `atari`, `atari2600`, `2600` | `.a26` |
+| Game & Watch | `gw`, `gameandwatch` | `.mgw` |
+| 3DO | `3do` | – (pelo conteúdo) |
+| DOS | `dos`, `msdos`, `pc` | `.dosz` |
+| Arcade | `arcade`, `mame`, `fbneo`, `fba`, `neogeo`, `cps1`/`cps2`/`cps3` | – (precisa da pasta dele) |
+
+### Pastas misturadas, e o que precisa de pasta própria
+
+Você também pode jogar tudo numa pasta só. Para cada arquivo, o launcher se pergunta, nesta ordem:
+
+1. **Você já disse de qual console ele é?** (veja o último ponto abaixo)
+2. **O nome da pasta diz?**
+3. **O tipo de arquivo pertence a um console só?** (a coluna da direita acima)
+4. **O que diz o próprio arquivo?** Nos tipos de arquivo que vários consoles usam, ele lê alguns bytes do começo do arquivo – é rápido mesmo num cartão grande:
+   - `.iso` – discos de GameCube, Wii, PSP, PlayStation, Saturn, Mega-CD e 3DO trazem cada um a sua própria marca; um disco de PlayStation com mais de 900 MB conta como PS2.
+   - `.rvz`, `.wia`, `.ciso` – o cabeçalho do disco diz se é GameCube ou Wii. (`.gcz` não dá para distinguir e conta como GameCube.)
+   - `.cue` – a primeira faixa do `.bin` que ele indica: PlayStation, Saturn, Mega-CD ou 3DO.
+   - `.chd` – um GD-ROM de Dreamcast ou um DVD de PS2; imagens de CD de outros consoles precisam da pasta deles.
+   - `.zip` – um único jogo dentro (até quatro arquivos) cujo tipo pertence a um console só, como um `.gba` dentro de um `.zip`. Sets de arcade, que têm muitas partes, precisam de uma pasta de arcade.
+   - `.m3u` – vale o que for o primeiro disco dele.
+
+O que continuar sem resposta depois disso (um `.7z`, por exemplo, ou o `.zip` de um jogo de arcade fora de uma pasta de arcade) não some: vai para uma pasta **Não reconhecidos** na tela inicial. Aperte A ou Y num desses jogos e escolha o console uma vez; a escolha fica guardada, continua valendo depois de uma nova busca e pode ser desfeita com Y → “De qual console é?” → “Restaurar padrão”. Nos pares `.cue` + `.bin` de PlayStation, só o `.cue` aparece na lista. A [Central de problemas](#ferramentas-úteis) conta esses arquivos em “Arquivos não reconhecidos” e abre a pasta para você.
+
+*Por quê:* chutar errado é pior do que não chutar – um jogo de PS2 tomado por PSP não iniciaria. Por isso o launcher só decide quando a pasta, o tipo de arquivo ou o cabeçalho do próprio arquivo dá uma resposta clara, e pergunta a você sobre o resto em vez de escondê-lo.
+
+### De onde vêm os nomes, as imagens e os detalhes
+
+Para cada jogo, vale a primeira fonte que tiver alguma coisa:
+
+1. **A pasta do próprio launcher, `DuoLauncher/`** (veja abaixo) – suas correções, traduções da IA, gêneros e séries. Nada passa por cima dela.
+2. **Pegasus** – um `metadata.pegasus.txt` na pasta dos jogos, com títulos, descrições, imagens, linhas de inicialização e listas de vários discos. Jogos copiados depois sem entrada continuam aparecendo.
+3. **ES-DE / EmulationStation** – `gamelist.xml` ao lado dos jogos ou em `ES-DE/gamelists/`, e as imagens em `downloaded_media/`.
+4. **Imagens ao lado dos jogos** – `media/<file name without extension>/`, ou uma imagem com o mesmo nome em `covers/`, `images/` ou `boxart/`.
+5. **Thumbnails do RetroArch.**
+6. **A tabela de jogos embutida** (3.860 nomes de arquivo conhecidos) – título oficial em inglês, gênero e série.
+7. **O próprio nome do arquivo.**
+
+Os arquivos de outros frontends só são lidos, nunca alterados, então Pegasus, ES-DE e Duo Launcher podem dividir o mesmo cartão.
+
+*Por quê:* as suas edições devem sempre ganhar, mas tudo o que você ou outro frontend já juntaram deve ser aproveitado, não jogado fora.
+
+### O que fica na pasta `DuoLauncher`
+
+O launcher guarda os próprios arquivos numa pasta `DuoLauncher` na raiz de um armazenamento. Por padrão, o que é de um console fica no armazenamento onde estão os jogos dele (normalmente o cartão SD); em Configurações → Saves, transferência, compartilhamento → Onde ficam os dados dá para pôr tudo no cartão ou no armazenamento interno (veja [Configurações e compartilhamento](#configurações-e-compartilhamento)). Listas de cheats e listas de discos ficam sempre no armazenamento interno:
+
+| Caminho | O que é |
+|---|---|
+| `DuoLauncher/<console>/metadata.txt` | Nomes, descrições e títulos em inglês que você ou a IA adicionaram (formato Pegasus, veja [Suas informações de jogo](#suas-informações-de-jogo)) |
+| `DuoLauncher/<console>/media/<file name without extension>/` | Logos, capas e fundos seus ou baixados |
+| `DuoLauncher/<console>/genres.txt`, `series.txt` | Gênero e série de cada jogo |
+| `DuoLauncher/cheats/NDS/` | As listas completas de cheats de NDS (armazenamento interno) |
+| `DuoLauncher/m3u/` | Listas de discos dos jogos de vários discos (armazenamento interno) |
+| `DuoLauncher/themes/` | Pacotes de temas (em qualquer armazenamento) |
+| `DuoLauncher/backups/` | Backups dos saves (no cartão SD quando ele tem uma pasta `DuoLauncher`) |
+| `DuoLauncher/exports/` | Configurações e temas exportados |
+| `DuoLauncher/profile/` | A cópia automática das suas configurações e registros (no armazenamento escolhido em “Onde ficam os dados”) |
+| `DuoLauncher/catalog.tsv` | Uma lista da sua biblioteca inteira, gravada para uso seu |
+
+Configurações como o layout da tela inicial, as pastas, as escolhas de emulador e o tempo de jogo ficam guardadas dentro do app, com uma cópia em `DuoLauncher/profile/` que se atualiza sozinha; Configurações → Saves, transferência, compartilhamento → Exportar minha configuração pode salvá-las num arquivo só, junto com tudo o que foi descrito acima (veja [Configurações e compartilhamento](#configurações-e-compartilhamento)).
 
 ## Suas informações de jogo
 
@@ -402,7 +610,7 @@ DuoLauncher/themes/my-theme/
   music.ogg (or music.mp3)       loops on the home screen (Settings → Background music appears when a theme has music)
 ```
 
-O `theme.txt` usa linhas `chave: valor`: `color.<name>` para o modo claro e `dark.color.<name>` para o escuro, com nomes como `accent`, `shelf-top`, `shelf-bottom`, `card`, `text`, `pill`, `footer`, `backdrop-paper` / `backdrop-ink` (o traço dos fundos da tela de cima) e `folder.<type>` para as pastas da tela inicial. Só `base-color: #RRGGBB` já basta para um esquema de cores completo. [themes/sakura](themes/sakura/theme.txt) é um exemplo completo, com cada chave explicada. Configurações → Saves, transferência, partilha → Exportar tema atual grava o que você montou num zip em `DuoLauncher/exports/`, que outras pessoas podem soltar na pasta `themes/` delas; as suas próprias imagens vão junto em `own/`. (A opção Configurações → Música de fundo aparece quando o tema tem música.)
+O `theme.txt` usa linhas `chave: valor`: `color.<name>` para o modo claro e `dark.color.<name>` para o escuro, com nomes como `accent`, `shelf-top`, `shelf-bottom`, `card`, `text`, `pill`, `footer`, `backdrop-paper` / `backdrop-ink` (o traço dos fundos da tela de cima) e `folder.<type>` para as pastas da tela inicial. Só `base-color: #RRGGBB` já basta para um esquema de cores completo. [themes/sakura](themes/sakura/theme.txt) é um exemplo completo, com cada chave explicada. Configurações → Saves, transferência, compartilhamento → Exportar tema atual grava o que você montou num zip em `DuoLauncher/exports/`, que outras pessoas podem soltar na pasta `themes/` delas; as suas próprias imagens vão junto em `own/`. (A opção Configurações → Música de fundo aparece quando o tema tem música.)
 
 ## Compilação
 

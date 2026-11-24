@@ -29,6 +29,8 @@ final class WifiServer {
     private final Map<String, File> targets = new LinkedHashMap<>();   // label -> folder
     private final Consumer<String> onReceived;
     private final AiSettings ai;
+    /** Exports and save backups the page offers for download (after the password), newest first. */
+    private final java.util.function.Supplier<List<File>> downloads;
     private ServerSocket server;
 
     /** The AI translation settings, filled in from a computer or phone instead of typing a long key on the handheld. */
@@ -53,10 +55,11 @@ final class WifiServer {
     /** Session cookie value for browsers that entered the admin password; new each time the page is switched on. */
     private final String token = Long.toHexString(new java.security.SecureRandom().nextLong()) + Long.toHexString(System.nanoTime());
 
-    WifiServer(Map<String, File> targets, Consumer<String> onReceived, AiSettings ai) {
+    WifiServer(Map<String, File> targets, Consumer<String> onReceived, AiSettings ai, java.util.function.Supplier<List<File>> downloads) {
         this.targets.putAll(targets);
         this.onReceived = onReceived;
         this.ai = ai;
+        this.downloads = downloads;
     }
 
     boolean running() { return server != null && !server.isClosed(); }
@@ -121,11 +124,15 @@ final class WifiServer {
             String method = parts[0], path = parts[1];
             long length = -1;
             String line, cookie = "";
+            LANG.set(I18n.forBrowser(null));
             while ((line = readLine(in)) != null && !line.isEmpty()) {
                 int k = line.indexOf(':');
                 if (k > 0 && line.substring(0, k).trim().equalsIgnoreCase("Content-Length"))
                     length = Long.parseLong(line.substring(k + 1).trim());
                 if (k > 0 && line.substring(0, k).trim().equalsIgnoreCase("Cookie")) cookie = line.substring(k + 1);
+                // the page speaks the browser's first language the launcher has, else English
+                if (k > 0 && line.substring(0, k).trim().equalsIgnoreCase("Accept-Language"))
+                    LANG.set(I18n.forBrowser(line.substring(k + 1)));
             }
             boolean admin = ai != null && cookie.contains("duo=" + token);
             if (method.equals("POST") && (path.equals("/ai") || path.equals("/login")) && ai != null && length >= 0 && length < 16384) {
@@ -144,12 +151,13 @@ final class WifiServer {
                         ok = pw != null && !pw.isEmpty() && pw.equals(f.getOrDefault("pw", "").trim());
                         if (!ok) Thread.sleep(1500);   // slows down guessing, one guess at a time
                     }
-                    if (ok) reply(out, "200 OK", "text/html; charset=utf-8", page(true, null), "Set-Cookie: duo=" + token + "; Path=/; HttpOnly; SameSite=Strict");
-                    else reply(out, "200 OK", "text/html; charset=utf-8", page(false, "Wrong password · 密码不对"));
+                    if (ok) // back to the page itself, so a reload does not send the password again
+                        reply(out, "303 See Other", "text/plain", "", "Location: /\r\nSet-Cookie: duo=" + token + "; Path=/; HttpOnly; SameSite=Strict");
+                    else reply(out, "200 OK", "text/html; charset=utf-8", page(false, w(I18n.S.W_WRONG_PASSWORD_TRY_AGAIN), false));
                     return;
                 }
                 if (!admin) {
-                    reply(out, "403 Forbidden", "text/html; charset=utf-8", page(false, null));
+                    reply(out, "403 Forbidden", "text/html; charset=utf-8", page(false, null, false));
                     return;
                 }
                 String key = f.getOrDefault("key", "").trim();
@@ -163,7 +171,25 @@ final class WifiServer {
                 String tp = f.getOrDefault("tts", "off");
                 if (!tp.equals("soniox") && !tp.equals("openai")) tp = "off";
                 ai.saveVoice(tp, f.getOrDefault("tts_voice", "").trim(), sk.isEmpty() ? null : sk);
-                reply(out, "200 OK", "text/html; charset=utf-8", page(true, "Saved · 已保存"));
+                reply(out, "200 OK", "text/html; charset=utf-8", page(true, w(I18n.S.W_SAVED), true));
+                return;
+            }
+            if (method.equals("GET") && path.startsWith("/download?")) {
+                // exports and backups can hold API keys and play history: only after the password
+                if (ai == null || !admin || downloads == null) {
+                    reply(out, "403 Forbidden", "text/plain", "enter the password first");
+                    return;
+                }
+                // by name, so a backup made after the page was loaded cannot shift which file a link fetches;
+                // only a name from the list itself is accepted
+                String n = query(path.substring(path.indexOf('?') + 1)).get("f");
+                File hit = null;
+                if (n != null) for (File f : downloads.get()) if (f.getName().equals(n) && f.isFile()) { hit = f; break; }
+                if (hit == null) {
+                    reply(out, "404 Not Found", "text/plain", "not found");
+                    return;
+                }
+                send(out, hit);
                 return;
             }
             if (method.equals("PUT") && path.startsWith("/upload?")) {
@@ -199,7 +225,7 @@ final class WifiServer {
                 onReceived.accept(name);
                 reply(out, "200 OK", "text/plain", "ok");
             } else {
-                reply(out, "200 OK", "text/html; charset=utf-8", page(admin, null));
+                reply(out, "200 OK", "text/html; charset=utf-8", page(admin, null, false));
             }
         } catch (Exception ignored) {
         }
@@ -227,92 +253,208 @@ final class WifiServer {
         out.flush();
     }
 
-    private static String esc(String s) { return s.replace("&", "&amp;").replace("<", "&lt;").replace("\"", "&quot;"); }
-
-    /** Settings are locked until the admin password shown on the handheld is entered. */
-    private String settings(boolean admin, String note) {
-        if (ai == null) return "";
-        String msg = note == null ? "" : "<p style='color:#2f8bff;font-weight:600'>" + esc(note) + "</p>";
-        if (admin) return aiForm(msg);
-        return "<form class=card method=post action=/login style='margin-top:18px'><h1>Settings · 设置</h1>" + msg
-                + "<p style='font-size:14px;color:#5c6b7a'>Enter the admin password shown on the handheld (Settings → Wi-Fi transfer). "
-                + "输入掌机上显示的管理密码（设置 → Wi-Fi 传输）。</p>"
-                + "<input name=pw type=password inputmode=numeric autocomplete=off placeholder='••••••'>"
-                + "<button style='margin-top:12px;background:#2f8bff;color:#fff;border:0'>Unlock · 解锁</button></form>";
+    /** Streams a file as a download under its own name. */
+    private static void send(OutputStream out, File f) throws IOException {
+        String name = f.getName().replaceAll("[^A-Za-z0-9._-]", "_");
+        out.write(("HTTP/1.1 200 OK\r\nContent-Type: application/zip\r\nContent-Length: " + f.length()
+                + "\r\nContent-Disposition: attachment; filename=\"" + name + "\"\r\nCache-Control: no-store\r\nConnection: close\r\n\r\n")
+                .getBytes(StandardCharsets.UTF_8));
+        try (InputStream in = new java.io.FileInputStream(f)) {
+            byte[] buf = new byte[256 * 1024];
+            int r;
+            while ((r = in.read(buf)) > 0) out.write(buf, 0, r);
+        }
+        out.flush();
     }
 
-    /** Settings card for AI translation; the key field is never filled in, only its masked form is shown. */
-    private String aiForm(String msg) {
+    // ---- the page: in the browser's language (any of the launcher's 11), light or dark like the phone ----
+
+    /** The language of the page being built: an index into I18n.CODES, or -1 for English. */
+    private static final ThreadLocal<Integer> LANG = ThreadLocal.withInitial(() -> -1);
+
+    /** The page's language: the browser's, else English. */
+    private static int lang() { int i = LANG.get(); return i < 0 ? 2 : i; }
+
+    private static String w(I18n.S s) { return I18n.t(s, lang()); }
+
+    private static final String CSS = ":root{--bg:#eef3f7;--card:#fff;--text:#1f2a36;--sub:#5c6b7a;--line:#e3e9ef;--field:#f6f8fb;--accent:#2f8bff}"
+            + "@media(prefers-color-scheme:dark){:root{--bg:#11151b;--card:#1b222b;--text:#e8edf2;--sub:#94a2b1;--line:#2b343f;--field:#141a21}}"
+            + "*{box-sizing:border-box}"
+            + "body{font-family:system-ui,-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;background:var(--bg);color:var(--text);margin:0;padding:20px 16px 36px;-webkit-text-size-adjust:100%}"
+            + ".wrap{max-width:560px;margin:auto}"
+            + "header{display:flex;align-items:center;gap:14px;margin:6px 4px 20px}"
+            + ".mark{width:52px;height:52px;border-radius:16px;background:linear-gradient(135deg,#6c8cff,#9b5de5);display:grid;place-items:center;flex:none;box-shadow:0 6px 16px #6c5ce740}"
+            + "header h1{font-size:21px;margin:0}header p{margin:3px 0 0;font-size:13px;color:var(--sub)}"
+            + ".card{background:var(--card);border-radius:22px;padding:22px;margin-bottom:16px;box-shadow:0 6px 24px #0000000d}"
+            + "h2{font-size:17px;margin:0 0 6px;display:flex;align-items:center;gap:12px}"
+            + ".sub{font-size:14px;color:var(--sub);line-height:1.6;margin:8px 0 4px}"
+            + "label{display:block;font-size:13px;margin:16px 0 6px;color:var(--sub)}"
+            + "input,select{font:inherit;font-size:16px;padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:var(--field);color:var(--text);width:100%}"
+            + "input:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px #2f8bff33}"
+            + "button{font:inherit;font-size:16px;font-weight:600;padding:14px;border-radius:14px;border:0;background:var(--accent);color:#fff;width:100%;margin-top:18px;cursor:pointer}"
+            + "button:active{transform:scale(.99)}"
+            + ".pin{font-size:26px;letter-spacing:.45em;text-align:center;padding:14px 14px 14px calc(14px + .45em)}"
+            + ".note{padding:11px 14px;border-radius:12px;font-size:14px;margin:0 0 16px}"
+            + ".ok{background:#2bae661f;color:#1f9d5a}.bad{background:#e5484d1f;color:#d93c41}"
+            + ".feat{display:grid;gap:14px;margin:4px 0 0;padding:0;list-style:none}"
+            + ".feat li{display:flex;gap:12px;align-items:flex-start;font-size:14px;line-height:1.5;color:var(--sub)}"
+            + ".feat b{display:block;color:var(--text);font-size:15px;font-weight:600}"
+            + ".dot{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;flex:none}"
+            + "#drop{margin-top:16px;border:2px dashed var(--line);border-radius:18px;padding:34px 14px;text-align:center;color:var(--sub);cursor:pointer;line-height:1.6}"
+            + "#drop:hover,#drop.on{border-color:var(--accent);color:var(--accent)}"
+            + ".row{margin-top:12px;font-size:14px;word-break:break-all}"
+            + ".bar{height:8px;background:var(--line);border-radius:4px;overflow:hidden;margin-top:6px}"
+            + ".bar i{display:block;height:100%;width:0;background:var(--accent)}"
+            + ".dl{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 0;border-top:1px solid var(--line);color:var(--accent);text-decoration:none;word-break:break-all;font-size:15px}"
+            + ".dl span{color:var(--sub);font-size:13px;white-space:nowrap}"
+            + ".group{border-top:1px solid var(--line);margin-top:24px;padding-top:20px}"
+            + "footer{text-align:center;font-size:12px;color:var(--sub);margin-top:6px}footer a{color:inherit}";
+
+    /** A line icon (24-unit box, round strokes). */
+    private static String svg(String body, int size, String color) {
+        return "<svg width=" + size + " height=" + size + " viewBox='0 0 24 24' fill=none stroke='" + color
+                + "' stroke-width=2 stroke-linecap=round stroke-linejoin=round>" + body + "</svg>";
+    }
+
+    /** An icon on a soft tile of its colour. */
+    private static String dot(String body, String color) {
+        return "<span class=dot style='background:" + color + "1f'>" + svg(body, 20, color) + "</span>";
+    }
+
+    private static final String I_HANDHELD = "<rect x='6.5' y='2.5' width='11' height='19' rx='2.5'/><path d='M6.5 12h11M10 17.5h4'/>";
+    private static final String I_UPLOAD = "<path d='M12 15V4M7 9l5-5 5 5M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3'/>";
+    private static final String I_KEY = "<circle cx='8' cy='15' r='4'/><path d='M11 12l9-9M17 6l3 3M14 9l2 2'/>";
+    private static final String I_BOX = "<path d='M12 4v11M7 10l5 5 5-5M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3'/>";
+    private static final String I_LOCK = "<rect x='5' y='11' width='14' height='10' rx='2.5'/><path d='M8 11V8a4 4 0 0 1 8 0v3'/>";
+    private static final String I_TEXT = "<path d='M4 6h16M4 12h10M4 18h7M17 14l2 5 2-5M17.8 17h2.4'/>";
+    private static final String I_IMAGE = "<rect x='3.5' y='4.5' width='17' height='15' rx='2.5'/><circle cx='9' cy='10' r='1.6'/><path d='M4 17l5-4 4 3 3-2 4 3'/>";
+    private static final String I_VOICE = "<path d='M12 4v16M8 8v8M16 8v8M4 11v2M20 11v2'/>";
+    private static final String I_TROPHY = "<path d='M8 4h8v6a4 4 0 0 1-8 0zM12 14v4M8 20h8M8 6H5a3 3 0 0 0 3 5M16 6h3a3 3 0 0 1-3 5'/>";
+
+    private static String head() {
+        return "<!doctype html><html lang=" + I18n.CODES[lang()] + "><head><meta charset=utf-8>"
+                + "<meta name=viewport content='width=device-width,initial-scale=1'><meta name=color-scheme content='light dark'>"
+                + "<title>Duo Launcher · " + w(I18n.S.W_WI_FI_TRANSFER) + "</title><style>" + CSS + "</style></head><body><div class=wrap>"
+                + "<header><span class=mark>" + svg(I_HANDHELD, 28, "#fff") + "</span><div><h1>Duo Launcher</h1><p>"
+                + w(I18n.S.W_WI_FI_TRANSFER_ON) + "</p></div></header>";
+    }
+
+    private static String foot() {
+        return "<footer>Duo Launcher · <a href='https://github.com/GenKnot/DuoLauncher' target=_blank rel=noopener>GitHub</a></footer></div>";
+    }
+
+    /** What the page is for, as three short points. */
+    private static String features() {
+        return "<ul class=feat>"
+                + "<li>" + dot(I_UPLOAD, "#2f8bff") + "<div><b>" + w(I18n.S.W_SEND_GAMES_AND_THEMES) + "</b>"
+                + w(I18n.S.W_STRAIGHT_INTO_THE_RIGHT) + "</div></li>"
+                + "<li>" + dot(I_KEY, "#9b5de5") + "<div><b>" + w(I18n.S.W_TYPE_YOUR_KEYS_HERE) + "</b>"
+                + w(I18n.S.W_AI_AND_RETROACHIEVEMENTS_KEYS) + "</div></li>"
+                + "<li>" + dot(I_BOX, "#2bae66") + "<div><b>" + w(I18n.S.W_CONFIGS_AND_BACKUPS) + "</b>"
+                + w(I18n.S.W_SEND_A_CONFIG_TO) + "</div></li>"
+                + "</ul>";
+    }
+
+    private static String note(String text, boolean ok) {
+        return text == null ? "" : "<p class='note " + (ok ? "ok" : "bad") + "'>" + esc(text) + "</p>";
+    }
+
+    /** The downloads card: every export and save backup, newest first, with its size and date. */
+    private String downloadsCard() {
+        if (downloads == null) return "";
+        List<File> files = downloads.get();
+        StringBuilder b = new StringBuilder("<div class=card><h2>" + dot(I_BOX, "#2bae66") + w(I18n.S.W_DOWNLOADS) + "</h2>"
+                + "<p class=sub>" + w(I18n.S.W_EXPORTED_CONFIGS_AND_THEMES) + "</p>");
+        if (files.isEmpty()) b.append("<p class=sub>").append(w(I18n.S.W_NOTHING_YET)).append("</p>");
+        java.text.SimpleDateFormat df = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.ROOT);
+        for (int i = 0; i < files.size(); i++) {
+            File f = files.get(i);
+            String size = f.length() >= 1L << 20 ? (f.length() >> 20) + " MB" : Math.max(1, f.length() >> 10) + " KB";
+            b.append("<a class=dl href='/download?f=").append(esc(android.net.Uri.encode(f.getName()))).append("'>").append(esc(f.getName()))
+                    .append("<span>").append(size).append(" · ").append(df.format(new java.util.Date(f.lastModified()))).append("</span></a>");
+        }
+        return b.append("</div>").toString();
+    }
+
+    private static String esc(String s) { return s.replace("&", "&amp;").replace("<", "&lt;").replace("\"", "&quot;"); }
+
+    private static String keyField(String name, String masked, String empty) {
+        return "<input name=" + name + " type=password autocomplete=off placeholder='"
+                + (masked.isEmpty() ? empty : w(I18n.S.W_UNCHANGED)) + "'>";
+    }
+
+    private static String keyLabel(String label, String masked) {
+        return "<label>" + label + (masked.isEmpty() ? "" : " · " + esc(masked)) + "</label>";
+    }
+
+    /** The settings form; key fields are never filled in, only their masked form is shown. */
+    private String aiForm() {
         String[] c = ai.current(), ci = ai.currentImage(), cr = ai.currentRa(), cv = ai.currentVoice();
         StringBuilder tts = new StringBuilder();
-        for (String[] o : new String[][]{{"off", "Off · 关闭"}, {"soniox", "Soniox"}, {"openai", "OpenAI (image key · 用生图密钥)"}})
+        for (String[] o : new String[][]{{"off", w(I18n.S.W_OFF)}, {"soniox", "Soniox"}, {"openai", w(I18n.S.W_OPENAI_USES_THE_PICTURE)}})
             tts.append("<option value=").append(o[0]).append(o[0].equals(cv[0]) ? " selected>" : ">").append(o[1]).append("</option>");
         StringBuilder opts = new StringBuilder();
         for (String[] p : Ai.PROVIDERS)
             opts.append("<option value=\"").append(p[0]).append(p[0].equals(c[0]) ? "\" selected>" : "\">")
-                    .append(esc(p[1] == null ? "Custom · 自定义" : p[1])).append("</option>");
-        return "<form class=card method=post action=/ai style='margin-top:18px'><h1>AI translation · AI 翻译</h1>" + msg
-                + "<p style='font-size:14px;color:#5c6b7a'>Cheat names are translated by this service when a key is set. "
-                + "Leave address and model empty for the service's default. 填入密钥后用 AI 翻译金手指；地址和模型留空即用默认。</p>"
-                + "<label>Service · 服务</label><select name=provider>" + opts + "</select>"
-                + "<label>API key · 密钥" + (c[3].isEmpty() ? "" : " (" + esc(c[3]) + ")") + "</label>"
-                + "<input name=key type=password autocomplete=off placeholder='" + (c[3].isEmpty() ? "sk-…" : "unchanged · 不修改") + "'>"
-                + "<label>Model · 模型</label><input name=model value=\"" + esc(c[2]) + "\" placeholder=default>"
-                + "<label>Address · 接口地址</label><input name=url value=\"" + esc(c[1]) + "\" placeholder=default>"
-                + "<h1 style='margin-top:22px'>AI pictures · AI 生图</h1>"
-                + "<label>Image API key (OpenAI) · 生图密钥" + (ci[2].isEmpty() ? "" : " (" + esc(ci[2]) + ")") + "</label>"
-                + "<input name=img_key type=password autocomplete=off placeholder='" + (ci[2].isEmpty() ? "sk-…" : "unchanged · 不修改") + "'>"
-                + "<label>Image model · 生图模型</label><input name=img_model value=\"" + esc(ci[1]) + "\" placeholder=auto>"
-                + "<label>Image address · 生图接口地址</label><input name=img_url value=\"" + esc(ci[0]) + "\" placeholder=https://api.openai.com/v1>"
-                + "<h1 style='margin-top:22px'>AI voice replies · AI 语音回复</h1>"
-                + "<p style='font-size:14px;color:#5c6b7a'>Reads the AI chat's answers aloud. 聊天时把 AI 的回答读出来。</p>"
-                + "<label>Voice service · 语音服务</label><select name=tts>" + tts + "</select>"
-                + "<label>Soniox API key · Soniox 密钥" + (cv[2].isEmpty() ? "" : " (" + esc(cv[2]) + ")") + "</label>"
-                + "<input name=soniox_key type=password autocomplete=off placeholder='" + (cv[2].isEmpty() ? "" : "unchanged · 不修改") + "'>"
-                + "<label>Voice · 声音</label><input name=tts_voice value=\"" + esc(cv[1]) + "\" placeholder='Soniox: Adrian · OpenAI: coral'>"
-                + "<h1 style='margin-top:22px'>RetroAchievements</h1>"
-                + "<label>User name · 用户名</label><input name=ra_user value=\"" + esc(cr[0]) + "\">"
-                + "<label>Web API key · 密钥 (retroachievements.org → Settings)" + (cr[1].isEmpty() ? "" : " (" + esc(cr[1]) + ")") + "</label>"
-                + "<input name=ra_key type=password autocomplete=off placeholder='" + (cr[1].isEmpty() ? "" : "unchanged · 不修改") + "'>"
-                + "<button style='margin-top:16px;background:#2f8bff;color:#fff;border:0'>Save · 保存</button></form>";
+                    .append(esc(p[1] == null ? w(I18n.S.W_CUSTOM) : p[1])).append("</option>");
+        return "<form class=card method=post action=/ai>"
+                + "<h2>" + dot(I_TEXT, "#2f8bff") + w(I18n.S.W_AI_TRANSLATION) + "</h2>"
+                + "<p class=sub>" + w(I18n.S.W_TRANSLATES_GAME_NAMES_DESCRIPTIONS) + "</p>"
+                + "<label>" + w(I18n.S.W_SERVICE) + "</label><select name=provider>" + opts + "</select>"
+                + keyLabel(w(I18n.S.W_API_KEY), c[3]) + keyField("key", c[3], "sk-…")
+                + "<label>" + w(I18n.S.W_MODEL) + "</label><input name=model value=\"" + esc(c[2]) + "\" placeholder='" + w(I18n.S.W_DEFAULT) + "'>"
+                + "<label>" + w(I18n.S.W_ADDRESS) + "</label><input name=url value=\"" + esc(c[1]) + "\" placeholder='" + w(I18n.S.W_DEFAULT) + "'>"
+                + "<div class=group><h2>" + dot(I_IMAGE, "#e07a3f") + w(I18n.S.W_AI_PICTURES) + "</h2>"
+                + "<p class=sub>" + w(I18n.S.W_DRAWS_COVERS_ICONS_AND) + "</p>"
+                + keyLabel(w(I18n.S.W_PICTURE_API_KEY_OPENAI), ci[2]) + keyField("img_key", ci[2], "sk-…")
+                + "<label>" + w(I18n.S.W_PICTURE_MODEL) + "</label><input name=img_model value=\"" + esc(ci[1]) + "\" placeholder='" + w(I18n.S.W_AUTOMATIC) + "'>"
+                + "<label>" + w(I18n.S.W_PICTURE_ADDRESS) + "</label><input name=img_url value=\"" + esc(ci[0]) + "\" placeholder=https://api.openai.com/v1></div>"
+                + "<div class=group><h2>" + dot(I_VOICE, "#14a38b") + w(I18n.S.W_AI_VOICE_REPLIES) + "</h2>"
+                + "<p class=sub>" + w(I18n.S.W_READS_THE_AI_CHAT) + "</p>"
+                + "<label>" + w(I18n.S.W_VOICE_SERVICE) + "</label><select name=tts>" + tts + "</select>"
+                + keyLabel(w(I18n.S.W_SONIOX_API_KEY), cv[2]) + keyField("soniox_key", cv[2], "")
+                + "<label>" + w(I18n.S.W_VOICE) + "</label><input name=tts_voice value=\"" + esc(cv[1]) + "\" placeholder='Soniox: Adrian · OpenAI: coral'></div>"
+                + "<div class=group><h2>" + dot(I_TROPHY, "#f2a93b") + "RetroAchievements</h2>"
+                + "<p class=sub>" + w(I18n.S.W_SHOWS_YOUR_ACHIEVEMENT_PROGRESS) + "</p>"
+                + "<label>" + w(I18n.S.W_USER_NAME) + "</label><input name=ra_user value=\"" + esc(cr[0]) + "\" autocomplete=off>"
+                + keyLabel("Web API key", cr[1]) + keyField("ra_key", cr[1], "") + "</div>"
+                + "<button>" + w(I18n.S.W_SAVE) + "</button></form>";
     }
 
-    private String page(boolean admin, String note) {
+    private String page(boolean admin, String note, boolean ok) {
         if (ai != null && !admin) {
-            // locked: only the password form, which unlocks both uploads and settings
-            return "<!doctype html><html><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'>"
-                    + "<title>Duo Launcher</title><style>"
-                    + "body{font-family:system-ui,sans-serif;background:#eef3f7;color:#1f2a36;margin:0;padding:24px}"
-                    + ".card{max-width:560px;margin:auto;background:#fff;border-radius:20px;padding:24px;box-shadow:0 6px 24px #0001}"
-                    + "h1{font-size:22px;margin:0 0 16px}button,input{font-size:16px;padding:10px;border-radius:12px;border:1px solid #cdd6df;width:100%;box-sizing:border-box}"
-                    + "</style></head><body><div class=card><h1>Duo Launcher · Wi-Fi</h1>"
-                    + "<p style='font-size:14px;color:#5c6b7a'>Uploading files and changing settings need the password shown on the "
-                    + "handheld. 上传文件和修改设置都要先输入掌机上显示的密码。</p></div>"
-                    + settings(false, note) + "</body></html>";
+            // locked: only the password, which unlocks uploads, settings and downloads
+            return head()
+                    + "<form class=card method=post action=/login>" + note(note, ok)
+                    + "<h2>" + dot(I_LOCK, "#2f8bff") + w(I18n.S.W_ENTER_THE_ADMIN_PASSWORD) + "</h2>"
+                    + "<p class=sub>" + w(I18n.S.W_IT_S_SHOWN_ON) + "</p>"
+                    + "<input class=pin name=pw type=password inputmode=numeric autocomplete=off autofocus placeholder='••••••' aria-label='"
+                    + w(I18n.S.W_ADMIN_PASSWORD) + "'>"
+                    + "<button>" + w(I18n.S.W_UNLOCK) + "</button></form>"
+                    + "<div class=card><h2>" + w(I18n.S.W_WHAT_YOU_CAN_DO) + "</h2>" + features() + "</div>"
+                    + foot() + "</body></html>";
         }
         StringBuilder opts = new StringBuilder();
         int i = 0;
         for (String label : targets.keySet()) opts.append("<option value=\"").append(i++).append("\">").append(esc(label)).append("</option>");
-        return "<!doctype html><html><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'>"
-                + "<title>Duo Launcher</title><style>"
-                + "body{font-family:system-ui,sans-serif;background:#eef3f7;color:#1f2a36;margin:0;padding:24px}"
-                + ".card{max-width:560px;margin:auto;background:#fff;border-radius:20px;padding:24px;box-shadow:0 6px 24px #0001}"
-                + "h1{font-size:22px;margin:0 0 16px}select,button,input{font-size:16px;padding:10px;border-radius:12px;border:1px solid #cdd6df;width:100%;box-sizing:border-box}"
-                + "label{display:block;font-size:14px;margin:12px 0 4px;color:#5c6b7a}"
-                + "#drop{margin-top:14px;border:2px dashed #9fb3c8;border-radius:16px;padding:36px 12px;text-align:center;color:#5c6b7a;cursor:pointer}"
-                + ".row{margin-top:10px;font-size:14px}.bar{height:8px;background:#e3e9ef;border-radius:4px;overflow:hidden}"
-                + ".bar i{display:block;height:100%;width:0;background:#2f8bff}</style></head><body><div class=card>"
-                + "<h1>Duo Launcher · Wi-Fi</h1><select id=to>" + opts + "</select>"
-                + "<div id=drop>⬆ Drop files here or tap to choose<input id=f type=file multiple hidden></div><div id=list></div></div>"
-                + settings(admin, note)
+        return head() + note(note, ok)
+                + "<div class=card><h2>" + dot(I_UPLOAD, "#2f8bff") + w(I18n.S.W_SEND_FILES) + "</h2>"
+                + "<p class=sub>" + w(I18n.S.W_PICK_THE_FOLDER_THEN) + "</p>"
+                + "<label>" + w(I18n.S.W_SEND_TO) + "</label><select id=to>" + opts + "</select>"
+                + "<div id=drop>" + svg(I_UPLOAD, 28, "currentColor") + "<br>" + w(I18n.S.W_DROP_FILES_HERE_OR)
+                + "<input id=f type=file multiple hidden></div><div id=list></div></div>"
+                + (ai != null ? aiForm() + downloadsCard() : "")
+                + foot()
                 + "<script>const d=document.getElementById('drop'),f=document.getElementById('f');"
                 + "d.onclick=()=>f.click();f.onchange=()=>send([...f.files]);"
-                + "d.ondragover=e=>{e.preventDefault()};d.ondrop=e=>{e.preventDefault();send([...e.dataTransfer.files])};"
+                + "d.ondragover=e=>{e.preventDefault();d.classList.add('on')};d.ondragleave=()=>d.classList.remove('on');"
+                + "d.ondrop=e=>{e.preventDefault();d.classList.remove('on');send([...e.dataTransfer.files])};"
                 + "async function send(files){for(const file of files){const row=document.createElement('div');row.className='row';"
-                + "row.innerHTML=file.name+'<div class=bar><i></i></div>';document.getElementById('list').prepend(row);"
+                + "row.textContent=file.name;const bar=document.createElement('div');bar.className='bar';bar.innerHTML='<i></i>';row.append(bar);"
+                + "document.getElementById('list').prepend(row);const i=bar.querySelector('i');"
                 + "await new Promise(res=>{const x=new XMLHttpRequest();x.open('PUT','/upload?to='+document.getElementById('to').value+'&name='+encodeURIComponent(file.name));"
-                + "x.upload.onprogress=e=>{row.querySelector('i').style.width=(100*e.loaded/e.total)+'%'};"
-                + "x.onload=()=>{row.querySelector('i').style.width='100%';row.querySelector('i').style.background=x.status==200?'#2bae66':'#e5484d';res()};"
-                + "x.onerror=()=>{row.querySelector('i').style.background='#e5484d';res()};x.send(file)})}}</script></body></html>";
+                + "x.upload.onprogress=e=>{i.style.width=(100*e.loaded/e.total)+'%'};"
+                + "x.onload=()=>{i.style.width='100%';i.style.background=x.status==200?'#2bae66':'#e5484d';res()};"
+                + "x.onerror=()=>{i.style.background='#e5484d';res()};x.send(file)})}}</script></body></html>";
     }
 }

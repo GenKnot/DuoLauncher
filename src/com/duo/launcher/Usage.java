@@ -39,6 +39,12 @@ final class Usage {
         }
     }
 
+    /** Reads the record again (after a config import replaced the file). */
+    static synchronized void reload(Context c) {
+        file = null;
+        init(c);
+    }
+
     private static String day(Date d) { return new SimpleDateFormat("yyyy-MM-dd", Locale.ROOT).format(d); }
 
     private static synchronized void add(String kind, long n, long in, long out, double seconds, double usd) {

@@ -24,7 +24,7 @@ Suggestions and bug reports are welcome on the [issue tracker](https://github.co
 ## Highlights
 
 - **Two screens, one launcher** – choose on the lower screen; see logos, cover art, video previews, play time and descriptions on the upper one.
-- **Every emulator in one place** – 3DS, NDS, GBA, GB/GBC, NES, SNES, N64, GameCube, Wii, Mega Drive, PS1, PS2, PSP, PS Vita and Switch, with the emulator chosen per console or per game. Multi-disc games show as one.
+- **Every emulator in one place** – 3DS, NDS, GBA, GB/GBC, NES, SNES, N64, GameCube, Wii, Mega Drive, PS1, PS2, PSP, PS Vita and Switch, plus 22 older consoles through RetroArch (Master System to Dreamcast, PC Engine, Neo Geo, WonderSwan, Atari, arcade, DOS …), with the emulator chosen per console or per game. Multi-disc games show as one.
 - **Sorted for you** – every game filed under one of 14 genres and under its series (Ys, Castlevania, Super Robot Wars …). The home page shows your library by console, genre or series, and smart folders keep "recently added", "playing", "want to play", "finished" and "top rated" up to date.
 - **An AI companion** – hold R anywhere and talk: it recommends from your own library, explains how to get past a part of a game, tells you about a story, or just chats. The answers can be read aloud.
 - **Cheats, managed** – thousands of ready-made cheats for 3DS, NDS, PSP, GBA and every RetroArch system, translated into your language in one tap, editable, and shared between emulators.
@@ -184,10 +184,19 @@ Suggestions and bug reports are welcome on the [issue tracker](https://github.co
 ## Getting started
 
 1. **Install the APK** from the [Releases page](https://github.com/GenKnot/DuoLauncher/releases/latest) and open it.
-2. **Pick a language**, then grant the permissions it asks for on one page: file access (to find your games), usage access (so play time counts only the time a game is really on screen) and, if you like, the home screen role. You can come back to this page any time under Settings → System → Permissions.
+2. **Follow the welcome guide.** On the first start a short guide walks through the setup, one page at a time:
+   - **Your earlier settings and records were found** – shown first, and only when the launcher's automatic copy turns up on a storage (after a reinstall, or on a new handheld with the same card). *Bring them back* lets you pick which parts to restore, as in Import a config; *Start fresh* carries on with the guide as usual. See [Settings and sharing](#settings-and-sharing).
+   - **Language.**
+   - **Permissions**, all on one page: file access (to find your games), usage access (so play time counts only the time a game is really on screen) and the home screen role, marked optional. This page is also under Settings → System → Permissions.
+   - **What was found** – how many consoles and games the scan turned up, and where it looked: the `Roms` folder at the top of every storage, plus any folders you added. If the scan is still running, the page says so and fills in when it is done. A door leads to the [Problem centre](#handy-tools) for anything it could not place.
+   - **AI (optional)** – what the AI features do, and that you pay the service you choose for what you use. Then *Type the keys on a phone (Wi-Fi)*, *Set up on the handheld*, or *Later*.
+   - **The buttons** – what each one does, on one page.
+
+   Every page has *Skip the guide*, and B goes back a page. Settings → System → Show the welcome guide again runs it once more.
+   *Why:* the first few minutes decide whether the launcher makes sense, and a new player should not have to read this page to get there. Seeing the number of games found right away also answers the first question everyone has ("did it find my games?"). Someone who already knows what they are doing can skip it from any page.
 3. **Let it find your games.** Any `Roms` folder on internal storage or an SD card is picked up by itself. Other folders can be added under Settings → Home and library → Game folders. Consoles are recognised from folder names (`gba`, `Nintendo DS`, `psx` …) and file extensions.
 4. **Choose emulators** where you want something other than the default: press Y on a console folder for the whole console, or on a game for that game only. Only emulators that are installed are offered.
-5. **Optional: add an AI key** under Settings → AI and voice – on the handheld, or more comfortably from a computer or phone over Wi-Fi (Settings → Saves, transfer, sharing → Wi-Fi transfer). Everything except the AI features works without one.
+5. **Optional: add an AI key** under Settings → AI and voice → AI services and keys – on the handheld, or more comfortably from a computer or phone over Wi-Fi (Settings → Saves, transfer, sharing → Wi-Fi transfer, or *Enter on a computer or phone* in the same menu). Everything except the AI features works without one.
 6. **Optional: make it your home screen** (Settings → System → Set as home screen) so it starts when the handheld does. The Android home tile always leads back to the system home screen.
 
 ## The basics
@@ -198,7 +207,23 @@ Suggestions and bug reports are welcome on the [issue tracker](https://github.co
 
 **The upper screen** follows whatever is selected: a console on its backdrop with its game count and emulator; a game's logo over its blurred cover art with its console, genre · series, emulator, play time and a short description, a video preview after a moment, or the picture of where you left off.
 
-**Y** is the menu for whatever is selected – on a game: emulator, favorite, folders, cheats, details, genre, note, ask AI, status and rating, how to play, saves, what the upper screen shows, hide. On a console folder: default emulator, rename, merge folders, hide. On a built-in tile: name, colour, icon and backdrop.
+**Y** is the menu for whatever is selected. On a game it is short, with the rarer things one door further in: emulator, favorite, add to / remove from a folder, Cheats ›, AI help › (ask AI, how to play), Game info › (details, genre, status and rating, note, what the upper screen shows, AI pictures for this game) and More › (saves, mark as seen, hide, delete the game file). On a console folder: default emulator, rename, Merge folders ›, mark all as seen, hide. On a built-in tile: name, colour, icon and backdrop. The selected row explains itself in one line at the bottom of the menu.
+
+*Why:* a menu with fifteen rows is hard to read on a handheld. Doors keep the everyday rows in front, and the one-line hint means nobody has to guess what a row does before pressing it.
+
+**Delete the game file** (Y → More) asks first, showing the size and that saves are kept, and the cursor starts on Cancel, so pressing A twice too quickly deletes nothing. A multi-disc game loses all its files at once, and a game deleted from a Problem centre list (Duplicate games, say) drops off that list straight away.
+
+*Why:* duplicates and games you are done with can be cleared away without a computer.
+
+**One-time tips.** The first time a feature is within reach, one line appears just above the button legend on the lower screen. It shows once, and fades after about nine seconds or when you press a key (not in its first two seconds or so, so it is not gone before you can read it; the key still does its job). For now there are four:
+
+- on the home page: hold A to pick up a tile and move it, Y for that tile's options;
+- back on the home page after leaving a folder: SELECT shows the home page by console, by genre or by series;
+- on a game in a console folder, in the default order: hold A to move the game where you want it, Y for emulator, cheats, saves and more;
+- in the Not recognised folder: press A on a file to say which console it is for.
+
+Settings → System → Tips for new features turns them off, and Show all tips again brings back the ones you have already seen.
+*Why:* hold A to move, or SELECT on the home page, are easy to miss and hard to guess. A line at the moment you can use it is easier to remember than a manual, and once is enough: a tip that keeps coming back turns into noise.
 
 ### Controls
 
@@ -206,7 +231,7 @@ Suggestions and bug reports are welcome on the [issue tracker](https://github.co
 |---|---|
 | D-pad / left stick | Move; hold to keep moving |
 | Left / right, L / R in a list or menu | A page at a time |
-| A | Open / play; hold A on a home folder to pick it up and move it |
+| A | Open / play; hold A on a home folder, or on a game inside a console folder, to pick it up and move it |
 | B | Back |
 | L / R | Previous / next console (in Settings: category) |
 | Hold L | Search by voice |
@@ -225,7 +250,7 @@ Everything also works by touch: tap to select, tap again to open, flick to scrol
 ## Your library
 
 - **Finds your games by itself.** Internal storage and SD cards are searched for `Roms` folders; more can be added under Settings → Home and library → Game folders. The last scan is cached, so the home screen is up in a second and the next scan runs quietly in the background.
-- **Consoles** – 3DS, NDS, GBA (and GBA rumble and hack folders), GBC, GB, NES, SNES, N64, GameCube, Wii, Mega Drive, PlayStation 1/2/3, PSP, PS Vita and Switch, with artwork for PS4, PS5, Xbox 360 and Xbox Series too.
+- **Consoles** – 3DS, NDS, GBA (and GBA rumble and hack folders), GBC, GB, NES, SNES, N64, GameCube, Wii, Mega Drive, PlayStation 1/2/3, PSP, PS Vita and Switch, with artwork for PS4, PS5, Xbox 360 and Xbox Series too. Every other console of the Pegasus G pack is recognised as well: Virtual Boy, Master System, Game Gear, 32X, Mega-CD, Saturn, Dreamcast, NAOMI, PC Engine and its CD, PC-FX, Neo Geo CD, Neo Geo Pocket Color, WonderSwan and WonderSwan Color, Pokémon Mini, Atari Lynx, Atari 2600, Game & Watch, 3DO, DOS and arcade.
 - **Multi-disc games as one.** `Disc A/B`, `Disc 1/2`, `CD1/CD2`, `(Disc 2 of 3)` in one folder, or a Pegasus `files:` list, become a single entry. RetroArch and DuckStation get an `.m3u` playlist of the discs so you can change discs in-game.
 - **Android games and apps** – installed games get their own folder automatically; any other apps (video, browser …) can be added to an Apps folder.
 - **Works with what you already have.** It reads Pegasus `metadata.pegasus.txt`, ES-DE / EmulationStation `gamelist.xml` and `downloaded_media`, RetroArch thumbnails, and `media/`, `covers/` and `images/` folders next to the games. Nothing of theirs is changed; the launcher's own additions go into its own `DuoLauncher` folder (see [Your own game info](#your-own-game-info)).
@@ -235,6 +260,8 @@ Everything also works by touch: tap to select, tap again to open, flick to scrol
 - **Smart folders** fill themselves: recently added (the last 30 days), not played yet, most played, playing, want to play, finished and top rated. Y on one shows its rule.
 - **Continue and favorites.** The first home tile jumps straight back into the last game. Star games with Y to collect them in a Favorites folder.
 - **Hide what you don't play** – a console folder, or a single game or app (Y → Hide); bring them back under Settings → Home and library.
+- **Tidy up game names.** Names taken straight from ROM files often read like `0153 - Legend of Zelda, The - The Minish Cap (USA) [!]`. Settings → Home and library → Tidy up game names has six switches, all off to begin with: drop region and language tags, drop version and dump tags, drop leading numbers, turn underscores and dots into spaces, move a trailing ", The" to the front, and drop everything in brackets. Next to each switch is an example from your own library showing the name before and after, and See every change lists every game that would be renamed. *Why:* only the name on screen changes. The files on the card stay exactly as they are, so emulators, saves and other frontends are not affected. Titles from Pegasus, ES-DE or your own edits are left alone, because someone already chose them. Tags that tell games apart, such as `(Beta)` or `(Hack)`, are kept unless you turn on the brackets switch.
+- **Put games in your own order.** Inside a console folder, hold A on a game (or long-press it) to pick it up, move it with the d-pad, and let go to drop it. The order is kept for that console, survives rescans and is part of a full backup. Games added later keep their usual place. Y on the console → Back to the original game order undoes it. Moving only works in the normal sort with no language filter, since in a sort by name or play time your order would mean nothing. *Why:* the games you play right now, or a series in release order, belong together at the top, and no automatic sort can know that.
 - **Your catalogue.** After every scan the whole library is written to `DuoLauncher/catalog.tsv` (console, file, title, English title, genre, series, play time, status, rating) – for spreadsheets, other tools, or the AI.
 
 ### Genres and series
@@ -242,7 +269,7 @@ Everything also works by touch: tap to select, tap again to open, flick to scrol
 Browsing two thousand games by console alone gets tiring, so every game also gets one of 14 genres (role-playing, action, adventure, platformer, tactics, strategy, shooter, puzzle, racing, sports, fighting, simulation, party and music, other) and its series.
 
 - **Built-in knowledge first.** A table inside the launcher (`assets/gamedb.tsv`, 3,860 file names covering every game in the Pegasus G pack lists for these consoles, with both the `.iso` and `.cso` names where a pack has both) already knows the genre, series and official English title of common ROM sets by console and file name. Games it knows need no AI and no internet at all.
-- **AI for the rest.** Settings → AI and voice → AI: sort into genres / find game series files the remaining games, and the results are kept in `DuoLauncher/<console>/genres.txt` and `series.txt` on the card, so it is done once and survives reinstalls. Genres already written by Pegasus or ES-DE ("Action RPG", "角色扮演" …) are mapped onto the 14 genres.
+- **AI for the rest.** Settings → AI and voice → Let AI tidy the library → AI: sort into genres / AI: find game series files the remaining games, and the results are kept in `DuoLauncher/<console>/genres.txt` and `series.txt` on the card, so it is done once and survives reinstalls. Genres already written by Pegasus or ES-DE ("Action RPG", "角色扮演" …) are mapped onto the 14 genres.
 - **By hand** – Y → Genre on any game.
 - **On screen.** The upper screen shows a game's genre · series, and SELECT on the home page turns the folders into genres or series. Series names follow the interface language.
 
@@ -252,10 +279,10 @@ R3, the Search tile, or the search button opens a keyboard on the upper screen t
 
 ### Pictures that fill themselves in
 
-- **Real box art** – Settings → Tidy up → Fetch missing covers downloads covers from the libretro thumbnail sets. NDS and GBA games are matched by the game code inside the ROM (zipped ROMs too, with title screens), so translated and renamed files still find their pictures; PlayStation 1/2, PSP, N64, GameCube, Wii, 3DS, GB/GBC, NES, SNES and Mega Drive games are matched by their English title.
+- **Real box art** – Settings → Tidy up → Fetch missing covers (also in the Problem centre, under Games without covers) downloads covers from the libretro thumbnail sets. NDS and GBA games are matched by the game code inside the ROM (zipped ROMs too, with title screens), so translated and renamed files still find their pictures; PlayStation 1/2, PSP, N64, GameCube, Wii, 3DS, GB/GBC, NES, SNES and Mega Drive games are matched by their English title. A game counts as missing a cover only when it has no box art – a logo or backdrop alone doesn't count – so the Problem centre, Fetch missing covers and the AI pictures menu all give the same number.
 - **Icons straight from the ROMs** – NDS banner icons and 3DS SMDH icons; installed 3DS titles show their name in the interface language.
 - **Covers that look alike** – covers fill their tiles, or all sit with the same small, medium or large margin (Settings → Look and sound → Cover margin); white frames baked into cover pictures are trimmed.
-- **AI pictures** – with an image key, covers, title logos and backgrounds can be drawn for games that have none (Y → Details → Make a cover with AI, or a whole console at once under Settings → AI and voice → AI pictures). See [AI](#ai).
+- **AI pictures** – with an image key, AI draws a cover, a backdrop and a title logo. For one game: Y → Game info → AI pictures for this game, which says whether the game already has each; a new picture replaces the current one, and the title logo needs the English title (AI: game names and descriptions finds it). For many games: Settings → AI and voice → Let AI tidy the library → AI: draw missing game pictures, which says how many games lack each kind; its console list starts with All platforms, and two consoles with the same name show their folder name (a GBA hack folder, say). See [AI](#ai).
 
 ## Playing
 
@@ -277,6 +304,26 @@ R3, the Search tile, or the search button opens a keyboard on the upper screen t
   | PSP | PPSSPP, RetroArch · PPSSPP |
   | PS Vita | Vita3K (by title ID, e.g. a file named `PCSE00000.psvita` or a name containing it) |
   | Switch | Eden |
+  | Virtual Boy | RetroArch · Beetle VB |
+  | Master System / Game Gear | RetroArch · Genesis Plus GX, PicoDrive |
+  | 32X | RetroArch · PicoDrive |
+  | Mega-CD | RetroArch · Genesis Plus GX, PicoDrive |
+  | Saturn | RetroArch · Yaba Sanshiro, Yabause |
+  | Dreamcast / NAOMI | RetroArch · Flycast |
+  | PC Engine / PC Engine CD | RetroArch · Beetle PCE Fast, Beetle PCE |
+  | PC-FX | RetroArch · Beetle PC-FX |
+  | Neo Geo CD | RetroArch · NeoCD |
+  | Neo Geo Pocket Color | RetroArch · Beetle NeoPop, RACE |
+  | WonderSwan / Color | RetroArch · Beetle Cygne |
+  | Pokémon Mini | RetroArch · PokeMini |
+  | Atari Lynx | RetroArch · Handy, Beetle Lynx |
+  | Atari 2600 | RetroArch · Stella |
+  | Game & Watch | RetroArch · Game & Watch |
+  | 3DO | RetroArch · Opera |
+  | DOS | RetroArch · DOSBox Pure |
+  | Arcade | RetroArch · FinalBurn Neo, MAME 2003-Plus |
+
+  A Pegasus `metadata.pegasus.txt` usually brings its own launch line for each console; that is used first, and the cores above are offered next to it.
 
 - **Citra MMJ (performance mode)** – the same Citra MMJ build repackaged under the AnTuTu benchmark's package name, which many Android systems run at full clocks. It is offered only when that package really is Citra.
 - **Play time and statistics** – how long and when you last played each game, Switch-style; with usage access granted it counts only the time the game was really on screen. The Play statistics tile shows the total, this week day by day, time per console and the most played games.
@@ -284,7 +331,9 @@ R3, the Search tile, or the search button opens a keyboard on the upper screen t
 - **Status, rating and notes** – mark a game as playing, want to play, finished or dropped and give it one to five stars (Y → Status); write or say a line about where you are and what to do next (Y → Note). All of it shows on the upper screen next time you pick the game up.
 - **Game details** (Y → Details) – file, size, discs, folder, emulator, play time, the official English title, and the game's screenshots on the upper screen.
 - **Video previews and sounds** – a game's video snap starts on the upper screen after a moment (or choose logo or cover per game: Y → Top screen). Soft interface sounds and each 3DS game's own banner tune can be switched off.
-- **When a game does not start** – a missing file, an emulator that is not installed, one that cannot open that kind of file, or a game that closes at once each get a message saying what to do.
+- **Out of the way while you play.** Once a game starts, the lower screen is handed to the emulator and video, music and banner tunes stop. The launcher also lets go of the pictures it holds in memory (measured: about 167 MB down to 109 MB), holds back a card scan that is under way until you return so it does not compete with the emulator for the card, and stops the upper screen's clock refresh and motion. Back in the launcher, the covers are on screen again within a second.
+  *Why:* the emulator gets the memory and the card to itself.
+- **When a game does not start** – a missing file, an emulator that is not installed, one that cannot open that kind of file, or a game that closes at once each get a message saying what to do. The [Problem centre](#handy-tools) lists consoles whose emulator is not installed before you run into it.
 - **Break reminder** (Settings → Playing) – after one, two or three hours in a game, the launcher suggests a break when you come back.
 - **RetroAchievements** – with your user name and Web API key, recently played games with their achievement progress, and a 🏆 tag on games that have achievements.
 
@@ -295,8 +344,8 @@ All of this is optional and uses the AI service you choose with your own key (se
 - **Talk to it anywhere.** Hold R on the home page, in a folder or in the search keyboard and speak – or press Y to type. The conversation fills the upper screen; the games it recommends or finds fill the lower one, ready to start with A. Ask what to play ("a relaxed RPG, not too long"), narrow it down ("something with more action"), ask how to get past the part of the game you have selected, about a story or a character, or just chat. It remembers the conversation for half an hour.
   *Why:* the lower screen is where games are chosen, so the AI's picks land there; the upper screen is free for reading. And on a handheld, holding a shoulder button and talking is quicker than any menu.
 - **New conversation, saved history.** X in the chat starts a new conversation; SELECT lists the earlier ones, newest first, to open again, delete one by one or clear all (also Settings → AI and voice → AI chat history). While the chat is open, video previews, 3DS banner tunes and click sounds stay quiet, and spoken answers play at media volume.
-  *Why:* a new question should not drag the old topic along, an answer worth keeping should not vanish with a restart, and a spoken reply is no use when a game trailer plays over it. The history stays on the handheld, is never part of an exported config, and Save AI chats turns it off.
-- **Answers read aloud** – Settings → AI and voice → AI voice replies: Soniox (its own key) or OpenAI (the image key), with a choice of voice and pace and a test button. Off unless you turn it on.
+  *Why:* a new question should not drag the old topic along, an answer worth keeping should not vanish with a restart, and a spoken reply is no use when a game trailer plays over it. The history is left out of *Share with others*, goes into the automatic copy in `DuoLauncher/profile/` so a reinstall does not lose it, and the Save AI chats switch inside AI chat history turns it off.
+- **Answers read aloud** – Settings → AI and voice → AI services and keys → AI voice replies: Soniox (its own key) or OpenAI (the image key), with a choice of voice and pace and a test button. Off unless you turn it on.
 - **What to play today** – Y on the What to play? tile has the AI pick six games from your library to match your taste, with a reason for each. A plain press of the tile picks one at random, favouring games you have never played.
 - **Ask about a game** (Y → Ask AI) – a question about the selected game, typed or spoken, answered on the upper screen.
 - **How to play** (Y → How to play) – the controls (including the swapped confirm / cancel buttons of Japanese releases) and the basics a newcomer needs, written once per game and kept.
@@ -330,31 +379,190 @@ Y → Cheats on a game lists its cheats; A switches one on or off.
 - **Console look** – each console's picture, light and dark backdrop and folder colour can be replaced (Settings → Look and sound → Platform look). A dark backdrop can be redrawn by the image service from the light one, so the two always match.
 - **Text size** – four sizes for both screens.
 - **Screensaver** – after a few idle minutes the upper screen shows your covers with a clock and the lower screen goes black. The text changes corner with every picture and drifts slowly, so nothing burns into an OLED panel.
+- **Duo Lite** (Settings → Look and sound, the first row) – one switch that turns off video previews and 3DS banner music, the blurred artwork behind a game, the drifting dots on the upper screen and the gentle tilt and bob of the console picture, the entrance animation and the pulsing selection frame. While it is on, the Video previews and 3DS banner music switches read off and say why when pressed; your own choices come back when Duo Lite goes off. Measured on the Duo, idle on the home page: the upper screen normally redraws about 600 frames in 5 seconds, and none at all in Duo Lite.
+  *Why:* for long sessions on battery, or when you would simply rather have a still screen.
 
 ## Settings and sharing
 
 - **A settings page like a console's.** START opens one page: the categories on the left (Look and sound, Home and library, Playing, AI and voice, Saves, transfer, sharing, Tidy up, System), the rows of one on the right with their current values and switches, and the upper screen showing the version, the free space on each drive and which AI services are on. L / R change category.
-- **Share your setup.** Settings → Saves, transfer, sharing → Export my config writes one zip with every setting (look, home layout and order, folders, hidden things, emulator choices, AI services) and your own pictures. Import a config picks one up from `DuoLauncher/exports` or the Download folder – sent over Wi-Fi, a chat app or a card.
-  *Why it is safe to share:* keys, passwords and play history never go into a config, importing one keeps yours, and a key of yours is never pointed at an address that came from someone else's config.
+  Some rows are doors to a smaller menu (AI services and keys, Let AI tidy the library, Problem centre …). While the cursor is on one, a line at the bottom of the card says what is behind it, and B from inside comes back to the same row with its values already updated.
+  *Why:* a category with a dozen rows reads like a wall on a 1280×960 screen. Grouping the rarer settings behind a door keeps each category short, and the one-line note means you know what a door holds before you go through it.
+- **Back up or share your setup.** Settings → Saves, transfer, sharing → Export my config asks what to put in: settings and your own pictures, the play record, game status / ratings / notes, keys and accounts, AI usage and chats, and the game data in the `DuoLauncher` folders – or one of two shortcuts, *Share with others* (settings and pictures only) and *Full backup* (everything). Import a config picks one up from `DuoLauncher/exports` or the Download folder – sent over Wi-Fi, a chat app or a card – and shows what it holds, so you can untick what should stay as it is. On the Wi-Fi page, sending a file to *Configs to import* puts it straight into `DuoLauncher/exports`, so it is waiting there in Import a config.
+  *Why:* a config handed to a friend must never carry your keys or your history, while a backup of your own should bring back exactly the same launcher on a new handheld or after a reinstall. A full backup holds your keys, so the export warns you to keep it to yourself, and a key of yours is never pointed at an address that came from someone else's config.
+- **Where launcher data lives** (Settings → Saves, transfer, sharing) – where the `DuoLauncher` folder goes: each console's genres, series and AI-written names, fetched and AI-drawn pictures, save backups, exports, themes and the settings copy below. *Next to the games* is the default and the way it always worked: each console's data on the storage its games are on, backups on the card. *Card* puts everything on the TF card, so it travels with the card to another handheld (with no card in, internal storage stands in for the time being). *Internal* keeps it all on the handheld when you swap cards. Whatever was written before a change is still read where it is. With Card or Internal chosen, *Move existing data here* shows how much there is and then moves the `DuoLauncher` folders over from the other storages; files already in place are kept, and the NDS cheat lists and multi-disc playlists stay where the emulators expect them.
+  *Why:* where your data lives is your decision; nothing about it is hard-coded.
+- **An automatic copy of settings and records.** *Keep a copy of settings and records* (same menu, on by default) copies your settings, own pictures, play time, status / ratings / notes, game order, AI usage and chats to `DuoLauncher/profile/` on the chosen storage – the first time within a minute, after that whenever something has changed. It checks about once a minute while the launcher is on screen, never while a game runs, and keeps only the newest copy. API keys stay out unless *Include API keys in the copy* is switched on, which warns that anyone with the card could read them. *Save a copy now* makes one straight away and shows when the last one was made. After a reinstall, or on a new handheld with the same card, the welcome guide opens with *Your earlier settings and records were found*: *Bring them back* lets you choose which parts, as in Import a config, and *Start fresh* leaves them alone.
+  *Why:* uninstalling or a factory reset used to take your play time, notes and settings with it, unless you had remembered to export them by hand.
 - **11 languages** – 简体中文, 繁體中文, English, 日本語, 한국어, Français, Español, Deutsch, Italiano, Português, Русский.
 
 ## Handy tools
 
-- **Wi-Fi transfer** – Settings → Saves, transfer, sharing → Wi-Fi transfer shows an address and a PIN. Open the address in a browser on the same network, enter the PIN, and drop ROMs or theme packs straight into any console folder. The same page holds the AI, voice and RetroAchievements settings behind an admin password (six random digits, or your own), so long keys can be pasted from a computer. The handheld's screen stays on while the transfer runs, because the page cannot be reached once the screen is off.
+- **Problem centre** – the first row of Settings → Tidy up. It checks the library in the background each time you open it and gathers everything that may need a look, with a count on each row:
+  - **Missing permissions** – opens the permissions page.
+  - **Files not recognised** – opens the Not recognised folder, where A on a file picks its console.
+  - **Consoles whose emulator isn't installed** – pick a console to see the emulators that are installed (A switches to one) and the ones the launcher knows would work once installed, plus *Open this console*.
+  - **Files that can't be opened** – empty files, and files that a Pegasus or ES-DE game list names but that are not on the card.
+  - **Games without covers** – a small menu: See which N games, Fetch missing covers (it runs right there with a *Looking for covers online…* line, then the menu comes back with the new count and how many were found, or says none were found online), and Draw covers for these N games with AI.
+  - **Duplicate games** – the same console, the same name and the same size, most likely one game copied twice.
+
+  The first row says that none of this stops the launcher from working, and only the problems that are actually there are listed. The welcome guide's *What was found* page leads here too. B on a list opened from here (Games without covers, Duplicate games, Files that can't be opened) goes back to the Problem centre, not the home page.
+  *Why:* these checks used to be scattered across Settings, and a missing emulator only showed up when a game would not start. One place that is checked when you go there, and never pops up on its own, means you can tidy up when you feel like it and ignore the rest.
+- **Wi-Fi transfer** – Settings → Saves, transfer, sharing → Wi-Fi transfer shows the page's address on the upper screen with a QR code next to it, the admin password (six random digits, or your own), and a short list of what the page is for. Scan the code with a phone camera, or type the address in a browser on the same network. The QR code is made on the handheld, so no internet connection is needed. B on the Wi-Fi menu goes back to wherever you opened it from.
+  The page follows the phone's or computer's light or dark mode, and is in the first language the browser prefers among the launcher's eleven (Traditional Chinese for Taiwan, Hong Kong and Macau), or in English if none of them fits. Everything on it is translated, with the same names as in the app. Before it is unlocked it asks only for the admin password and says what you can do there. Once unlocked (a reload does not send the password again) it has:
+  - **Send files** – pick a folder and drop files in: ROMs into any console folder, theme packs, or a config into *Configs to import*, which puts it in `DuoLauncher/exports` so it shows up in Settings → Import a config.
+  - **AI translation, AI pictures, AI voice replies and RetroAchievements settings**, so long keys can be pasted from a computer. Saved keys are never shown in full.
+  - **Downloads** – every exported config, exported theme and save backup, newest first, with size and date.
+
+  The handheld's screen stays on while the transfer runs, because the page cannot be reached once the screen is off.
+  *Why:* typing an address on a phone is the fiddly part, and a camera does it in a second. Downloads sit behind the password because a full backup can hold your API keys, and a page anyone on the same Wi-Fi can open should not hand those out.
 - **Storage** – a home tile shows how full the card is, and the free space of every drive on the upper screen. Inside: the size of each console's games, the biggest games never played, and deleting a game's files (all discs, and the files a `.cue` or `.m3u` names) after a confirmation.
 - **Save backups** – back up and restore the saves of DraStic, RetroArch, PPSSPP, AetherSX2, DuckStation, Mupen64Plus FZ, Azahar and Citra in one zip, kept in `DuoLauncher/backups` on the SD card (internal storage when there is no card). After three hours of play without a backup the launcher reminds you, or makes one by itself if you prefer (the newest ten automatic backups are kept; yours are never removed). A restore replaces each save only once its copy is complete. Y → Saves backs up and restores one game on its own.
-- **Tidy up** – find duplicate games, list games without pictures, fetch missing covers, translate every cheat at once, and a diagnostics page; the AI ones (names and descriptions for a whole console, genres, series, pictures, genre icons) are under AI and voice.
+- **Tidy up** – the Problem centre, Storage, Fetch missing covers, Translate all cheats, and a Diagnostics page. Duplicate games and Games without covers now live inside the Problem centre. The AI ones (names and descriptions for a whole console, genres, series, genre icons, pictures for missing art) are under AI and voice → Let AI tidy the library.
 - **Updates** – Settings → System → About checks the latest GitHub release once a day and links to it.
 - **Home screen** – set it as the default home app so it starts with the handheld; the Android home tile (or Settings → System → Exit to Android home) leads back to the system home screen, and Settings → System → Android settings opens the system's own settings.
 
 ## AI
 
-Everything here is optional and uses your own account. Keys are kept in the launcher's settings on the handheld and sent only to the service you chose. Enter them in Settings → AI and voice, or on the Wi-Fi page from a computer or phone.
+Everything here is optional and uses your own account. Keys are kept in the launcher's settings on the handheld and sent only to the service you chose. Enter them in Settings → AI and voice → AI services and keys, or on the Wi-Fi page from a computer or phone.
+
+Settings → AI and voice has six rows:
+
+- **Ask AI what to play** and **AI: what to play today** – the chat and the six picks (see [Your AI companion](#your-ai-companion)).
+- **AI services and keys** – AI translation, AI pictures and AI voice replies, each with its service and key, and *Enter on a computer or phone (Wi-Fi page)*.
+- **Let AI tidy the library** – AI: game names and descriptions, AI: sort into genres, AI: find game series, AI: genre folder icons, and AI: draw missing game pictures.
+- **AI chat history** – earlier conversations, and the Save AI chats switch.
+- **AI usage and cost.**
+
+*Why:* this category used to have thirteen rows in one list, mixing things you use every day with keys you enter once. Now the two things people come for are on top, the one-time setup is behind one door, and the jobs that work through the whole library are behind another.
 
 - **AI translation** – DeepSeek, Qwen, OpenAI, Claude, Gemini or any OpenAI-compatible address. This key does the talking: the chat, game picks, "Ask AI", "How to play", genres and series, cheat names (a whole game in one request), and game names and descriptions in your language (written into the launcher's own metadata together with the official English title, so a library of Chinese titles reads naturally in English and the other way round). Without a key, cheats are translated by free services.
 - **AI pictures** – an OpenAI image key (the newest image model the key can use is chosen automatically). Covers, title logos, backgrounds, console pictures, folder and tile icons and backdrops, all in the same clay-icon and paper-cut style as the built-in art; icons are drawn with a transparent background so their white parts stay. A picture takes about half a minute. The same key turns your voice into text (`/audio/transcriptions`), since the handheld has no speech recognizer of its own.
 - **AI voice replies** – Soniox with its own key, or OpenAI with the image key; voice and pace (normal, brisk, fast – brisk by default, as both read Chinese slowly).
 - **AI usage and cost** – every request the launcher makes is counted on the handheld: requests, tokens, pictures and minutes of speech, with an estimated cost for today, this week, this month and all time. The estimate uses the services' published prices for what you use; each price can be set to your own (another model, a reseller, a discount). Your provider's bill is what counts.
+
+## How it finds your games
+
+You don't need a metadata file, a scraper or a particular folder layout to start: copy the games to the card and the launcher works out the rest. This section explains exactly how, so you know where to put things and why a game shows up where it does.
+
+### Where it looks
+
+- **Every `Roms` folder at the top of a storage** – internal storage and each SD card. Capital letters don't matter (`ROMs`, `roms`). Turn this off under Settings → Home and library → Game folders → Find Roms folders automatically.
+- **Any folder you add** under Settings → Home and library → Game folders, for games kept somewhere else.
+- **Up to three folder levels down** from there. Folders that hold pictures or emulator files are skipped: `media`, `images`, `videos`, `covers`, `boxart`, `screenshots`, `manuals`, `marquees`, `wheel`, `saves`, `states`, `savestates`, `bios`, `system`, `cheats`, `downloaded_media`.
+- **3DS games installed into Azahar or Citra** (from their `sdmc` folder) and **Android games** are added as well.
+
+The result of a scan is kept, so the home screen is there in a second; games copied in later are found by the next scan.
+
+*Why:* most people already have a `Roms` folder from another frontend or a ROM pack. Starting from it means nothing has to be moved, renamed or set up first.
+
+### Recommended layout
+
+One folder per console, named after the console:
+
+```
+Roms/
+  3DS/      NDS/      GBA/      GBC/      GB/
+  NES/      SNES/     N64/      NGC/      WII/
+  MD/       PS1/      PS2/      PSP/      PSV/
+  SWITCH/   SATURN/   DC/       PCE/      ARCADE/  …
+```
+
+Folder names are matched loosely (spaces, dashes and capitals are ignored), and the usual names from Pegasus, ES-DE and RetroArch work too:
+
+| Console | Folder names it understands | File types it recognises anywhere |
+|---|---|---|
+| Nintendo 3DS | `3ds`, `n3ds`, `nintendo3ds` | `.3ds` `.cci` `.cxi` `.cia` `.3dsx` |
+| Nintendo DS | `nds`, `ds`, `nintendods` | `.nds` `.dsi` |
+| Game Boy Advance | `gba`, `gameboyadvance` | `.gba` |
+| Game Boy Color | `gbc`, `gameboycolor` | `.gbc` |
+| Game Boy | `gb`, `gameboy` | `.gb` |
+| NES / Famicom | `nes`, `fc`, `famicom` | `.nes` `.fds` `.unf` |
+| SNES / Super Famicom | `snes`, `sfc`, `superfamicom`, `supernintendo` | `.sfc` `.smc` |
+| Nintendo 64 | `n64`, `nintendo64` | `.n64` `.z64` `.v64` |
+| GameCube | `ngc`, `gc`, `gamecube`, `nintendogamecube` | `.gcm` `.gcz` `.rvz` `.ciso` |
+| Wii | `wii`, `nintendowii` | `.wbfs` `.wad` |
+| Mega Drive / Genesis | `md`, `genesis`, `megadrive`, `segagenesis` | `.md` `.gen` `.smd` |
+| PlayStation | `ps1`, `psx`, `playstation` | `.pbp` |
+| PlayStation 2 | `ps2`, `playstation2` | – (needs its folder) |
+| PSP | `psp` | `.cso` |
+| PS Vita | `psv`, `psvita`, `vita` | `.vpk` |
+| Switch | `switch`, `ns`, `nintendoswitch` | `.nsp` `.xci` `.nsz` `.xcz` |
+| Virtual Boy | `vb`, `virtualboy` | `.vb` `.vboy` |
+| Master System | `sms`, `mastersystem` | `.sms` |
+| Game Gear | `gg`, `gamegear` | `.gg` |
+| 32X | `32x`, `sega32x`, `md32x` | `.32x` |
+| Mega-CD / Sega CD | `segacd`, `megacd`, `mdcd` | – (by content) |
+| Saturn | `saturn`, `ss`, `segasaturn` | – (by content) |
+| Dreamcast | `dc`, `dreamcast` | `.cdi` `.gdi` |
+| NAOMI / Atomiswave | `naomi`, `naomi2`, `atomiswave` | – (needs its folder) |
+| PC Engine / TurboGrafx-16 | `pce`, `pcengine`, `tg16` | `.pce` |
+| PC Engine CD | `pcecd`, `pcenginecd`, `tgcd` | – (needs its folder) |
+| PC-FX | `pcfx` | – (needs its folder) |
+| Neo Geo CD | `neogeocd`, `ngcd` | – (needs its folder) |
+| Neo Geo Pocket Color | `ngpc`, `ngp`, `neogeopocket` | `.ngp` `.ngc` |
+| WonderSwan | `ws`, `wonderswan` | `.ws` |
+| WonderSwan Color | `wsc`, `wonderswancolor` | `.wsc` |
+| Pokémon Mini | `pokemini` | `.min` |
+| Atari Lynx | `lynx`, `atarilynx` | `.lnx` |
+| Atari 2600 | `atari`, `atari2600`, `2600` | `.a26` |
+| Game & Watch | `gw`, `gameandwatch` | `.mgw` |
+| 3DO | `3do` | – (by content) |
+| DOS | `dos`, `msdos`, `pc` | `.dosz` |
+| Arcade | `arcade`, `mame`, `fbneo`, `fba`, `neogeo`, `cps1`/`cps2`/`cps3` | – (needs its folder) |
+
+### Mixed folders, and what needs its own folder
+
+You can also drop everything into one folder. For each file the launcher asks, in this order:
+
+1. **Did you say which console it is for?** (see the last point below)
+2. **Does its folder name say?**
+3. **Does its file type belong to one console only?** (the right-hand column above)
+4. **What does the file itself say?** For file types several consoles share, it reads a few bytes from the start of the file – fast even on a big card:
+   - `.iso` – GameCube, Wii, PSP, PlayStation, Saturn, Mega-CD and 3DO discs each mark themselves; a PlayStation disc over 900 MB counts as PS2.
+   - `.rvz`, `.wia`, `.ciso` – the disc header tells GameCube from Wii. (`.gcz` cannot be told apart and is counted as GameCube.)
+   - `.cue` – the first track of the `.bin` it names: PlayStation, Saturn, Mega-CD or 3DO.
+   - `.chd` – a Dreamcast GD-ROM or a PS2 DVD; CD images of other consoles need their folder.
+   - `.zip` – one game inside (up to four files) whose type belongs to one console, such as a `.gba` in a `.zip`. Arcade sets, with many parts, need an arcade folder.
+   - `.m3u` – whatever its first disc is.
+
+Whatever is still unknown after that (a `.7z`, say, or a `.zip` of an arcade game outside an arcade folder) is not dropped: it goes into a **Not recognised** folder on the home page. Press A or Y on such a game and pick its console once; the choice is remembered, survives rescans, and can be undone with Y → Which console is this for? → Reset to default. For PlayStation `.cue` + `.bin` pairs, only the `.cue` is listed. The [Problem centre](#handy-tools) counts these files under Files not recognised and opens the folder for you.
+
+*Why:* guessing wrong is worse than not guessing – a PS2 game counted as PSP would not start. So the launcher only decides when the folder, the file type or the file's own header gives a clear answer, and asks you about the rest instead of hiding it.
+
+### Where names, pictures and details come from
+
+For each game, the first source that has something wins:
+
+1. **The launcher's own folder `DuoLauncher/`** (see below) – your corrections, AI translations, genres and series. Nothing overrides it.
+2. **Pegasus** – a `metadata.pegasus.txt` in the game folder, with its titles, descriptions, pictures, launch lines and multi-disc lists. Games copied in later without an entry still show up.
+3. **ES-DE / EmulationStation** – `gamelist.xml` next to the games or in `ES-DE/gamelists/`, and pictures in `downloaded_media/`.
+4. **Pictures next to the games** – `media/<file name without extension>/`, or a picture with the same name in `covers/`, `images/` or `boxart/`.
+5. **RetroArch thumbnails.**
+6. **The built-in game table** (3,860 well-known file names) – official English title, genre and series.
+7. **The file name** itself.
+
+Other frontends' files are only read, never changed, so Pegasus, ES-DE and Duo Launcher can share the same card.
+
+*Why:* your own edits should always win, but everything you or another frontend already gathered should be used, not thrown away.
+
+### What the `DuoLauncher` folder holds
+
+The launcher keeps its own files in a `DuoLauncher` folder at the root of a storage. By default, what belongs to a console sits on the storage that holds its games (usually the SD card); Settings → Saves, transfer, sharing → Where launcher data lives can put all of it on the card or on internal storage instead (see [Settings and sharing](#settings-and-sharing)). Cheat lists and disc lists always sit on internal storage:
+
+| Path | What it is |
+|---|---|
+| `DuoLauncher/<console>/metadata.txt` | Names, descriptions and English titles you or the AI added (Pegasus format, see [Your own game info](#your-own-game-info)) |
+| `DuoLauncher/<console>/media/<file name without extension>/` | Your own or downloaded logo, cover and background pictures |
+| `DuoLauncher/<console>/genres.txt`, `series.txt` | Genre and series of each game |
+| `DuoLauncher/cheats/NDS/` | The full NDS cheat lists (internal storage) |
+| `DuoLauncher/m3u/` | Disc lists for multi-disc games (internal storage) |
+| `DuoLauncher/themes/` | Theme packs (on any storage) |
+| `DuoLauncher/backups/` | Save backups (on the SD card when it has a `DuoLauncher` folder) |
+| `DuoLauncher/exports/` | Exported configs and themes |
+| `DuoLauncher/profile/` | The automatic copy of your settings and records (on the storage chosen under Where launcher data lives) |
+| `DuoLauncher/catalog.tsv` | A list of your whole library, written for your own use |
+
+Settings such as the home layout, folders, emulator choices and play time are kept inside the app, with a copy in `DuoLauncher/profile/` that is kept up to date by itself; Settings → Saves, transfer, sharing → Export my config can save them, together with everything above, to one file (see [Settings and sharing](#settings-and-sharing)).
 
 ## Your own game info
 

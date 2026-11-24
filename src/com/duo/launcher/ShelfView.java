@@ -47,6 +47,8 @@ final class ShelfView extends View {
         void onHideGame(Library.Game g);
         /** Takes the NEW badge off these games. */
         void onMarkSeen(List<Library.Game> games);
+        /** Lets the player say which console a file is for. */
+        void onPickSystem(Library.Game g);
         boolean isFavorite(Library.Game g);
         void onToggleFavorite(Library.Game g);
         /** Last-played time (mode SORT_RECENT) or total play time (SORT_PLAYTIME), for sorting. */
@@ -71,6 +73,8 @@ final class ShelfView extends View {
         char initial(Library.Game g);
         /** The home page order changed (keys from {@link ShelfView#homeKey}, one per line). */
         void onHomeOrder(String order);
+        /** The player's own order of a folder's games changed (game keys, one per line; empty for the default). */
+        void onGameOrder(String platform, String order);
         /** The home page switched between platforms and genres. */
         void onHomeMode(int mode);
         /** A game's note, or null. */
@@ -93,6 +97,10 @@ final class ShelfView extends View {
         void onMergePlatform(Library.Platform p, Menu parent);
         /** Y on a genre folder: its picture. */
         void onEditGenre(Library.Platform p);
+        /** Y → More → Delete the game file: asks first. */
+        void onDeleteGame(Library.Game g, Menu parent);
+        /** Y → Game info → AI pictures for this game: cover, backdrop, title logo. */
+        void onAiGamePictures(Library.Game g, Menu parent);
     }
 
     /** The user's own names and colours for the built-in home tiles, by tool id; filled from Settings. */
@@ -141,9 +149,13 @@ final class ShelfView extends View {
         final List<Runnable> actions = new ArrayList<>();
         final List<Integer> swatches = new ArrayList<>();   // optional colour dot per row
         final List<Bitmap> images = new ArrayList<>();      // optional picture per row
+        /** What a row does, shown under the list while the cursor is on it. */
+        final Map<Integer, String> hints = new HashMap<>();
         Menu parent;
         /** Instead of returning to the parent as it was, B runs this (to show a refreshed parent). */
         Runnable onBack;
+        /** Shows this menu again with fresh labels (a door menu whose submenus change what its rows say). */
+        Runnable reopen;
         /** Called with the new row whenever the cursor moves (e.g. to preview a picture on the upper screen). */
         java.util.function.IntConsumer onSelect;
         int sel, top;
@@ -189,6 +201,12 @@ final class ShelfView extends View {
 
         Menu add(String label, boolean mark, Runnable action) { return add(label, mark, null, null, action); }
 
+        /** Explains the row added last. */
+        Menu hint(String h) {
+            if (!labels.isEmpty() && h != null) hints.put(labels.size() - 1, h);
+            return this;
+        }
+
         Menu add(String label, boolean mark, Integer swatch, Bitmap image, Runnable action) {
             labels.add(label);
             marks.add(mark);
@@ -221,12 +239,16 @@ final class ShelfView extends View {
         String query = "";
         /** Title of the results page when it shows a list instead of a search. */
         String listTitle;
+        /** B on a list opened from a menu (the problem centre): back to that menu instead of the home page. */
+        Runnable listBack;
         /** Names of platform folders the user hid from the home page. */
         final java.util.Set<String> hidden = new java.util.HashSet<>();
         /** The user's own order of the home tiles, by {@link ShelfView#homeKey}; empty for the built-in order. */
         final List<String> homeOrder = new ArrayList<>();
         /** Index the lifted tile came from while it is being moved, or -1. */
         int moveFrom = -1;
+        /** The player's own order of games per folder (folder name -> game keys), over the Pegasus or file order. */
+        final Map<String, List<String>> gameOrder = new HashMap<>();
         /** Home page by genre instead of by platform. */
         int homeMode;
         /** Space around a game's picture in its tile: 0 fills the tile, 1-3 leave a small, medium or large margin. */
@@ -471,7 +493,7 @@ final class ShelfView extends View {
     boolean moving() { return st.moveFrom >= 0; }
 
     private void startMove() {
-        if (st.current != null || st.menu != null || selected() == null) return;
+        if ((st.current != null && !canReorder()) || st.menu != null || selected() == null) return;
         st.moveFrom = st.sel;
         beforeMove = new ArrayList<>(st.items);
         listener.onCue(Sfx.OPEN);
@@ -501,7 +523,13 @@ final class ShelfView extends View {
         st.moveFrom = -1;
         beforeMove = null;
         listener.onCue(keep ? Sfx.OPEN : Sfx.BACK);
-        if (keep) {
+        if (keep && st.current != null) {
+            // a folder's games: the whole order is kept, by game key
+            List<String> order = new ArrayList<>();
+            for (Object it : st.items) if (it instanceof Library.Game) order.add(((Library.Game) it).key());
+            st.gameOrder.put(st.current.name, order);
+            listener.onGameOrder(st.current.name, String.join("\n", order));
+        } else if (keep) {
             // visible tiles in their new order, then the hidden or absent ones where they were
             List<String> order = new ArrayList<>();
             for (Object it : st.items) order.add(homeKey(it));
@@ -580,9 +608,48 @@ final class ShelfView extends View {
                 break;
             }
             default:
+                List<String> own = st.gameOrder.get(pl.name);
+                if (own != null && !own.isEmpty()) return inOwnOrder(gs, own);
                 break;
         }
         return gs;
+    }
+
+    /** Games in the player's order; games it does not mention yet (copied in later) keep their place among the rest. */
+    private static List<Library.Game> inOwnOrder(List<Library.Game> def, List<String> order) {
+        Map<String, Library.Game> byKey = new HashMap<>();
+        for (Library.Game g : def) byKey.putIfAbsent(g.key(), g);
+        List<Library.Game> out = new ArrayList<>();
+        // by identity: two games can share a key (the same file on two storages), and neither may get lost
+        java.util.Set<Library.Game> placed = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+        for (String k : order) {
+            Library.Game g = byKey.remove(k);
+            if (g != null) { out.add(g); placed.add(g); }
+        }
+        for (int i = 0; i < def.size(); i++) {
+            Library.Game g = def.get(i);
+            if (!placed.contains(g)) out.add(Math.min(i, out.size()), g);
+        }
+        return out;
+    }
+
+    /** Whether the open folder's games can be put in the player's own order (its default order, nothing filtered). */
+    boolean canReorder() {
+        Library.Platform pl = st.current;
+        return pl != null && !isPseudo(pl) && st.sortMode == SORT_DEFAULT && st.langFilter == null && st.items.size() > 1;
+    }
+
+    /** Whether the folder has an order of the player's own. */
+    boolean hasOwnOrder(Library.Platform pl) {
+        List<String> o = st.gameOrder.get(pl.name);
+        return o != null && !o.isEmpty();
+    }
+
+    /** Back to the folder's own order (Pegasus or file names). */
+    void resetGameOrder(Library.Platform pl) {
+        st.gameOrder.remove(pl.name);
+        listener.onGameOrder(pl.name, "");
+        if (st.current == pl) reopenKeeping();
     }
 
     /** "简", "繁" or "英" from a tag in the title or file name such as "(简)" or "汉化", else "". */
@@ -859,6 +926,9 @@ final class ShelfView extends View {
     private void pageRowsArea(RectF out) {
         float u = u();
         out.set(pageSplit() + 18 * u, 128 * u, getWidth() - 40 * u, getHeight() - footerH() - 28 * u);
+        // a category with explained rows keeps a line at the bottom of its card for the explanation
+        Menu m = st.menu;
+        if (m != null && m.isPage() && !m.tabs.get(m.tab).hints.isEmpty()) out.bottom -= 62 * u;
     }
 
     private float pageSplit() { return 40 * u() + 340 * u(); }
@@ -945,7 +1015,15 @@ final class ShelfView extends View {
                 text(c, ellipsize(value, rx - lx - lw - 30 * u, 24 * u), rx, r2.centerY() + 9 * u, 24 * u, on ? 0xDDFFFFFF : Palette.text3(), false, Paint.Align.RIGHT);
         }
         if (t.top > 0) text(c, "▲", (area.left + area.right) / 2, right.top + 14 * u, 16 * u, Palette.text3(), false, Paint.Align.CENTER);
-        if (t.top + rows < t.labels.size()) text(c, "▼", (area.left + area.right) / 2, right.bottom - 4 * u, 16 * u, Palette.text3(), false, Paint.Align.CENTER);
+        if (t.top + rows < t.labels.size()) text(c, "▼", (area.left + area.right) / 2, t.hints.isEmpty() ? right.bottom - 4 * u : area.bottom + 16 * u, 16 * u, Palette.text3(), false, Paint.Align.CENTER);
+        // what the row under the cursor does, at the bottom of the card
+        if (!t.hints.isEmpty()) {
+            String hint = m.inRows ? t.hints.get(t.sel) : null;
+            p.setColor(Palette.footerLine());
+            c.drawRect(area.left + 20 * u, area.bottom + 22 * u, area.right - 8 * u, area.bottom + 24 * u, p);
+            if (hint != null)
+                text(c, ellipsize(hint, area.width() - 40 * u, 22 * u), area.left + 26 * u, area.bottom + 60 * u, 22 * u, Palette.text3(), false, Paint.Align.LEFT);
+        }
         // the keys, like the home footer
         float top = h - footerH(), cy = top + footerH() / 2, x = pad();
         p.setColor(Palette.footer());
@@ -977,56 +1055,101 @@ final class ShelfView extends View {
             if (pl.isCustom()) { listener.onEditFolder(pl); return; }
             if (isGenre(pl)) { listener.onEditGenre(pl); return; }
             if (isPseudo(pl)) return;
-            Menu m = new Menu(isNative(pl) ? pl.title() : t(S.CHOOSE_EMULATOR), isNative(pl) ? null : I18n.f(S.PLATFORM_DEFAULT, pl.name));
+            Menu m = new Menu(pl.title(), isNative(pl) ? null : I18n.f(S.GAMES_COUNT, pl.games.size()));
             if (!isNative(pl)) {
                 String cur = listener.chosenCmd(o);
-                m.add(I18n.f(S.PEGASUS_DEFAULT, Library.emulatorLabel(pl.launch)), cur == null, () -> { listener.onChoose(o, null); closeMenu(); });
-                for (String[] opt : Library.options(pl, getContext().getPackageManager()))
-                    m.add(opt[0], opt[1].equals(cur), () -> { listener.onChoose(o, opt[1]); closeMenu(); });
+                m.add(door(t(S.PLATFORM_EMULATOR) + "  ·  " + Library.emulatorLabel(cur == null ? pl.launch : cur)), false, () -> {
+                    Menu em = new Menu(t(S.CHOOSE_EMULATOR), I18n.f(S.PLATFORM_DEFAULT, pl.name));
+                    em.parent = m;
+                    em.add(I18n.f(S.PEGASUS_DEFAULT, Library.emulatorLabel(pl.launch)), cur == null, () -> { listener.onChoose(o, null); closeMenu(); });
+                    for (String[] opt : Library.options(pl, getContext().getPackageManager()))
+                        em.add(opt[0], opt[1].equals(cur), () -> { listener.onChoose(o, opt[1]); closeMenu(); });
+                    showMenu(em);
+                }).hint(t(S.H_PLATFORM_EMULATOR));
             }
-            m.add(t(S.RENAME), false, () -> listener.onRenamePlatform(pl));
-            if (!isNative(pl)) m.add(t(S.MERGE_FOLDER), false, () -> listener.onMergePlatform(pl, m));
+            m.add(t(S.RENAME), false, () -> listener.onRenamePlatform(pl)).hint(t(S.H_RENAME_PLATFORM));
+            if (!isNative(pl)) m.add(door(t(S.MERGE_FOLDER)), false, () -> listener.onMergePlatform(pl, m)).hint(t(S.H_MERGE));
+            if (hasOwnOrder(pl)) m.add(t(S.RESET_ORDER), false, () -> { closeMenu(); resetGameOrder(pl); }).hint(t(S.H_RESET_ORDER));
             List<Library.Game> fresh = newIn(pl);
-            if (!fresh.isEmpty()) m.add(I18n.f(S.MARK_ALL_SEEN, fresh.size()), false, () -> { closeMenu(); listener.onMarkSeen(fresh); });
-            m.add(t(S.HIDE_FOLDER), false, () -> { closeMenu(); listener.onHideFolder(pl); });
+            if (!fresh.isEmpty()) m.add(I18n.f(S.MARK_ALL_SEEN, fresh.size()), false, () -> { closeMenu(); listener.onMarkSeen(fresh); }).hint(t(S.H_MARK_ALL_SEEN));
+            m.add(t(S.HIDE_FOLDER), false, () -> { closeMenu(); listener.onHideFolder(pl); }).hint(t(S.H_HIDE_FOLDER));
             showMenu(m);
             return;
         }
         if (!(o instanceof Library.Game)) return;
-        Library.Game g = (Library.Game) o;
+        showGameMenu((Library.Game) o);
+    }
+
+    /** A row that opens a submenu ends with an arrow. */
+    private static String door(String label) { return label + "  ›"; }
+
+    /**
+     * Y on a game: a handful of doors instead of one long list – emulator, favourite, folder, cheats, AI, the game's
+     * details, and more – each with a line under the list saying what it leads to.
+     */
+    void showGameMenu(Library.Game g) {
         boolean emulated = g.pkg == null;
-        Menu m = new Menu(emulated ? t(S.CHOOSE_EMULATOR) : g.title, emulated ? g.title : g.platform.title());
-        if (emulated) {
+        Menu m = new Menu(g.title, g.platform.title());
+        boolean unsorted = Library.UNSORTED.equals(g.platform.system);
+        if (g.path != null && (unsorted || Library.chosenSystems.containsKey(g.path.getAbsolutePath())))
+            m.add(door(t(S.PICK_SYSTEM)), false, () -> listener.onPickSystem(g)).hint(t(S.H_PICK_SYSTEM));
+        if (emulated && !unsorted) {
             String cur = listener.chosenCmd(g);
-            m.add(t(S.FOLLOW_PLATFORM), cur == null, () -> { listener.onChoose(g, null); closeMenu(); });
-            for (String[] opt : Library.options(g.platform, getContext().getPackageManager()))
-                m.add(opt[0], opt[1].equals(cur), () -> { listener.onChoose(g, opt[1]); closeMenu(); });
+            m.add(door(t(S.EMULATOR) + "  ·  " + (cur == null ? t(S.FOLLOW_PLATFORM) : Library.emulatorLabel(cur))), false, () -> {
+                Menu em = new Menu(t(S.CHOOSE_EMULATOR), g.title);
+                em.parent = m;
+                em.add(t(S.FOLLOW_PLATFORM), cur == null, () -> { listener.onChoose(g, null); closeMenu(); }).hint(t(S.H_FOLLOW_PLATFORM));
+                for (String[] opt : Library.options(g.platform, getContext().getPackageManager()))
+                    em.add(opt[0], opt[1].equals(cur), () -> { listener.onChoose(g, opt[1]); closeMenu(); });
+                showMenu(em);
+            }).hint(t(S.H_EMULATOR));
         }
         boolean fav = listener.isFavorite(g);
-        m.add(t(fav ? S.REMOVE_FAVORITE : S.ADD_FAVORITE), false, () -> { closeMenu(); listener.onToggleFavorite(g); });
-        m.add(t(S.ADD_TO_FOLDER), false, () -> listener.onAddToFolder(g, m));
-        if (isNew(g)) m.add(t(S.MARK_SEEN), false, () -> { closeMenu(); listener.onMarkSeen(java.util.Collections.singletonList(g)); });
+        m.add(t(fav ? S.REMOVE_FAVORITE : S.ADD_FAVORITE), false, () -> { closeMenu(); listener.onToggleFavorite(g); }).hint(t(S.H_FAVORITE));
+        m.add(door(t(S.ADD_TO_FOLDER)), false, () -> listener.onAddToFolder(g, m)).hint(t(S.H_FOLDER));
         Library.Platform here = st.current;
         if (here != null && here.isCustom() && here.smart == null)
-            m.add(t(S.REMOVE_FROM_FOLDER), false, () -> { closeMenu(); listener.onRemoveFromFolder(here, g); });
-        if (emulated) m.add(t(S.CHEATS), false, () -> listener.onCheats(g));
-        if (g.path != null) m.add(t(S.DETAILS), false, () -> listener.onDetails(g));
-        if (g.path != null) m.add(t(S.GENRE) + "  ·  " + Genres.name(g.genre), false, () -> listener.onPickGenre(g, m));
+            m.add(t(S.REMOVE_FROM_FOLDER), false, () -> { closeMenu(); listener.onRemoveFromFolder(here, g); }).hint(t(S.H_REMOVE_FOLDER));
+        if (emulated) m.add(door(t(S.CHEATS)), false, () -> listener.onCheats(g)).hint(t(S.H_CHEATS));
+        if (g.path != null) m.add(door(t(S.GROUP_AI)), false, () -> {
+            Menu am = new Menu(t(S.GROUP_AI), g.title);
+            am.parent = m;
+            am.add(door(t(S.ASK_AI)), false, () -> listener.onAskAi(g, am)).hint(t(S.H_ASK_AI));
+            am.add(t(S.HOW_TO), false, () -> listener.onHowTo(g)).hint(t(S.H_HOW_TO));
+            showMenu(am);
+        }).hint(t(S.H_AI));
+        m.add(door(t(S.GROUP_INFO)), false, () -> showInfoMenu(g, m)).hint(t(S.H_INFO));
+        m.add(door(t(S.GROUP_MORE)), false, () -> {
+            Menu mm = new Menu(t(S.GROUP_MORE), g.title);
+            mm.parent = m;
+            if (emulated && g.path != null) mm.add(door(t(S.SAVES)), false, () -> listener.onSaves(g, mm)).hint(t(S.H_SAVES));
+            if (isNew(g)) mm.add(t(S.MARK_SEEN), false, () -> { closeMenu(); listener.onMarkSeen(java.util.Collections.singletonList(g)); }).hint(t(S.H_MARK_SEEN));
+            mm.add(t(S.HIDE_GAME), false, () -> { closeMenu(); listener.onHideGame(g); }).hint(t(S.H_HIDE_GAME));
+            if (emulated && g.path != null) mm.add(t(S.DELETE_GAME), false, () -> listener.onDeleteGame(g, mm)).hint(t(S.H_DELETE_GAME));
+            showMenu(mm);
+        }).hint(t(S.H_MORE));
+        showMenu(m);
+    }
+
+    /** The game's own information: details, genre, status, note, and what the upper screen shows for it. */
+    private void showInfoMenu(Library.Game g, Menu parent) {
+        Menu im = new Menu(t(S.GROUP_INFO), g.title);
+        im.parent = parent;
         if (g.path != null) {
+            im.add(door(t(S.DETAILS)), false, () -> listener.onDetails(g)).hint(t(S.H_DETAILS));
+            im.add(door(t(S.GENRE) + "  ·  " + Genres.name(g.genre)), false, () -> listener.onPickGenre(g, im)).hint(t(S.H_GENRE));
+            im.add(door(t(S.STATUS) + "  ·  " + listener.statusLine(g)), false, () -> listener.onStatus(g, im)).hint(t(S.H_STATUS));
             String note = listener.noteOf(g);
-            m.add(t(S.NOTE) + (note == null ? "" : "  ·  " + note), false, () -> listener.onNote(g, m));
-            m.add(t(S.ASK_AI), false, () -> listener.onAskAi(g, m));
-            m.add(t(S.STATUS) + "  ·  " + listener.statusLine(g), false, () -> listener.onStatus(g, m));
-            m.add(t(S.HOW_TO), false, () -> listener.onHowTo(g));
-            if (emulated) m.add(t(S.SAVES), false, () -> listener.onSaves(g, m));
+            im.add(door(t(S.NOTE) + (note == null ? "" : "  ·  " + note)), false, () -> listener.onNote(g, im)).hint(t(S.H_NOTE));
+            im.add(door(t(S.AI_GAME_PICTURES)), false, () -> listener.onAiGamePictures(g, im)).hint(t(S.H_AI_GAME_PICTURES));
         }
         String[] modes = {"auto", "logo", "cover", "video"};
         S[] modeNames = {S.DISPLAY_AUTO, S.DISPLAY_LOGO, S.DISPLAY_COVER, S.DISPLAY_VIDEO};
         String mode = TopView.displayMode(g);
         int mi = java.util.Arrays.asList(modes).indexOf(mode);
-        m.add(t(S.TOP_DISPLAY) + "  ·  " + t(modeNames[Math.max(0, mi)]), false, () -> {
+        im.add(door(t(S.TOP_DISPLAY) + "  ·  " + t(modeNames[Math.max(0, mi)])), false, () -> {
             Menu dm = new Menu(t(S.TOP_DISPLAY), g.title);
-            dm.parent = st.menu;
+            dm.parent = im;
             for (int i = 0; i < modes.length; i++) {
                 String md = modes[i];
                 dm.add(t(modeNames[i]), md.equals(mode), () -> {
@@ -1039,9 +1162,8 @@ final class ShelfView extends View {
                 });
             }
             showMenu(dm);
-        });
-        m.add(t(S.HIDE_GAME), false, () -> { closeMenu(); listener.onHideGame(g); });
-        showMenu(m);
+        }).hint(t(S.H_TOP_DISPLAY));
+        showMenu(im);
     }
 
     /** Custom folders are rebuilt as new objects on every change; find them again by name. */
@@ -1102,6 +1224,8 @@ final class ShelfView extends View {
 
     boolean onKey(int code) {
         if (st.lib == null) return false;
+        // a tip that has been read for a moment goes with the next key
+        if (tip != null && SystemClock.uptimeMillis() - tipShown > TIP_MIN_MS) { tip = null; invalidate(); }
         if (st.menu != null && st.menu.isPage()) return pageKey(code);
         if (st.menu != null) {
             Menu m = st.menu;
@@ -1164,15 +1288,21 @@ final class ShelfView extends View {
                 if (st.current == null) { listener.onCue(Sfx.OPEN); listener.onSettings(); } else activate();
                 return true;
             case KeyEvent.KEYCODE_BUTTON_A: case KeyEvent.KEYCODE_ENTER: case KeyEvent.KEYCODE_DPAD_CENTER:
-                if (st.current == null) {
-                    // home page: open on release; held long enough, the tile lifts to be moved
+                if (st.current == null || canReorder()) {
+                    // home page and folders: open on release; held long enough, the tile lifts to be moved
                     aHeld = true;
                     removeCallbacks(lift);
                     postDelayed(lift, HOLD_MS);
                 } else activate();
                 return true;
             case KeyEvent.KEYCODE_BUTTON_B: case KeyEvent.KEYCODE_BACK: case KeyEvent.KEYCODE_ESCAPE:
-                if (st.current != null) { listener.onCue(Sfx.BACK); goHome(); }
+                if (st.current != null) {
+                    listener.onCue(Sfx.BACK);
+                    Runnable back = st.current == st.results ? st.listBack : null;
+                    st.listBack = null;
+                    goHome();
+                    if (back != null) back.run();
+                }
                 return true;
             case KeyEvent.KEYCODE_BUTTON_X: zoom(); return true;
             case KeyEvent.KEYCODE_BUTTON_Y: openEmulatorMenu(); return true;
@@ -1279,13 +1409,49 @@ final class ShelfView extends View {
         drawLetter(c);
         drawHeader(c);
         drawFooter(c);
+        drawTip(c);
         if (st.menu != null) drawMenu(c);
         if (dimmed) c.drawColor(0xFF000000); // screensaver: pure black, so the OLED pixels are off and nothing burns in
     }
 
     private boolean dimmed;
+    /** Duo Lite (set from Settings): no pulsing selection frame. */
+    static boolean lite;
 
     void setDimmed(boolean d) { dimmed = d; invalidate(); }
+
+    // ---- a one-time tip: one line above the key legend, gone after a while or with a key press ----
+
+    private String tip;
+    private long tipShown;
+    private static final long TIP_MS = 9000, TIP_MIN_MS = 2500;
+
+    void showTip(String s) {
+        tip = s;
+        tipShown = SystemClock.uptimeMillis();
+        invalidate();
+        postDelayed(this::invalidate, TIP_MS + 50);
+    }
+
+    boolean tipShowing() { return tip != null && SystemClock.uptimeMillis() - tipShown < TIP_MS; }
+
+    private void drawTip(Canvas c) {
+        if (!tipShowing() || st.menu != null || moving()) return;
+        float u = u(), size = 23 * u, h = 58 * u, maxW = getWidth() - 2 * pad();
+        String s = ellipsize(tip, maxW - 90 * u, size);
+        float w = Math.min(maxW, measure(s, size) + 96 * u);
+        // fades in over the first fifth of a second
+        float a = Math.min(1f, (SystemClock.uptimeMillis() - tipShown) / 200f);
+        if (a < 1f) postInvalidateOnAnimation();
+        RectF tr = new RectF((getWidth() - w) / 2, getHeight() - footerH() - h - 14 * u, (getWidth() + w) / 2, getHeight() - footerH() - 14 * u);
+        int save = c.saveLayerAlpha(tr.left - 20 * u, tr.top - 20 * u, tr.right + 20 * u, tr.bottom + 20 * u, (int) (255 * a));
+        card(c, tr, h / 2, Palette.card());
+        p.setColor(Palette.accent());
+        c.drawCircle(tr.left + h / 2 + 4 * u, tr.centerY(), 15 * u, p);
+        text(c, "i", tr.left + h / 2 + 4 * u, tr.centerY() + 8 * u, 21 * u, 0xFFFFFFFF, true, Paint.Align.CENTER);
+        text(c, s, tr.left + h + 16 * u, tr.centerY() + 8 * u, size, Palette.text(), false, Paint.Align.LEFT);
+        c.restoreToCount(save);
+    }
 
     private void drawItem(Canvas c, int i, boolean selected) {
         tileRect(i, r);
@@ -1320,7 +1486,8 @@ final class ShelfView extends View {
         else if (listView()) drawRow(c, (Library.Game) o);
         else drawGame(c, (Library.Game) o, rad);
         if (selected) {
-            float a = 0.65f + 0.35f * (float) Math.sin(SystemClock.uptimeMillis() / 180.0);
+            // Duo Lite: a steady frame instead of a pulse, so an idle screen is not redrawn 25 times a second
+            float a = lite ? 1f : 0.65f + 0.35f * (float) Math.sin(SystemClock.uptimeMillis() / 180.0);
             p.setStyle(Paint.Style.STROKE);
             p.setStrokeWidth(6 * u());
             p.setColor(Palette.accent());
@@ -1330,7 +1497,7 @@ final class ShelfView extends View {
             c.drawRoundRect(r2, rad + 4 * u(), rad + 4 * u(), p);
             p.setStyle(Paint.Style.FILL);
             p.setAlpha(255);
-            if (!dimmed) postInvalidateDelayed(40);   // the pulse stops under the screensaver
+            if (!dimmed && !lite) postInvalidateDelayed(40);   // the pulse stops under the screensaver
         }
         c.restore();
     }
@@ -1459,7 +1626,7 @@ final class ShelfView extends View {
         ConsoleDrawable d = ConsoleDrawable.of(pl, false);
         d.setBounds((int) (r.left + w * 0.4f), (int) (r.top + h * 0.18f), (int) (r.right - w * 0.05f), (int) (r.bottom - h * 0.28f));
         d.draw(c);
-        String label = pl.label != null || isNative(pl) || pl.isCustom() ? pl.title() : pl.name;
+        String label = pl.label != null || isNative(pl) || pl.isCustom() || Library.UNSORTED.equals(pl.name) ? pl.title() : Library.shortLabel(pl.name);
         text(c, ellipsize(label, w * 0.7f, h * 0.16f), r.left + w * 0.07f, r.bottom - h * 0.12f, h * 0.16f, 0xFFFFFFFF, true, Paint.Align.LEFT);
         text(c, String.valueOf(pl.games.size()), r.right - w * 0.07f, r.bottom - h * 0.12f, h * 0.12f, 0xDDFFFFFF, true, Paint.Align.RIGHT);
     }
@@ -1642,15 +1809,20 @@ final class ShelfView extends View {
     }
 
     /** A list of games under its own title (e.g. most played), shown on the results page. */
-    void showList(String title, List<Library.Game> games) {
+    void showList(String title, List<Library.Game> games) { showList(title, games, null); }
+
+    /** @param back what B does on the list instead of going home, or null */
+    void showList(String title, List<Library.Game> games, Runnable back) {
         showResults("", games);
         st.listTitle = title;
+        st.listBack = back;
         invalidate();
     }
 
     /** Shows search results as their own page; called again as the query changes. */
     void showResults(String query, List<Library.Game> games) {
         st.listTitle = null;
+        st.listBack = null;
         st.query = query;
         st.results.games.clear();
         st.results.games.addAll(games);
@@ -1736,13 +1908,13 @@ final class ShelfView extends View {
         if (st.current == null && toolId(sel) != null) {
             x = hintItem(c, x, cy, "Y", t(S.EDIT_FOLDER));
         } else if (sel instanceof Library.Game) {
-            x = hintItem(c, x, cy, "Y", ((Library.Game) sel).pkg == null ? t(S.EMULATOR) : t(S.ADD_TO_FOLDER));
+            x = hintItem(c, x, cy, "Y", t(S.GAME_MENU));
         } else if (sel instanceof Library.Platform && ((Library.Platform) sel).isCustom()) {
             x = hintItem(c, x, cy, "Y", t(S.EDIT_FOLDER));
         } else if (sel instanceof Library.Platform && isGenre((Library.Platform) sel)) {
             x = hintItem(c, x, cy, "Y", t(S.ICON));
         } else if (sel instanceof Library.Platform && !isPseudo((Library.Platform) sel)) {
-            x = hintItem(c, x, cy, "Y", isNative((Library.Platform) sel) ? t(S.HIDE_FOLDER) : t(S.EMULATOR));
+            x = hintItem(c, x, cy, "Y", t(S.GAME_MENU));
         }
         hitZoom.setEmpty();
         hitSort.setEmpty();
@@ -1792,7 +1964,7 @@ final class ShelfView extends View {
     private void menuCard(RectF out) {
         float u = u(), mw = 860 * u;
         int rows = Math.min(MENU_ROWS, st.menu.labels.size());
-        float mh = 110 * u + rows * menuRowH() + 24 * u;
+        float mh = 110 * u + rows * menuRowH() + 24 * u + (st.menu.hints.isEmpty() ? 0 : 58 * u);
         out.set((getWidth() - mw) / 2, (getHeight() - mh) / 2, (getWidth() + mw) / 2, (getHeight() + mh) / 2);
     }
 
@@ -1855,7 +2027,16 @@ final class ShelfView extends View {
             if (m.marks.get(i)) text(c, "✓", r2.right - 28 * u, r2.centerY() + 11 * u, 30 * u, on ? 0xFFFFFFFF : Palette.accent(), true, Paint.Align.RIGHT);
         }
         if (m.top > 0) text(c, "▲", cardR.centerX(), cardR.top + 92 * u, 18 * u, 0xFF8090A0, false, Paint.Align.CENTER);
-        if (m.top + rows < m.labels.size()) text(c, "▼", cardR.centerX(), cardR.bottom - 8 * u, 18 * u, 0xFF8090A0, false, Paint.Align.CENTER);
+        float listEnd = cardR.top + 94 * u + rows * menuRowH();
+        if (m.top + rows < m.labels.size()) text(c, "▼", cardR.centerX(), listEnd + 10 * u, 18 * u, 0xFF8090A0, false, Paint.Align.CENTER);
+        if (!m.hints.isEmpty()) {
+            String h = m.hints.get(m.sel);
+            if (h != null) {
+                p.setColor(Palette.text3());
+                c.drawRect(cardR.left + 36 * u, listEnd + 18 * u, cardR.right - 36 * u, listEnd + 19.5f * u, p);
+                text(c, ellipsize(h, cardR.width() - 72 * u, 24 * u), cardR.left + 36 * u, listEnd + 52 * u, 24 * u, Palette.text3(), false, Paint.Align.LEFT);
+            }
+        }
     }
 
     private void text(Canvas c, String s, float x, float y, float size, int color, boolean bold, Paint.Align a) {
@@ -1931,7 +2112,7 @@ final class ShelfView extends View {
     }
 
     private void longPress(float x, float y) {
-        if (st.menu != null || st.lib == null || st.current != null || moving()) return;
+        if (st.menu != null || st.lib == null || (st.current != null && !canReorder()) || moving()) return;
         int i = tileAt(x, y);
         if (i < 0) return;
         st.sel = i;

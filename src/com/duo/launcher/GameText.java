@@ -58,16 +58,9 @@ final class GameText {
         return out;
     }
 
-    /** The launcher's own folder for the platform, on the card the games are on. */
+    /** The launcher's own folder for the platform: on the storage the player chose (by default, where the games are). */
     static File ownDir(Library.Platform p, Library.Game g) {
-        String path = g.path.getAbsolutePath();
-        File vol;
-        if (path.startsWith("/storage/emulated/0/")) vol = new File("/storage/emulated/0");
-        else if (path.startsWith("/storage/")) {
-            int s = path.indexOf('/', 9);
-            vol = new File(s < 0 ? path : path.substring(0, s));
-        } else vol = g.path.getParentFile();
-        return new File(vol, "DuoLauncher/" + p.name);
+        return new File(Storage.root(Storage.volumeOf(g.path)), p.name);
     }
 
     /**

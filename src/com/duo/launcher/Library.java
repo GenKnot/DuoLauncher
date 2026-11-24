@@ -137,18 +137,41 @@ final class Library {
             {"GBA", "gba gameboyadvance", "gba"},
             {"GBC", "gbc gameboycolor", "gbc"},
             {"GB", "gb gameboy", "gb"},
-            {"NES", "nes fc famicom", "nes fds unf"},
-            {"SNES", "snes sfc superfamicom supernintendo", "sfc smc"},
+            {"NES", "nes fc famicom fchd fchack neshack", "nes fds unf"},
+            {"SNES", "snes sfc superfamicom supernintendo sfchack sfcmsu1 sneshack snesmsu1", "sfc smc"},
             {"N64", "n64 nintendo64", "n64 z64 v64"},
-            {"NGC", "ngc gc gamecube nintendogamecube", "gcm gcz rvz ciso"},
-            {"WII", "wii nintendowii", "wbfs wad rvz gcz ciso"},
-            {"MD", "md genesis megadrive segagenesis", "md gen smd"},
+            {"NGC", "ngc gc gamecube nintendogamecube", "gcm gcz rvz ciso wia"},
+            {"WII", "wii nintendowii wiiware", "wbfs wad rvz gcz ciso wia"},
+            {"MD", "md genesis megadrive segagenesis mdhack mdhackpicodrive genesishack", "md gen smd"},
             {"PS1", "ps1 psx playstation", "pbp"},
             {"PS2", "ps2 playstation2", ""},
             {"PSP", "psp", "cso"},
             {"PSV", "psv psvita vita", "vpk psvita"},
             {"PS3", "ps3 playstation3", ""},
             {"SWITCH", "switch ns nintendoswitch", "nsp xci nsz xcz"},
+            // the rest of the Pegasus G pack, with the folder names Pegasus, ES-DE and RetroArch use
+            {"VB", "vb virtualboy nintendovirtualboy", "vb vboy"},
+            {"SMS", "sms mastersystem segamastersystem", "sms"},
+            {"GG", "gg gamegear segagamegear", "gg"},
+            {"32X", "32x sega32x md32x mega32x", "32x"},
+            {"SEGACD", "segacd megacd mdcd segamegacd", ""},
+            {"SATURN", "saturn ss segasaturn", ""},
+            {"DC", "dc dreamcast segadreamcast", "cdi gdi"},
+            {"NAOMI", "naomi naomi2 atomiswave", ""},
+            {"PCE", "pce pcengine tg16 turbografx16 turbografx", "pce"},
+            {"PCECD", "pcecd pcenginecd tgcd turbografxcd", ""},
+            {"PCFX", "pcfx", ""},
+            {"NEOGEOCD", "neogeocd ngcd neocd", ""},
+            {"NGPC", "ngpc ngp neogeopocket neogeopocketcolor", "ngp ngc"},
+            {"WS", "ws wonderswan", "ws"},
+            {"WSC", "wsc wonderswancolor", "wsc"},
+            {"POKEMINI", "pokemini pokemonmini", "min"},
+            {"LYNX", "lynx atarilynx", "lnx"},
+            {"ATARI", "atari atari2600 a2600 2600", "a26"},
+            {"GW", "gw gameandwatch gamewatch", "mgw"},
+            {"3DO", "3do panasonic3do", ""},
+            {"DOS", "dos msdos pc dosbox", "dosz"},
+            {"ARCADE", "arcade mame fbneo fba neogeo cps1 cps2 cps3", ""},
     };
     /** Extensions accepted only when the folder name tells the system. */
     private static final Set<String> GENERIC = new HashSet<>(Arrays.asList("zip", "7z", "chd", "cue", "iso", "m3u"));
@@ -175,6 +198,63 @@ final class Library {
         if (ext.isEmpty()) return null;
         for (String[] s : SYSTEMS) for (String e : s[2].split(" ")) if (e.equals(ext)) return s[0];
         return null;
+    }
+
+    /** The short name on a home tile for folder keys that read badly as they are ("POKEMINI"); others unchanged. */
+    static String shortLabel(String name) {
+        switch (name) {
+            case "SEGACD": return "MEGA-CD";
+            case "PCECD": return "PCE-CD";
+            case "PCFX": return "PC-FX";
+            case "NEOGEOCD": return "NEOGEO CD";
+            case "POKEMINI": return "POKÉ MINI";
+            case "ATARI": return "2600";
+            case "GW": return "G&W";
+            case "ARCADE": return platformTitle(name);
+            default: return name;
+        }
+    }
+
+    /** The system an extension belongs to when only one system uses it, else null. */
+    static String systemForExtension(String ext) {
+        if (ext.isEmpty() || GENERIC.contains(ext) || SHARED.contains(ext)) return null;
+        for (String[] s : SYSTEMS) for (String e : s[2].split(" ")) if (e.equals(ext)) return s[0];
+        return null;
+    }
+
+    /** Extensions of more than one console, told apart by looking inside the file when the folder does not say. */
+    private static final Set<String> SHARED = new HashSet<>(Arrays.asList("rvz", "gcz", "ciso", "wia"));
+
+    /** The key of the folder for files no folder name or content could place; Y on one of them picks its console. */
+    static final String UNSORTED = "UNSORTED";
+
+    /** Consoles the player picked for single files (absolute path -> system key), from Settings. */
+    static volatile Map<String, String> chosenSystems = new HashMap<>();
+
+    /** Every console a file can be given by hand, in the order of the table. */
+    static List<String> systemKeys() {
+        List<String> out = new ArrayList<>();
+        for (String[] s : SYSTEMS) out.add(s[0]);
+        return out;
+    }
+
+    /**
+     * The console of a file in a folder whose name says nothing (or says something that does not fit): the
+     * player's own choice, then the extension, then the file's contents.
+     */
+    private static String systemOf(File f, String ext, String hint) {
+        String chosen = chosenSystems.get(f.getAbsolutePath());
+        if (chosen != null) return chosen;
+        if (hint == null && SHARED.contains(ext)) {
+            String s = Sniff.system(f, ext);
+            if (s != null) return s;
+        }
+        String sys = systemForFile(ext, hint);
+        if (sys == null && hint == null && GENERIC.contains(ext)) {
+            sys = Sniff.system(f, ext);
+            if (sys == null && !ext.equals("m3u")) sys = UNSORTED;
+        }
+        return sys;
     }
 
     private static boolean matchesExt(String system, String ext) {
@@ -222,6 +302,28 @@ final class Library {
             case "PS1": return "Sony - PlayStation";
             case "PS2": return "Sony - PlayStation 2";
             case "PSP": return "Sony - PlayStation Portable";
+            case "VB": return "Nintendo - Virtual Boy";
+            case "SMS": return "Sega - Master System - Mark III";
+            case "GG": return "Sega - Game Gear";
+            case "32X": return "Sega - 32X";
+            case "SEGACD": return "Sega - Mega-CD - Sega CD";
+            case "SATURN": return "Sega - Saturn";
+            case "DC": return "Sega - Dreamcast";
+            case "NAOMI": return "Sega - Naomi";
+            case "PCE": return "NEC - PC Engine - TurboGrafx 16";
+            case "PCECD": return "NEC - PC Engine CD - TurboGrafx-CD";
+            case "PCFX": return "NEC - PC-FX";
+            case "NEOGEOCD": return "SNK - Neo Geo CD";
+            case "NGPC": return "SNK - Neo Geo Pocket Color";
+            case "WS": return "Bandai - WonderSwan";
+            case "WSC": return "Bandai - WonderSwan Color";
+            case "POKEMINI": return "Nintendo - Pokemon Mini";
+            case "LYNX": return "Atari - Lynx";
+            case "ATARI": return "Atari - 2600";
+            case "GW": return "Handheld Electronic Game";
+            case "3DO": return "The 3DO Company - 3DO";
+            case "DOS": return "DOS";
+            case "ARCADE": return "FBNeo - Arcade Games";
             default: return null;
         }
     }
@@ -372,6 +474,11 @@ final class Library {
         for (Platform p : lib.platforms) mergeDiscs(p);
         applyOwnMetadata(ctx, lib);
         GameDb.apply(ctx, lib);
+        if (!NameClean.on.isEmpty()) {
+            NameClean.apply(lib);
+            // tidier names sort differently ("0153 - Zelda" was under 0); Pegasus collections keep their own order
+            for (Platform p : lib.platforms) if (p.scanned) p.games.sort((a, b) -> col.compare(a.title, b.title));
+        }
         for (Platform p : lib.platforms) for (Game g : p.games) lib.byKey.put(g.key(), g);
         lib.signature = lib.computeSignature();
         return lib;
@@ -706,7 +813,13 @@ final class Library {
         return SYSTEMS.length;
     }
 
+    /** Set while a game runs: a scan under way waits, so it does not compete with the emulator for the card. */
+    static volatile boolean paused;
+
     private void scan(File dir, String hint, Map<String, Platform> raw, Set<String> seen, int depth) {
+        while (paused) {
+            try { Thread.sleep(500); } catch (InterruptedException e) { return; }
+        }
         String canon;
         try { canon = dir.getCanonicalPath(); } catch (IOException e) { canon = dir.getAbsolutePath(); }
         if (!seen.add(canon)) return;
@@ -759,7 +872,7 @@ final class Library {
                 }
                 continue;
             }
-            String sys = systemForFile(extension(n), hint);
+            String sys = systemOf(f, extension(n), hint);
             if (sys == null) continue;
             Platform p = raw.get(sys);
             if (p == null) {
@@ -985,6 +1098,29 @@ final class Library {
             case "PSP": return "PlayStation Portable";
             case "PSV": return "PlayStation Vita";
             case "SWITCH": return "Nintendo Switch";
+            case "VB": return "Virtual Boy";
+            case "SMS": return "Master System";
+            case "GG": return "Game Gear";
+            case "32X": return "Mega Drive 32X";
+            case "SEGACD": return "Mega-CD / Sega CD";
+            case "SATURN": return "Sega Saturn";
+            case "DC": return "Dreamcast";
+            case "NAOMI": return "NAOMI";
+            case "PCE": return "PC Engine";
+            case "PCECD": return "PC Engine CD";
+            case "PCFX": return "PC-FX";
+            case "NEOGEOCD": return "Neo Geo CD";
+            case "NGPC": return "Neo Geo Pocket Color";
+            case "WS": return "WonderSwan";
+            case "WSC": return "WonderSwan Color";
+            case "POKEMINI": return "Pokémon Mini";
+            case "LYNX": return "Atari Lynx";
+            case "ATARI": return "Atari 2600";
+            case "GW": return "Game & Watch";
+            case "3DO": return "3DO";
+            case "DOS": return "DOS";
+            case "ARCADE": return I18n.t(I18n.S.T_ARCADE);
+            case UNSORTED: return I18n.t(I18n.S.T_UNSORTED);
             case "XBOX360": return "Xbox 360";
             case "XBOX": return "Xbox";
             case "ANDROID": return I18n.t(I18n.S.ANDROID_GAMES);
@@ -1009,6 +1145,10 @@ final class Library {
             case "APPS": return "apps";
             case "NES": case "SNES": case "N64": case "MD": case "PS1": case "PS2": case "PS3": case "PS4": case "PS5":
             case "PSP": case "PSV": case "SWITCH":
+                return u.toLowerCase(Locale.ROOT);
+            case "VB": case "SMS": case "GG": case "32X": case "SEGACD": case "SATURN": case "DC": case "NAOMI": case "PCE":
+            case "PCECD": case "PCFX": case "NEOGEOCD": case "NGPC": case "WS": case "WSC": case "POKEMINI": case "LYNX":
+            case "ATARI": case "GW": case "3DO": case "DOS": case "ARCADE":
                 return u.toLowerCase(Locale.ROOT);
             default: return "generic";
         }
@@ -1035,6 +1175,28 @@ final class Library {
             case "psp": return 0xFF37474F;
             case "psv": return 0xFF29486B;
             case "switch": return 0xFFE4002B;
+            case "vb": return 0xFFB71C1C;
+            case "sms": return 0xFF1E3A8A;
+            case "gg": return 0xFF374151;
+            case "32x": return 0xFF4B5563;
+            case "segacd": return 0xFF1F2937;
+            case "saturn": return 0xFF4A4E69;
+            case "dc": return 0xFFE8742E;
+            case "naomi": return 0xFF0E7490;
+            case "pce": return 0xFFD97706;
+            case "pcecd": return 0xFFB45309;
+            case "pcfx": return 0xFF6D28D9;
+            case "neogeocd": return 0xFF9A3412;
+            case "ngpc": return 0xFF0F766E;
+            case "ws": return 0xFF64748B;
+            case "wsc": return 0xFF0EA5E9;
+            case "pokemini": return 0xFFE11D48;
+            case "lynx": return 0xFF475569;
+            case "atari": return 0xFF92400E;
+            case "gw": return 0xFFCA8A04;
+            case "3do": return 0xFF991B1B;
+            case "dos": return 0xFF1D4ED8;
+            case "arcade": return 0xFFDB2777;
             case "xbox360": return 0xFF6BB233;
             case "xboxsx": return 0xFF107C10;
             case "android": return 0xFF2E9E5B;
@@ -1158,10 +1320,37 @@ final class Library {
             case "SWITCH":
                 o.add(new String[]{"Eden", EDEN, PKG_EDEN});
                 break;
+            // RetroArch cores for the rest of the Pegasus G pack (its own metadata usually brings launch lines too)
+            case "VB": ra(o, "Beetle VB", "mednafen_vb"); break;
+            case "SMS":
+            case "GG": ra(o, "Genesis Plus GX", "genesis_plus_gx"); ra(o, "PicoDrive", "picodrive"); break;
+            case "32X": ra(o, "PicoDrive", "picodrive"); break;
+            case "SEGACD": ra(o, "Genesis Plus GX", "genesis_plus_gx"); ra(o, "PicoDrive", "picodrive"); break;
+            case "SATURN": ra(o, "Yaba Sanshiro", "yabasanshiro"); ra(o, "Yabause", "yabause"); break;
+            case "DC":
+            case "NAOMI": ra(o, "Flycast", "flycast"); break;
+            case "PCE":
+            case "PCECD": ra(o, "Beetle PCE Fast", "mednafen_pce_fast"); ra(o, "Beetle PCE", "mednafen_pce"); break;
+            case "PCFX": ra(o, "Beetle PC-FX", "mednafen_pcfx"); break;
+            case "NEOGEOCD": ra(o, "NeoCD", "neocd"); break;
+            case "NGPC": ra(o, "Beetle NeoPop", "mednafen_ngp"); ra(o, "RACE", "race"); break;
+            case "WS":
+            case "WSC": ra(o, "Beetle Cygne", "mednafen_wswan"); break;
+            case "POKEMINI": ra(o, "PokeMini", "pokemini"); break;
+            case "LYNX": ra(o, "Handy", "handy"); ra(o, "Beetle Lynx", "mednafen_lynx"); break;
+            case "ATARI": ra(o, "Stella", "stella2014"); ra(o, "Stella (newer)", "stella"); break;
+            case "GW": ra(o, "Game & Watch", "gw"); break;
+            case "3DO": ra(o, "Opera", "opera"); break;
+            case "DOS": ra(o, "DOSBox Pure", "dosbox_pure"); break;
+            case "ARCADE": ra(o, "FinalBurn Neo", "fbneo"); ra(o, "MAME 2003-Plus", "mame2003_plus"); break;
             default:
                 break;
         }
         return o;
+    }
+
+    private static void ra(List<String[]> o, String label, String core) {
+        o.add(new String[]{"RetroArch · " + label, retroArch(core), PKG_RETROARCH});
     }
 
     /** Alternatives offered in the emulator menu: only those whose app is installed. {label, command} */
@@ -1169,6 +1358,16 @@ final class Library {
         List<String[]> out = new ArrayList<>();
         for (String[] o : allOptions(p.system)) if (installed(pm, o[2])) out.add(new String[]{o[0], o[1]});
         return out;
+    }
+
+    /** Every emulator the launcher knows for a system, installed or not: {label, command, package}. */
+    static List<String[]> knownOptions(String system) { return allOptions(system); }
+
+    /** The app a launch command starts ("-n <package>/…"), or null for a command that names none. */
+    static String packageOf(String cmd) {
+        if (cmd == null) return null;
+        Matcher m = COMPONENT.matcher(cmd);
+        return m.find() ? m.group(1) : null;
     }
 
     static boolean installed(PackageManager pm, String pkg) {

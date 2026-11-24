@@ -50,6 +50,8 @@ final class TopView extends ViewGroup {
     private final VideoPane video;
     /** Set from Settings: play a game's video snap after it stays selected for a moment. */
     static boolean videoEnabled = true;
+    /** Duo Lite: no blurred artwork behind a game and no entrance animation. */
+    static boolean lite;
     static android.content.SharedPreferences prefs;
     /** A line shown above a game's description, such as why the AI picked it. */
     static final java.util.Map<Library.Game, String> extra = new java.util.HashMap<>();
@@ -129,19 +131,20 @@ final class TopView extends ViewGroup {
                 () -> hero.animate().alpha(1f).setDuration(250).start());
         for (View v : new View[]{dots, bg, scrim, hero, video, title, chips, desc, hints, stats, status, message, saver}) addView(v);
 
-        ObjectAnimator tilt = ObjectAnimator.ofFloat(hero, "rotationY", -10f, 10f);
+        tilt = ObjectAnimator.ofFloat(hero, "rotationY", -10f, 10f);
         tilt.setDuration(4200);
         tilt.setRepeatCount(ValueAnimator.INFINITE);
         tilt.setRepeatMode(ValueAnimator.REVERSE);
         tilt.setInterpolator(new AccelerateDecelerateInterpolator());
         tilt.addUpdateListener(a -> { if (hero.mode() == HeroView.CARD) hero.invalidate(); });
         tilt.start();
-        ObjectAnimator bob = ObjectAnimator.ofFloat(hero, "translationY", 0f, -12f);
+        bob = ObjectAnimator.ofFloat(hero, "translationY", 0f, -12f);
         bob.setDuration(3000);
         bob.setRepeatCount(ValueAnimator.INFINITE);
         bob.setRepeatMode(ValueAnimator.REVERSE);
         bob.setInterpolator(new AccelerateDecelerateInterpolator());
         bob.start();
+        applyMotion(true);
         setDark(false);
         showMessage(t(S.LOADING));
     }
@@ -155,6 +158,24 @@ final class TopView extends ViewGroup {
     }
 
     @Override protected void onAttachedToWindow() { super.onAttachedToWindow(); post(tick); }
+
+    /** The clock and battery line is not redrawn while a game runs. */
+    void pauseTick() { removeCallbacks(tick); applyMotion(false); }
+
+    /** The hero's gentle tilt and bob: they run only while this screen is in front, and never in Duo Lite. */
+    private ObjectAnimator tilt, bob;
+
+    void applyMotion(boolean inFront) {
+        boolean on = inFront && !lite;
+        for (ObjectAnimator a : new ObjectAnimator[]{tilt, bob}) {
+            if (a == null) continue;
+            if (on) a.resume(); else a.pause();
+        }
+        if (!on && lite) { hero.setRotationY(0); hero.setTranslationY(0); }
+        dots.invalidate();   // the backdrop's drifting dots start again, or draw once still
+    }
+
+    void resumeTick() { removeCallbacks(tick); post(tick); applyMotion(true); }
     @Override protected void onDetachedFromWindow() { removeCallbacks(tick); super.onDetachedFromWindow(); }
 
     // ---- layout on a 1920x1080 design canvas ----
@@ -184,7 +205,9 @@ final class TopView extends ViewGroup {
         video.measure(MeasureSpec.makeMeasureSpec((int) (1120 * u), ex), MeasureSpec.makeMeasureSpec((int) (560 * u), ex));
         title.measure(MeasureSpec.makeMeasureSpec((int) (w - 300 * u), ex), MeasureSpec.makeMeasureSpec(h, at));
         desc.measure(MeasureSpec.makeMeasureSpec((int) (1240 * u), ex), MeasureSpec.makeMeasureSpec(h, at));
-        message.measure(MeasureSpec.makeMeasureSpec((int) (w - 300 * u), ex), MeasureSpec.makeMeasureSpec(h, at));
+        int mw = (int) (msgLayout == MSG_QR ? 960 * u : msgLayout == MSG_TEXT ? 1400 * u : w - 300 * u);
+        if (msgLayout != MSG_LOGO) message.setTextSize(TypedValue.COMPLEX_UNIT_PX, 34 * ts);
+        message.measure(MeasureSpec.makeMeasureSpec(mw, ex), MeasureSpec.makeMeasureSpec(h, at));
         chips.measure(MeasureSpec.makeMeasureSpec(w, ex), MeasureSpec.makeMeasureSpec(h, at));
         hints.measure(MeasureSpec.makeMeasureSpec(w, ex), MeasureSpec.makeMeasureSpec(h, at));
         status.measure(MeasureSpec.makeMeasureSpec((int) (420 * u), ex), MeasureSpec.makeMeasureSpec((int) (56 * u), ex));
@@ -200,7 +223,10 @@ final class TopView extends ViewGroup {
         }
         boolean hasDesc = desc.getVisibility() == VISIBLE && desc.getText().length() > 0;
         int hy = (int) ((hasDesc ? 96 : 120) * u);
-        place(hero, (w - hero.getMeasuredWidth()) / 2, hy);
+        boolean qr = msgLayout == MSG_QR && message.getVisibility() == VISIBLE;
+        // beside its explanation, the QR code's centre sits at a quarter of the width
+        if (qr) place(hero, (int) (w * 0.25f - hero.getMeasuredWidth() / 2f), (h - hero.getMeasuredHeight()) / 2);
+        else place(hero, (w - hero.getMeasuredWidth()) / 2, hy);
         place(video, (w - video.getMeasuredWidth()) / 2, hy);
         hero.setPivotX(hero.getMeasuredWidth() / 2f);
         hero.setPivotY(hero.getMeasuredHeight() / 2f);
@@ -213,7 +239,9 @@ final class TopView extends ViewGroup {
         place(desc, (w - desc.getMeasuredWidth()) / 2, y);
         // below the logo, so the two never overlap
         int my = Math.max((h - message.getMeasuredHeight()) / 2, hy + hero.getMeasuredHeight() + (int) (34 * u));
-        place(message, (w - message.getMeasuredWidth()) / 2, Math.min(my, h - message.getMeasuredHeight() - (int) (40 * u)));
+        if (qr) place(message, (int) (w * 0.47f), Math.max(0, (h - message.getMeasuredHeight()) / 2));
+        else if (msgLayout == MSG_TEXT) place(message, (w - message.getMeasuredWidth()) / 2, Math.max(0, (h - message.getMeasuredHeight()) / 2));
+        else place(message, (w - message.getMeasuredWidth()) / 2, Math.min(my, h - message.getMeasuredHeight() - (int) (40 * u)));
         place(status, w - status.getMeasuredWidth() - (int) (40 * u), (int) (26 * u));
         place(hints, -(int) (40 * u), h - hints.getMeasuredHeight() - (int) (30 * u));
     }
@@ -236,7 +264,7 @@ final class TopView extends ViewGroup {
     private void setDark(boolean d) {
         dark = d;
         dots.setVisibility(d ? GONE : VISIBLE);
-        bg.setVisibility(d ? VISIBLE : GONE);
+        bg.setVisibility(d && !lite ? VISIBLE : GONE);   // the blur costs the most to draw
         scrim.setVisibility(d ? VISIBLE : GONE);
         // d: a game's artwork is shown (always dark); otherwise follow the light/dark palette
         setBackgroundColor(d ? 0xFF0E1216 : Palette.topBg());
@@ -255,6 +283,12 @@ final class TopView extends ViewGroup {
         if (item != shown) stopVideo();
         if (item == shown) return;
         shown = item;
+        if (lite) {
+            for (View v : new View[]{hero, title, chips, desc}) { v.animate().cancel(); v.setAlpha(1f); v.setTranslationY(0); }
+            hero.setScaleX(1f);
+            hero.setScaleY(1f);
+            return;
+        }
         for (View v : new View[]{hero, title, chips, desc}) {
             v.animate().cancel();
             v.setAlpha(0f);
@@ -268,17 +302,52 @@ final class TopView extends ViewGroup {
         desc.animate().alpha(1f).setDuration(300).setStartDelay(130).start();
     }
 
+    /** How a message is laid out: under the logo, as a page of text on its own, or beside a QR code. */
+    private static final int MSG_LOGO = 0, MSG_TEXT = 1, MSG_QR = 2;
+    private int msgLayout = MSG_LOGO;
+
     void showMessage(String m) {
+        Bitmap logo = Theme.asset("logo.png");
+        if (logo != null) hero.setBitmap(HeroView.LOGO, logo); else hero.clear();
+        message(m, MSG_LOGO);
+    }
+
+    /** A longer text (a step of the welcome guide) filling the screen, lines aligned on the left. */
+    void showText(String m) {
+        hero.clear();
+        message(m, MSG_TEXT);
+    }
+
+    /** A QR code on the left (the Wi-Fi page address) and its explanation on the right. */
+    void showQr(Bitmap qr, String m) {
+        hero.setBitmap(HeroView.PIXEL, qr);
+        message(m, MSG_QR);
+    }
+
+    private void message(String m, int layout) {
         stopVideo();
         shown = null;
         setDark(false);
-        Bitmap logo = Theme.asset("logo.png");
-        if (logo != null) hero.setBitmap(HeroView.LOGO, logo); else hero.clear();
+        msgLayout = layout;
         dots.set(0xFF6C5CE7, "", Theme.toolBackground("custom"));
         title.setText("");
         chips.set(false);
         desc.setText("");
         hints.set(false);
+        message.setGravity(layout == MSG_LOGO ? Gravity.CENTER : Gravity.START | Gravity.CENTER_VERTICAL);
+        // a page of text sits on a card, so the backdrop's drawings never run through the lines
+        if (layout == MSG_LOGO) {
+            message.setBackground(null);
+            message.setPadding(0, 0, 0, 0);
+        } else {
+            android.graphics.drawable.GradientDrawable card = new android.graphics.drawable.GradientDrawable();
+            float u = getWidth() > 0 ? getWidth() / 1920f : 1f;
+            card.setCornerRadius(36 * u);
+            card.setColor((Palette.card() & 0x00FFFFFF) | 0xEB000000);
+            message.setBackground(card);
+            int pad = (int) (48 * u);
+            message.setPadding(pad, pad, pad, pad);
+        }
         message.setText(m);
         message.setVisibility(VISIBLE);
         requestLayout();
@@ -412,7 +481,7 @@ final class TopView extends ViewGroup {
         if (why != null) text = "✦ " + why + (text.isEmpty() ? "" : "\n" + text);
         desc.setText(text);
         desc.setVisibility(text.isEmpty() ? GONE : VISIBLE);
-        if (emu != null) hints.set(true, "A|" + t(S.PLAY), "Y|" + t(S.CHOOSE_EMULATOR));
+        if (emu != null) hints.set(true, "A|" + t(S.PLAY), "Y|" + t(S.GAME_MENU));
         else hints.set(true, "A|" + t(S.OPEN));
         if (fresh) {
             bg.setImageDrawable(null);

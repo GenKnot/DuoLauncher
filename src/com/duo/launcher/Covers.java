@@ -29,8 +29,12 @@ import java.util.function.IntConsumer;
 final class Covers {
     private static final String RAW = "https://raw.githubusercontent.com/libretro-thumbnails/";
 
+    /**
+     * Whether a game has box art. "Missing covers" means the same everywhere (problem centre, fetching, AI
+     * pictures): a game with only a logo or backdrop still lacks its cover.
+     */
     static boolean hasPicture(Library.Game g) {
-        return g.pkg != null || g.asset("box_front") != null || g.asset("background") != null || g.asset("logo") != null;
+        return g.pkg != null || g.asset("box_front") != null;
     }
 
     static List<Library.Game> missing(Library lib) {
@@ -117,17 +121,8 @@ final class Covers {
         }
     }
 
-    /** The DuoLauncher folder on the same storage as the game. */
-    private static File ownRoot(Library.Game g) {
-        String p = g.path.getAbsolutePath();
-        if (p.startsWith("/storage/")) {
-            String rest = p.substring(9);
-            int s = rest.indexOf('/');
-            String vol = s < 0 ? rest : rest.substring(0, s);
-            if (!vol.equals("emulated")) return new File("/storage/" + vol, "DuoLauncher");
-        }
-        return new File(android.os.Environment.getExternalStorageDirectory(), "DuoLauncher");
-    }
+    /** The DuoLauncher folder for this game's pictures (where the player chose; by default next to the game). */
+    private static File ownRoot(Library.Game g) { return Storage.root(Storage.volumeOf(g.path)); }
 
     /** Fetches pictures for every NDS/GBA game without one; reports progress (0..100). Returns how many got a cover. */
     static int fetchMissing(Context c, Library lib, IntConsumer progress) {

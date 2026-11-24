@@ -37,14 +37,8 @@ final class Backups {
 
     private static File internal() { return Environment.getExternalStorageDirectory(); }
 
-    /** Backups live next to the launcher's own folder (SD card if it has one), else on internal storage. */
-    static File folder(List<File> volumeRoots) {
-        String in = internal().getAbsolutePath();
-        for (File v : volumeRoots)
-            if (!v.getAbsolutePath().equals(in) && new File(v, "DuoLauncher").isDirectory()) return new File(v, "DuoLauncher/backups");
-        for (File v : volumeRoots) if (new File(v, "DuoLauncher").isDirectory()) return new File(v, "DuoLauncher/backups");
-        return new File(internal(), "DuoLauncher/backups");
-    }
+    /** Backups live in the launcher's own folder, on the storage the player chose (see {@link Storage}). */
+    static File folder(List<File> volumeRoots) { return new File(Storage.general(volumeRoots), "backups"); }
 
     static List<File> list(File dir) {
         File[] fs = dir.listFiles((d, n) -> n.endsWith(".zip"));

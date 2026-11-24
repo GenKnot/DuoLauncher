@@ -40,6 +40,9 @@ final class Icons {
         };
     }
 
+    /** Drops the pictures held in memory (a game is starting); they come back from the disk cache when needed. */
+    void trim() { mem.evictAll(); }
+
     /** Returns the bitmap if ready; otherwise starts loading and calls {@code done} on the main thread. */
     Bitmap get(String key, Callable<Bitmap> loader, Runnable done) {
         Bitmap b = mem.get(key);
