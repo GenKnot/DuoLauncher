@@ -96,7 +96,7 @@ final class NdsCheats {
     static String format(List<Cheats.Cheat> list) {
         StringBuilder sb = new StringBuilder();
         for (Cheats.Cheat c : list) {
-            sb.append('[').append(c.name.replace("]", ")")).append(']').append(c.enabled ? "+" : "").append('\n');
+            sb.append('[').append(c.name.replace("[", "(").replace("]", ")")).append(']').append(c.enabled ? "+" : "").append('\n');
             for (String l : c.lines) if (!l.startsWith("*")) sb.append(l).append('\n');
             sb.append('\n');
         }
@@ -133,6 +133,11 @@ final class NdsCheats {
      * the file (a cut-off copy) are skipped.
      */
     static List<Cheats.Cheat> fromUsrcheat(String code) {
+        return fromUsrcheat(code, null);
+    }
+
+    /** As above; cut[0] counts this game's entries that lie past the end of a cut-off usrcheat.dat. */
+    static List<Cheats.Cheat> fromUsrcheat(String code, int[] cut) {
         List<Cheats.Cheat> best = new ArrayList<>();
         File f = new File(home(), "usrcheat.dat");
         if (!f.isFile() || code == null) return best;
@@ -142,13 +147,20 @@ final class NdsCheats {
             r.readFully(head, 0, 12);
             if (!new String(head, 0, 12, StandardCharsets.US_ASCII).equals("R4 CheatCode")) return best;
             List<Long> offsets = new ArrayList<>();
-            byte[] entry = new byte[16];
-            for (long p = 0x100; p + 16 <= size; p += 16) {
+            // the index (16 bytes a game) is read a block at a time: one seek per game made this slow
+            byte[] block = new byte[64 * 1024];
+            scan:
+            for (long p = 0x100; p + 16 <= size; p += block.length) {
+                int got = (int) Math.min(block.length, size - p) / 16 * 16;
                 r.seek(p);
-                r.readFully(entry);
-                long off = u32(entry, 8) & 0xFFFFFFFFL;
-                if (off == 0) break;
-                if (new String(entry, 0, 4, StandardCharsets.US_ASCII).equals(code) && off < size) offsets.add(off);
+                r.readFully(block, 0, got);
+                for (int i = 0; i < got; i += 16) {
+                    long off = u32(block, i + 8) & 0xFFFFFFFFL;
+                    if (off == 0) break scan;
+                    if (!new String(block, i, 4, StandardCharsets.US_ASCII).equals(code)) continue;
+                    if (off < size) offsets.add(off);
+                    else if (cut != null) cut[0]++;
+                }
             }
             int bestScore = -1;
             for (long off : offsets) {
@@ -259,7 +271,15 @@ final class NdsCheats {
     static Cheats.Store store(Context ctx, Library.Game g) {
         File own = file(g), lib = library(g);
         return new Cheats.Store() {
+            private String note;
+
             @Override public String id() { return lib.getPath(); }
+
+            /**
+             * With nothing here yet: how many cheats DraStic's own list has for the game (DraStic shows those in
+             * game, so an empty list here would look wrong), or that its usrcheat.dat is cut off before them.
+             */
+            @Override public String note() { return note; }
 
             /**
              * The launcher's list, with on/off taken from DraStic's file; cheats added inside DraStic join the list,
@@ -276,6 +296,14 @@ final class NdsCheats {
                     c.enabled = d != null && d.enabled;
                 }
                 for (Cheats.Cheat d : on) if (names.add(d.name)) all.add(d);
+                note = null;
+                if (all.isEmpty()) {
+                    int[] cut = new int[1];
+                    List<Cheats.Cheat> there = fromUsrcheat(Covers.code(g), cut);
+                    there.removeIf(c -> cartOnly(c.name));
+                    if (!there.isEmpty()) note = I18n.f(I18n.S.NDS_CHEATS_IN_DRASTIC, there.size());
+                    else if (cut[0] > 0) note = I18n.t(I18n.S.NDS_USRCHEAT_CUT);
+                }
                 return all;
             }
 

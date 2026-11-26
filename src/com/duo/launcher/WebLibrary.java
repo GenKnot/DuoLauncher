@@ -37,6 +37,8 @@ final class WebLibrary {
         boolean onMain(Runnable r);
         /** Something changed: refresh the screens; with rescan, look at the pictures again. */
         void changed(boolean rescan);
+        /** A game's picture was replaced: forget the old one that is still on screen. */
+        void pictureChanged(Library.Game g, File dir);
         File mediaDir(Library.Game g);
         File cacheDir();
         String statusName(String id);
@@ -265,6 +267,9 @@ final class WebLibrary {
         pics.remove(key);
         // the game looks in its own media folder from now on, without waiting for a rescan
         g.useOwnMedia(dir);
+        // a cover put in by hand also takes the place of the icon inside the ROM on the tile
+        if (kind.equals("box_front")) new File(dir, Library.COVER_ON_TILE).createNewFile();
+        host.pictureChanged(g, dir);
         host.changed(true);
         return null;
     }

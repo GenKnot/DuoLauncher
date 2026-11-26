@@ -45,6 +45,8 @@ final class Cheats {
         Cheat newCheat(String name, List<String> codes);
         /** Adds cheats from a database; the number added, or -1 when there are none or the download failed. */
         int download();
+        /** A line shown above an empty list (worked out by load()), or null. */
+        default String note() { return null; }
     }
 
     /** The cheat store of a 3DS game, shared by every Azahar and Citra build on the device. */

@@ -1358,21 +1358,12 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
             int done = 0, failed = 0;
             for (int i = 0; i < games.size() && !stop.get(); i++) {
                 Library.Game g = games.get(i);
-                String platform = Library.platformTitle(g.platform.system.isEmpty() ? g.platform.name : g.platform.system);
-                android.graphics.Bitmap b;
-                String file;
-                if (kind.equals("box_front")) { b = ai.generate(AiImage.coverPrompt(g.title, g.original, platform), "1024x1536"); file = "cover.png"; }
-                else if (kind.equals("background")) { b = ai.generate(AiImage.gameBackdropPrompt(g.title, g.original, platform), "1536x1024"); file = "background.png"; }
-                else {
-                    b = ai.generate(AiImage.logoPrompt(g.original.trim()), "1536x1024", true);
-                    if (b != null) b = AiImage.cutOut(b);
-                    file = "logo.png";
-                }
+                android.graphics.Bitmap b = drawGamePicture(ai, g, kind);
                 boolean ok = false;
                 if (b != null) {
                     File dir = ownMediaDir(g);
                     dir.mkdirs();
-                    try (java.io.FileOutputStream o = new java.io.FileOutputStream(new File(dir, file))) {
+                    try (java.io.FileOutputStream o = new java.io.FileOutputStream(new File(dir, picFile(kind)))) {
                         o.write(AiImage.png(b));
                         ok = true;
                     } catch (IOException e) {
@@ -1390,6 +1381,7 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
             main.post(() -> {
                 imageJob = null;
                 Toast.makeText(this, I18n.f(S.AI_PICTURES_DONE, made) + (err != null ? "\n" + I18n.f(S.AI_FAILED, err) : ""), Toast.LENGTH_LONG).show();
+                for (Library.Game g : games) icons.forget(g, ownMediaDir(g));
                 if (made > 0) load();
             });
         }, "ai-pictures").start();
@@ -2147,6 +2139,10 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
             java.util.concurrent.CountDownLatch done = new java.util.concurrent.CountDownLatch(1);
             main.post(() -> { try { r.run(); } finally { done.countDown(); } });
             try { return done.await(10, java.util.concurrent.TimeUnit.SECONDS); } catch (InterruptedException e) { return false; }
+        }
+
+        @Override public void pictureChanged(Library.Game g, File dir) {
+            main.post(() -> icons.forget(g, dir));
         }
 
         @Override public void changed(boolean rescan) {
@@ -4827,7 +4823,9 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
     private void showCheats(Library.Game g, Cheats.Store st, List<Cheats.Cheat> list, ShelfView.Menu parent, int sel) {
         ShelfView.Menu m = new ShelfView.Menu(t(S.CHEATS), g.title);
         m.parent = parent;
-        if (list.isEmpty()) m.add(t(S.NO_CHEATS), false, null);
+        String note = list.isEmpty() ? st.note() : null;   // the row, then after a line break what to do (the hint line)
+        int br = note == null ? -1 : note.indexOf('\n');
+        if (list.isEmpty()) m.add(note == null ? t(S.NO_CHEATS) : br < 0 ? note : note.substring(0, br), false, null).hint(br < 0 ? null : note.substring(br + 1));
         for (int i = 0; i < list.size(); i++) {
             Cheats.Cheat c = list.get(i);
             int row = i;
@@ -4934,23 +4932,11 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         ShelfView.Menu m = new ShelfView.Menu(t(S.PICK_CHEATS), p.g.title + "  ·  " + I18n.f(S.PICKED, p.count(), p.found.size())
                 + (p.translating ? "  ·  " + t(S.TRANSLATING) : ""));
         m.parent = p.parent;
-        m.onBack = () -> showCheats(p.g, p.st, p.st.load(), p.parent, 0);
+        // ticking looks like switching cheats on, so going back with some ticked imports them instead of dropping them
+        m.onBack = () -> { if (p.count() > 0) importPicked(p); else showCheats(p.g, p.st, p.st.load(), p.parent, 0); };
         m.add("⇣ " + I18n.f(S.IMPORT_PICKED, p.count()), false, () -> {
             if (p.count() == 0) return;
-            List<Cheats.Cheat> list = new ArrayList<>(p.have);
-            for (int i = 0; i < p.found.size(); i++) {
-                if (!p.picked[i]) continue;
-                Cheats.Cheat c = p.found.get(i);
-                if (p.shown[i] != null && !p.shown[i].equals(c.name)) {
-                    c.lines.add(0, "*" + c.name);   // the original name stays as a note
-                    c.name = p.shown[i];
-                }
-                list.add(c);
-            }
-            st(p).save(list);
-            Toast.makeText(this, I18n.f(S.CHEATS_ADDED, p.count()), Toast.LENGTH_LONG).show();
-            p.menu = null;
-            showCheats(p.g, p.st, p.st.load(), p.parent, p.have.size());
+            importPicked(p);
         });
         m.add("☑ " + t(S.SELECT_ALL), false, () -> { java.util.Arrays.fill(p.picked, true); showCheatPick(p, 1); });
         m.add("☐ " + t(S.SELECT_NONE), false, () -> { java.util.Arrays.fill(p.picked, false); showCheatPick(p, 2); });
@@ -4965,6 +4951,23 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
         if (p.menu != null && shelfState.menu == p.menu) m.top = p.menu.top;   // a refresh keeps the scroll position
         p.menu = m;
         shelf.showMenu(m);
+    }
+
+    private void importPicked(CheatPick p) {
+        List<Cheats.Cheat> list = new ArrayList<>(p.have);
+        for (int i = 0; i < p.found.size(); i++) {
+            if (!p.picked[i]) continue;
+            Cheats.Cheat c = p.found.get(i);
+            if (p.shown[i] != null && !p.shown[i].equals(c.name)) {
+                c.lines.add(0, "*" + c.name);   // the original name stays as a note
+                c.name = p.shown[i];
+            }
+            list.add(c);
+        }
+        st(p).save(list);
+        Toast.makeText(this, I18n.f(S.CHEATS_ADDED, p.count()), Toast.LENGTH_LONG).show();
+        p.menu = null;
+        showCheats(p.g, p.st, p.st.load(), p.parent, p.have.size());
     }
 
     private static Cheats.Store st(CheatPick p) { return p.st; }
@@ -5367,10 +5370,166 @@ public final class MainActivity extends Activity implements ShelfView.Listener {
                 m.add(label, false, null).hint(t(S.LOGO_NEEDS_NAME));
                 continue;
             }
-            m.add(label, has, () -> confirmAiPictures(m, java.util.Collections.singletonList(g), kind)).hint(has ? t(S.PIC_REPLACE) : null);
+            PicJob job = picJobs.get(g.key() + "|" + kind);
+            if (job != null) label += "  ·  " + t(job.result != null ? S.AI_PIC_WAITING : S.AI_PIC_DRAWING);
+            m.add(label, has, () -> aiOneGame(g, kind, m)).hint(job != null ? null : has ? t(S.PIC_REPLACE) : null);
         }
         m.sel = 0;
         shelf.showMenu(m);
+    }
+
+    /** Draws one picture of a game (a logo comes back cut out), or null with the reason in ai.error. */
+    private static android.graphics.Bitmap drawGamePicture(AiImage ai, Library.Game g, String kind) {
+        String platform = Library.platformTitle(g.platform.system.isEmpty() ? g.platform.name : g.platform.system);
+        if (kind.equals("box_front")) return ai.generate(AiImage.coverPrompt(g.title, g.original, platform), "1024x1536");
+        if (kind.equals("background")) return ai.generate(AiImage.gameBackdropPrompt(g.title, g.original, platform), "1536x1024");
+        android.graphics.Bitmap b = ai.generate(AiImage.logoPrompt(g.original.trim()), "1536x1024", true);
+        return b == null ? null : AiImage.cutOut(b);
+    }
+
+    private static String picFile(String kind) {
+        return kind.equals("box_front") ? "cover.png" : kind.equals("background") ? "background.png" : "logo.png";
+    }
+
+    /** One game's picture being drawn, then waiting for the player to take it or not. */
+    private static final class PicJob {
+        final Library.Game g;
+        final String kind, id;
+        final long start = System.currentTimeMillis();
+        volatile boolean cancelled;
+        File result;
+        ShelfView.Menu menu;
+
+        PicJob(Library.Game g, String kind) { this.g = g; this.kind = kind; id = g.key() + "|" + kind; }
+    }
+
+    /** Running or finished-but-not-decided pictures, by game key and kind. */
+    private final java.util.Map<String, PicJob> picJobs = new java.util.HashMap<>();
+
+    /**
+     * A new picture for one game: a page that counts the seconds while it is drawn (it can go on in the background
+     * or be cancelled), then the picture on the top screen to take, draw again or throw away. Nothing is replaced
+     * until the player says so.
+     */
+    private void aiOneGame(Library.Game g, String kind, ShelfView.Menu parent) {
+        PicJob have = picJobs.get(g.key() + "|" + kind);
+        if (have != null) {
+            if (have.result != null) showPicReady(have, parent); else showPicMaking(have, parent);
+            return;
+        }
+        AiImage ai = AiImage.from(prefs);
+        if (ai == null) { Toast.makeText(this, t(S.AI_IMAGES_NEEDED), Toast.LENGTH_LONG).show(); return; }
+        PicJob j = new PicJob(g, kind);
+        picJobs.put(j.id, j);
+        File tmp = new File(getCacheDir(), "ai-picture-" + Integer.toHexString(j.id.hashCode()) + "-" + j.start + ".png");   // a cancelled run finishing late must not touch the next one's file
+        new Thread(() -> {
+            android.graphics.Bitmap b = drawGamePicture(ai, g, kind);
+            boolean ok = false;
+            if (b != null && !j.cancelled) {
+                try (java.io.FileOutputStream o = new java.io.FileOutputStream(tmp)) {
+                    o.write(AiImage.png(b));
+                    ok = true;
+                } catch (IOException e) {
+                    ai.error = e.getMessage();
+                }
+            }
+            boolean made = ok;
+            String err = ai.error;
+            main.post(() -> {
+                if (j.cancelled) { tmp.delete(); return; }
+                boolean watching = shelf != null && j.menu != null && shelfState.menu == j.menu;
+                if (!made) {
+                    picJobs.remove(j.id);
+                    Toast.makeText(this, I18n.f(S.AI_FAILED, err), Toast.LENGTH_LONG).show();
+                    if (watching) shelf.showMenu(parent);
+                    return;
+                }
+                j.result = tmp;
+                if (watching) showPicReady(j, parent);
+                else Toast.makeText(this, I18n.f(S.AI_PIC_READY_LATER, picNoun(kind), g.title, t(S.AI_GAME_PICTURES)), Toast.LENGTH_LONG).show();
+            });
+        }, "ai-one-picture").start();
+        showPicMaking(j, parent);
+    }
+
+    /** The picture's plain name for sentences ("cover", not the menu's "make a cover with AI"). */
+    private static String picNoun(String kind) {
+        return t(kind.equals("box_front") ? S.DISPLAY_COVER : kind.equals("background") ? S.BACKGROUND_IMAGE : S.DISPLAY_LOGO);
+    }
+
+    private String picElapsed(PicJob j) {
+        return I18n.f(S.AI_PIC_ELAPSED, (System.currentTimeMillis() - j.start) / 1000);
+    }
+
+    private void showPicMaking(PicJob j, ShelfView.Menu parent) {
+        ShelfView.Menu m = new ShelfView.Menu(I18n.f(S.AI_PIC_MAKING, picNoun(j.kind)), j.g.title);
+        m.parent = parent;
+        m.add(picElapsed(j), false, null);
+        // going back (or this row) leaves it drawing; a message says when it is done
+        m.add(t(S.AI_PIC_BACKGROUND), false, () -> shelf.showMenu(parent));
+        m.add(t(S.AI_PIC_CANCEL), false, () -> {
+            j.cancelled = true;
+            picJobs.remove(j.id);
+            Toast.makeText(this, t(S.AI_PIC_CANCELLED), Toast.LENGTH_SHORT).show();
+            shelf.showMenu(parent);
+        }).hint(t(S.AI_PIC_CANCEL_HINT));
+        m.sel = 1;
+        j.menu = m;
+        shelf.showMenu(m);
+        Runnable tick = new Runnable() {
+            @Override public void run() {
+                if (shelf == null || shelfState.menu != m || j.result != null || j.cancelled) return;
+                m.labels.set(0, picElapsed(j));
+                shelf.invalidate();
+                main.postDelayed(this, 1000);
+            }
+        };
+        main.postDelayed(tick, 1000);
+    }
+
+    private void showPicReady(PicJob j, ShelfView.Menu parent) {
+        ShelfView.Menu m = new ShelfView.Menu(I18n.f(S.AI_PIC_READY, picNoun(j.kind)), j.g.title);
+        m.parent = parent;
+        m.add(t(S.AI_PIC_USE), false, () -> {
+            File dir = ownMediaDir(j.g);
+            dir.mkdirs();
+            boolean ok;
+            try (java.io.InputStream in = new java.io.FileInputStream(j.result);
+                 java.io.FileOutputStream o = new java.io.FileOutputStream(new File(dir, picFile(j.kind)))) {
+                Backups.copy(in, o);
+                ok = true;
+            } catch (IOException e) {
+                ok = false;
+            }
+            picJobs.remove(j.id);
+            j.result.delete();
+            if (!ok) { Toast.makeText(this, I18n.f(S.AI_FAILED, ""), Toast.LENGTH_LONG).show(); return; }
+            j.g.useOwnMedia(dir);
+            if (j.kind.equals("box_front")) {
+                try { new File(dir, Library.COVER_ON_TILE).createNewFile(); } catch (IOException ignored) { }
+            }
+            icons.forget(j.g, dir);
+            Toast.makeText(this, t(S.SAVED), Toast.LENGTH_SHORT).show();
+            onAiGamePictures(j.g, parent.parent);
+            shelf.invalidate();
+            onFocus(j.g);
+        });
+        m.add(t(S.AI_PIC_AGAIN), false, () -> {
+            picJobs.remove(j.id);
+            j.result.delete();
+            aiOneGame(j.g, j.kind, parent);
+        });
+        m.add(t(S.AI_PIC_DISCARD), false, () -> {
+            picJobs.remove(j.id);
+            j.result.delete();
+            shelf.showMenu(parent);
+            onFocus(j.g);
+        });
+        // back keeps the picture waiting; the game's picture menu offers it again
+        m.onBack = () -> { shelf.showMenu(parent); onFocus(j.g); };
+        j.menu = m;
+        shelf.showMenu(m);
+        top.showPicture(j.result, j.g.title + "  ·  " + picNoun(j.kind));
     }
 
     @Override public void onDetails(Library.Game g) {

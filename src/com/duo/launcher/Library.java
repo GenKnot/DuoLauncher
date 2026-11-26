@@ -128,6 +128,13 @@ final class Library {
         }
     }
 
+    /**
+     * Left in a game's own media folder when the player chose its cover by hand (taken from an AI drawing, or put in on
+     * the library page): the tile then shows that cover instead of the icon inside the ROM. Covers drawn for many
+     * games at once leave the ROM icons alone.
+     */
+    static final String COVER_ON_TILE = ".cover-on-tile";
+
     final List<Platform> platforms = new ArrayList<>();
     final Map<String, Game> byKey = new HashMap<>();
 

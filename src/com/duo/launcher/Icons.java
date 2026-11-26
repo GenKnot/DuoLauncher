@@ -62,6 +62,18 @@ final class Icons {
         return null;
     }
 
+    /**
+     * Forgets what is held for a game whose pictures just changed: its tile, and every picture from the folder the new
+     * ones were written to (a file written again under the same name would otherwise keep showing the old one).
+     * A game that had no picture is remembered as "missing" and would never be looked at again otherwise.
+     */
+    void forget(Library.Game g, File dir) {
+        String d = dir == null ? null : dir.getPath();
+        for (String k : mem.snapshot().keySet())
+            if (k.equals("tile:" + g.key()) || (d != null && k.contains(d))) mem.remove(k);
+        missing.removeIf(k -> k.equals("tile:" + g.key()) || (d != null && k.contains(d)));
+    }
+
     /** True once a load for this key finished without a bitmap. */
     boolean failed(String key) { return missing.contains(key); }
 
@@ -96,6 +108,12 @@ final class Icons {
 
     private Bitmap loadTile(Library.Game g) {
         if (g.pkg != null) return appIcon(g.pkg);
+        // a cover the player chose by hand wins over the icon inside the ROM
+        File own = g.ownMedia != null && new File(g.ownMedia, Library.COVER_ON_TILE).isFile() ? g.asset("box_front") : null;
+        if (own != null && own.getPath().startsWith(g.ownMedia.getPath())) {
+            Bitmap s = decode(own, 360);
+            if (s != null) return centerCropSquare(trimBorder(s), 256);
+        }
         Bitmap b = romIconSync(g);
         if (b != null) return b;
         File f = g.asset("box_front");

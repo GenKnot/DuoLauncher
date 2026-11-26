@@ -205,14 +205,22 @@ body[data-style=museum] .plat.on{background:linear-gradient(90deg,#d4a85a2e,#000
 .mus-in h1{margin:10px 0 6px;font-size:52px;font-weight:600;letter-spacing:2px;color:#f6ead6}
 .mus-in p{margin:0;color:#bfae95}
 .mus-line{width:120px;height:1px;margin:22px auto;background:linear-gradient(90deg,#0000,#d4a85a,#0000)}
-.pedestals{display:flex;justify-content:center;gap:56px;margin-top:34px;flex-wrap:wrap}
+.pedestals{display:flex;justify-content:center;align-items:flex-end;gap:56px;margin-top:34px;flex-wrap:wrap}
+.ped.n1{order:2}.ped.n2{order:1}.ped.n3{order:3}
 .ped{width:170px;cursor:pointer;text-align:center}
 .ped .case{position:relative;padding:18px 18px 0;border-radius:6px 6px 0 0;background:linear-gradient(180deg,#ffffff10,#ffffff04);box-shadow:inset 0 0 0 1px #ffffff1c}
 .ped .case::before{content:"";position:absolute;inset:-60px -30px auto;height:160px;background:radial-gradient(closest-side,#fff3cf55,#0000);pointer-events:none}
 .ped .case .frame{transform:perspective(600px) rotateX(4deg)}
-.ped .stand{height:64px;background:linear-gradient(180deg,#e9e1d3,#b8ab96);clip-path:polygon(6% 0,94% 0,100% 100%,0 100%);box-shadow:0 20px 30px #0008}
-.ped .rank{font-family:Georgia,serif;color:#d4a85a;font-size:13px;letter-spacing:2px;margin-top:12px}
-.ped b{display:block;margin-top:4px;font-family:"Noto Serif SC","Songti SC",Georgia,serif;font-size:15px}
+.ped .stand{position:relative;height:50px;margin:0 -4px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:linear-gradient(90deg,#ffffff08,#0000 18%,#0000 82%,#ffffff06),linear-gradient(180deg,#30261e,#1a140f 70%,#120d0a);box-shadow:inset 0 1px 0 #d4a85a99,inset 0 2px 0 #00000080,0 18px 26px #000b}
+/* the plinth: dark lacquer with a thin gold edge, the rank and console in gold leaf, a soft glow on the floor */
+.ped .stand::after{content:"";position:absolute;left:-14%;right:-14%;bottom:-14px;height:18px;border-radius:50%;background:radial-gradient(closest-side,#d4a85a2a,#0000);pointer-events:none}
+.ped.n1 .stand{height:74px}
+.ped .plate{font-family:Georgia,"Times New Roman",serif;font-size:13px;letter-spacing:3px;color:#e2bf78;display:flex;align-items:center;gap:8px}
+.ped .plate::before,.ped .plate::after{content:"";width:14px;height:1px;background:linear-gradient(90deg,#0000,#d4a85a)}
+.ped .plate::after{transform:scaleX(-1)}
+.ped.n1 .plate{font-size:15px;color:#f0d08c}
+.ped .engr{max-width:90%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:9.5px;letter-spacing:2px;color:#a08660}
+.ped b{display:block;margin-top:22px;font-family:"Noto Serif SC","Songti SC",Georgia,serif;font-size:15px}
 .hall{margin:46px 0 10px}
 .hall header{display:flex;align-items:flex-end;gap:18px;margin-bottom:8px}
 .hall h2{margin:0;font-size:30px;font-weight:600;color:#f6ead6}
@@ -264,7 +272,27 @@ body.selecting .exhibit .tick{display:block}
  .duo-strip{grid-template-columns:repeat(3,1fr)}
  .sh-in{right:20px;left:20px}
  .sh-strip{display:none}
- .mus-in h1{font-size:36px}
+ /* the museum on a phone: a smaller hero, the three favourites on a podium (No. 1 in the middle, raised), three frames a row */
+ .mus-hero{padding:30px 0 22px}.mus-hero::before{width:100%;height:300px}
+ .mus-in h1{font-size:28px;letter-spacing:1px}
+ .mus-in small{letter-spacing:4px;font-size:11px}
+ .mus-line{margin:16px auto}
+ .pedestals{flex-wrap:nowrap;align-items:flex-end;gap:10px;margin-top:20px}
+ .ped{flex:1;min-width:0;width:auto;max-width:150px}
+ .ped.n1{order:2;flex:1.25}.ped.n2{order:1}.ped.n3{order:3}
+ .ped .case{padding:9px 9px 0}
+ .ped .case::before{inset:-40px -10px auto;height:110px}
+ .ped .stand{height:38px;gap:2px;margin:0 -2px}.ped.n1 .stand{height:56px}
+ .ped .plate{font-size:11px;letter-spacing:2px;gap:5px}.ped.n1 .plate{font-size:12.5px}.ped .plate::before,.ped .plate::after{width:8px}
+ .ped .engr{font-size:7.5px;letter-spacing:1px}
+ .ped b{margin-top:18px;font-size:12.5px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+ .ped .hint{font-size:11px}
+ .hall{margin:30px 0 8px}.hall header{gap:10px}.hall h2{font-size:21px}.hall .sign{width:4px;height:24px}.hall header span{font-size:12px;padding-bottom:3px}.hall header i{margin-bottom:8px}
+ .wall{grid-template-columns:repeat(3,minmax(0,1fr));padding:4px 4px 0}
+ .exhibit{padding:20px 7px 0}.exhibit::after{height:10px;margin:10px -7px 0}
+ .frame{padding:4px}.frame .mat{padding:3px}
+ .plaque{margin-top:8px;padding:4px 5px}.plaque b{font-size:11px}.plaque span{font-size:9.5px}
+ .exhibit .tick{top:24px;right:11px}
  body[data-style=duo]{--cw:110px}
  body[data-style=store]{--cw:120px}
 }
@@ -328,6 +356,8 @@ function setup(){
  $("selBtn").onclick=()=>select(!selecting);$("bDone").onclick=()=>select(false);$("bApply").onclick=applyBatch;
  $("shade").onclick=closeDrawer;document.addEventListener("keydown",e=>{if(e.key==="Escape")closeDrawer()});
  new IntersectionObserver(es=>{if(es[0].isIntersecting)more()},{rootMargin:"900px"}).observe($("more"));
+ // links can open a look, a console, a search or a game directly: ?style=museum&plat=GBA&q=zelda&open=<key>
+ const P=new URLSearchParams(location.search);if(["duo","store","museum"].includes(P.get("style")))S.style=P.get("style");if(P.get("plat")&&D.platforms.some(x=>x.name===P.get("plat")))S.plat=P.get("plat");if(P.get("q")){S.q=P.get("q").toLowerCase();$("q").value=P.get("q")}
  plats();setStyle(S.style,true);
 }
 function setStyle(s,first){S.style=s;document.body.dataset.style=s;try{localStorage.setItem("duo.style",s)}catch(e){}
@@ -369,7 +399,7 @@ function hero(){const h=$("hero");if(S.q||S.genre||S.status){h.innerHTML="";retu
   "<div class=sh-in><div class=sh-cover>"+art(f,400)+"</div><div><small>"+esc(recent[0]?T("L_CONTINUE"):T("L_STAR_PIECE"))+"</small><h1>"+esc(f.t)+"</h1><p>"+esc(f.pt+(f.m?"  ·  "+T("L_ON_RECORD",{t:fmtTime(f.m)}):""))+"</p><button class=sh-btn data-k='"+esc(f.k)+"'>"+esc(T("L_EDIT"))+" ›</button></div></div>"+
   "<div class=sh-strip>"+recent.slice(1,5).map(card).join("")+"</div></div><div class=storeband><h3>"+esc(S.plat?(D.platforms.find(p=>p.name===S.plat)||{}).title:T("L_ALL_PLATFORMS"))+"</h3></div>"}
  else{h.innerHTML="<div class=mus-hero><div class=mus-in><small>Duo Library</small><h1>"+esc(T("L_MUSEUM_INTRO"))+"</h1><p>"+esc(T("L_EXHIBITS",{n:pool.length}))+" · "+(S.plat?1:D.platforms.length)+" "+esc(T("REPORT_CONSOLES"))+"</p><div class=mus-line></div>"+
-  (top.length?"<small>"+esc(T("L_STAR_PIECE"))+"</small><p style='margin-top:6px'>"+esc(T("L_STAR_PIECE_SUB"))+"</p><div class=pedestals>"+top.slice(0,3).map((g,i)=>"<div class=ped data-k='"+esc(g.k)+"'><div class=case><div class=frame><div class=mat>"+(g.c?"<img src='"+img(g.k,"box_front",320)+"' alt=''>":"<div class=ini style='background:"+g.pc+"'>"+initials(g.t)+"</div>")+"</div></div></div><div class=stand></div><div class=rank>No. "+(i+1)+"</div><b>"+esc(g.t)+"</b><div class=hint>"+esc(fmtTime(g.m))+"</div></div>").join("")+"</div>":"")+"</div></div>"}
+  (top.length?"<small>"+esc(T("L_STAR_PIECE"))+"</small><p style='margin-top:6px'>"+esc(T("L_STAR_PIECE_SUB"))+"</p><div class=pedestals>"+top.slice(0,3).map((g,i)=>"<div class='ped n"+(i+1)+"' data-k='"+esc(g.k)+"'><div class=case><div class=frame><div class=mat>"+(g.c?"<img src='"+img(g.k,"box_front",320)+"' alt=''>":"<div class=ini style='background:"+g.pc+"'>"+initials(g.t)+"</div>")+"</div></div></div><div class=stand><span class=plate>No. "+(i+1)+"</span><span class=engr>"+esc(g.pt||"")+"</span></div><b>"+esc(g.t)+"</b><div class=hint>"+esc(fmtTime(g.m))+"</div></div>").join("")+"</div>":"")+"</div></div>"}
  h.querySelectorAll("[data-k]").forEach(el=>el.onclick=()=>openGame(G[el.dataset.k]))}
 
 function select(on){selecting=on;document.body.classList.toggle("selecting",on);$("selBtn").classList.toggle("on",on);$("batch").classList.toggle("on",on);if(!on){picked.clear();document.querySelectorAll(".picked").forEach(e=>e.classList.remove("picked"))}batchN()}
@@ -406,7 +436,7 @@ function wireDrawer(g){const d=$("drawer");d.querySelector("#dx").onclick=closeD
 async function upload(g,kind,file){toast(T("L_UPLOADING"));let r;try{r=await fetch("/api/picture?k="+encodeURIComponent(g.k)+"&kind="+kind,{method:"PUT",body:file})}catch(e){toast(T("L_FAILED"));return}if(!r.ok){toast(T("L_FAILED"));return}
  const x=await r.json();Object.assign(g,x);V[g.k]=Date.now();toast(T("L_SAVED"));render();openGame(g)}
 
-(async()=>{$("loading").textContent=T("L_LOADING");try{let r;for(let i=0;i<5;i++){r=await fetch("/api/library");if(r.status!==503)break;await new Promise(x=>setTimeout(x,1500))}if(r.status===403){location.href="/";return}D=await r.json();D.games.forEach(g=>G[g.k]=g)}catch(e){$("loading").textContent="—";return}setup();render()})();
+(async()=>{$("loading").textContent=T("L_LOADING");try{let r;for(let i=0;i<5;i++){r=await fetch("/api/library");if(r.status!==503)break;await new Promise(x=>setTimeout(x,1500))}if(r.status===403){location.href="/";return}D=await r.json();D.games.forEach(g=>G[g.k]=g)}catch(e){$("loading").textContent="—";return}setup();render();const o=new URLSearchParams(location.search).get("open");if(o&&G[o])openGame(G[o])})();
 </script>
 </body>
 </html>
